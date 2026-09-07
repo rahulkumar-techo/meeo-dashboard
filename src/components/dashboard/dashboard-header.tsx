@@ -19,7 +19,7 @@ export function DashboardHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-2.5 sm:px-4 backdrop-blur-md">
+      <header className="sticky top-0 z-40 flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-2.5 sm:px-4 backdrop-blur-md transition-all">
         {/* Left Section: Sidebar Toggle, Env Badge & Search */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />

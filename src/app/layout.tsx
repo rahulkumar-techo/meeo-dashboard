@@ -50,11 +50,11 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system">
           <SidebarProvider>
             <AppSidebar />
-            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full overflow-x-hidden">
+            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
               <DashboardHeader />
-              <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
+              <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
                 {children}
-              </main>
+              </div>
             </SidebarInset>
           </SidebarProvider>
         </ThemeProvider>
