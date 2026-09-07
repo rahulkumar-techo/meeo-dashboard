@@ -46,10 +46,28 @@ export function useLoginMutation() {
     mutationFn: async (payload: LoginPayload) => {
       return await authService.login(payload)
     },
-    onSuccess: (data) => {
-      if (data.success && data.data) {
-        setAuth(data.data.user, data.data.accessToken, data.data.refreshToken)
-        queryClient.setQueryData(AUTH_QUERY_KEY, data.data.user)
+    onSuccess: (data: any) => {
+      const payload = data?.data || data || {}
+      const user = payload.user || payload.profile || (payload.email ? payload : null)
+      const accessToken =
+        payload.accessToken ||
+        payload.tokens?.accessToken ||
+        payload.access_token ||
+        payload.token
+      const refreshToken =
+        payload.refreshToken ||
+        payload.tokens?.refreshToken ||
+        payload.refresh_token
+
+      if (accessToken) {
+        setAuth(
+          user || { id: "user", email: "", firstName: "Admin", lastName: "User", isVerified: true },
+          accessToken,
+          refreshToken
+        )
+        if (user) {
+          queryClient.setQueryData(AUTH_QUERY_KEY, user)
+        }
       }
     },
   })

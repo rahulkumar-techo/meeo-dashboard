@@ -88,36 +88,69 @@ apiClient.interceptors.response.use(
       try {
         const storedRefreshToken = useUserStore.getState().refreshToken
 
-        // Attempt silent token refresh
-        const refreshResponse = await axios.post<ApiResponse<RefreshResponseData>>(
-          `${API_BASE_URL}/auth/refresh`,
-          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
-          {
-            withCredentials: true,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
+        if (!storedRefreshToken) {
+          throw new Error("No refresh token available in storage")
+        }
 
-        const newAccessToken =
-          refreshResponse.data?.data?.accessToken ||
-          (refreshResponse.data as unknown as RefreshResponseData)?.accessToken
-        const newRefreshToken =
-          refreshResponse.data?.data?.refreshToken ||
-          (refreshResponse.data as unknown as RefreshResponseData)?.refreshToken
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedRefreshToken}`,
+          "x-refresh-token": storedRefreshToken,
+        }
+
+        const body = {
+          refreshToken: storedRefreshToken,
+          refresh_token: storedRefreshToken,
+          token: storedRefreshToken,
+        }
+
+        // Attempt silent token refresh
+        let refreshResponse
+        try {
+          refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, body, {
+            withCredentials: true,
+            headers,
+          })
+        } catch (initialErr: any) {
+          // If /auth/refresh returns 404, fallback to /v1/auth/refresh
+          if (initialErr.response?.status === 404) {
+            refreshResponse = await axios.post(`${API_BASE_URL}/v1/auth/refresh`, body, {
+              withCredentials: true,
+              headers,
+            })
+          } else {
+            throw initialErr
+          }
+        }
+
+        const resData: any = refreshResponse.data?.data || refreshResponse.data || {}
+
+        const newAccessToken: string | null =
+          resData.accessToken ||
+          resData.tokens?.accessToken ||
+          resData.access_token ||
+          resData.token ||
+          (typeof resData === "string" ? resData : null)
+
+        const newRefreshToken: string | null =
+          resData.refreshToken ||
+          resData.tokens?.refreshToken ||
+          resData.refresh_token ||
+          storedRefreshToken
 
         if (newAccessToken) {
-          useUserStore.getState().setTokens(newAccessToken, newRefreshToken)
+          useUserStore.getState().setTokens(newAccessToken, newRefreshToken || storedRefreshToken)
           processQueue(null, newAccessToken)
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
           return apiClient(originalRequest)
         } else {
-          throw new Error("No access token returned from refresh")
+          throw new Error("Invalid token format received from refresh endpoint")
         }
       } catch (refreshError) {
         processQueue(refreshError, null)
         useUserStore.getState().logout()
 
-        // Redirect to login if in browser
+        // Redirect to login only if in browser and not already on auth page
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
           window.location.href = `/login?redirect=${encodeURIComponent(
             window.location.pathname
