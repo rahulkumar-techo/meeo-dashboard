@@ -8,7 +8,7 @@ import { useUserStore } from "@/store/user.store"
 import type { ApiResponse, RefreshResponseData } from "@/types/auth"
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://meeo-server.onrender.com/api"
+  process.env.NEXT_PUBLIC_API_URL || "https://meeo-server.onrender.com/api/v1"
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

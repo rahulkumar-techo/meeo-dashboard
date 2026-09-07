@@ -16,7 +16,7 @@ export const dashboardService = {
    */
   async getOverViews(payload: PayloadParams = { period: "30d" }): Promise<DashboardOverviewData> {
     const response = await apiClient.get<DashboardOverviewData>(
-      "/v1/admin/dashboard/overview",
+      "/admin/dashboard/overview",
       {
         params: payload,
       }
