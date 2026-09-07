@@ -37,13 +37,19 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = []
 }
 
-// Request Interceptor: Attach Access Token
+// Request Interceptor: Attach Access Token & handle FormData
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useUserStore.getState().accessToken
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // When payload is FormData, delete Content-Type so browser/Axios sets multipart/form-data with boundary
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete config.headers["Content-Type"]
+    }
+
     return config
   },
   (error) => Promise.reject(error)

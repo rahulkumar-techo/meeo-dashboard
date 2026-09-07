@@ -1,170 +1,289 @@
 /**
  * @file page.tsx
- * @description Product Matrix & Variant SKU Matrix Console (< 220 lines).
+ * @description Product Catalog Management Console (< 230 lines).
+ * Connects to live /api/v1/products endpoints for listing, filtering, publishing, and deleting products.
  */
 
 "use client"
 
 import * as React from "react"
-import { Sparkles, Save, Rocket, Plus, Trash2, Globe, Tag } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Plus, RefreshCw, Search, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { PageHeader, MetricGrid } from "@/components/common"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { PageHeader, StatusBadge } from "@/components/common"
-import {
-  INITIAL_VARIANTS,
-  COLOR_OPTIONS,
-  SWITCH_OPTIONS,
-  VariantRow,
-} from "@/data/products"
+  useProductsQuery,
+  usePublishProductMutation,
+  useDraftProductMutation,
+  useArchiveProductMutation,
+} from "@/hooks/use-product-query"
+import { useCategoriesQuery } from "@/hooks/use-category-query"
+import { useBrandsQuery } from "@/hooks/use-brand-query"
+import { ProductTable } from "@/components/products/product-table"
+import { ProductInspector } from "@/components/products/product-inspector"
+import { DeleteProductDialog } from "@/components/products/delete-product-dialog"
+import type { Product, ProductStatus, ProductSortBy, SortOrder } from "@/types/product"
 
-export default function ProductMatrixPage() {
-  const [productTitle, setProductTitle] = React.useState("Apex Precision Mechanical Keyboard")
-  const [slug, setSlug] = React.useState("apex-precision-mechanical-keyboard")
-  const [publishStatus, setPublishStatus] = React.useState<"draft" | "active" | "archived">("active")
-  const [variants, setVariants] = React.useState<VariantRow[]>(INITIAL_VARIANTS)
-  const [bulkPrice, setBulkPrice] = React.useState("189.00")
-  const [bulkStock, setBulkStock] = React.useState("50")
+export default function ProductsPage() {
+  const router = useRouter()
 
-  const handleApplyBulk = () => {
-    setVariants((prev) =>
-      prev.map((v) => ({
-        ...v,
-        price: bulkPrice || v.price,
-        stock: parseInt(bulkStock) || v.stock,
-      }))
-    )
+  // Query parameters state
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [sortBy, setSortBy] = React.useState<ProductSortBy>("createdAt")
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc")
+  const [search, setSearch] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
+  const [statusFilter, setStatusFilter] = React.useState<ProductStatus | "ALL">("ALL")
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL")
+  const [brandFilter, setBrandFilter] = React.useState<string>("ALL")
+
+  // Selected product for inspector preview
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null)
+
+  // Dialog states
+  const [productToDelete, setProductToDelete] = React.useState<Product | null>(null)
+  const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
+
+  // Fetch taxonomy and brand options for filters and modals
+  const { data: categoriesData } = useCategoriesQuery({ limit: 100 })
+  const { data: brandsData } = useBrandsQuery({ limit: 100 })
+  const categories = categoriesData?.items ?? []
+  const brands = brandsData?.items ?? []
+
+  // Status transitions mutations
+  const publishMutation = usePublishProductMutation()
+  const draftMutation = useDraftProductMutation()
+  const archiveMutation = useArchiveProductMutation()
+
+  // Debounce search input
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Build query parameter payload
+  const queryParams = React.useMemo(() => ({
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    search: debouncedSearch.trim() || undefined,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+    categoryId: categoryFilter === "ALL" ? undefined : categoryFilter,
+    brandId: brandFilter === "ALL" ? undefined : brandFilter,
+  }), [page, limit, sortBy, sortOrder, debouncedSearch, statusFilter, categoryFilter, brandFilter])
+
+  // Fetch live products
+  const { data, isLoading, isFetching, refetch } = useProductsQuery(queryParams)
+
+  const items = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = data?.totalPages ?? 1
+
+  // Keep inspector in sync
+  React.useEffect(() => {
+    if (items.length > 0) {
+      if (!selectedProduct || !items.some((p) => p.id === selectedProduct.id)) {
+        setSelectedProduct(items[0])
+      } else {
+        const updated = items.find((p) => p.id === selectedProduct.id)
+        if (updated) setSelectedProduct(updated)
+      }
+    } else {
+      setSelectedProduct(null)
+    }
+  }, [items])
+
+  // Derived KPI metrics
+  const activeCount = React.useMemo(() => items.filter((p) => p.status === "ACTIVE").length, [items])
+  const draftCount = React.useMemo(() => items.filter((p) => p.status === "DRAFT").length, [items])
+  const featuredCount = React.useMemo(() => items.filter((p) => p.isFeatured).length, [items])
+
+  const handleOpenEdit = (p: Product, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    router.push(`/products/${p.id}/edit`)
   }
 
-  const handleToggleVariant = (id: string, enabled: boolean) => {
-    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, enabled } : v)))
+  const handleOpenDelete = (p: Product, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setProductToDelete(p)
+    setIsDeleteOpen(true)
   }
-
-  const totalStock = variants.reduce((acc, curr) => acc + (curr.enabled ? curr.stock : 0), 0)
 
   return (
     <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
       {/* 1. Page Header */}
       <PageHeader
-        title="Product Variant Matrix & Catalog Builder"
-        badge={publishStatus.toUpperCase()}
-        badgeVariant={publishStatus === "active" ? "success" : "outline"}
-        description="Configure dynamic Cartesian variant matrices, multi-warehouse stock allocations, SKU barcode sync, and SEO attributes."
+        title="Product Catalog & Inventory Items"
+        badge={`${total} Products`}
+        badgeVariant="brand"
+        description="Manage catalog products, multi-variant SKUs, media gallery assets, brand associations, and SEO metadata."
       >
-        <Button variant="outline" size="sm" className="h-8.5 gap-1.5 text-xs">
-          <Save className="size-3.5" /> Save Draft
-        </Button>
         <Button
+          variant="outline"
           size="sm"
-          onClick={() => setPublishStatus("active")}
-          className="h-8.5 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
         >
-          <Rocket className="size-3.5" /> Publish to All Channels
+          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : "text-muted-foreground"}`} />
+          <span>Refresh</span>
         </Button>
+        <Link href="/products/create">
+          <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+            <Plus className="size-3.5" />
+            <span>New Product</span>
+          </Button>
+        </Link>
       </PageHeader>
 
-      {/* 2. Top Product Info Card */}
-      <Card className="border-border/70 bg-card/95 shadow-2xs">
-        <CardContent className="p-4 sm:p-5 space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs">
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">Product Title</label>
-              <Input
-                value={productTitle}
-                onChange={(e) => setProductTitle(e.target.value)}
-                className="mt-1 h-8.5 text-xs font-medium"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">URL Slug / Handle</label>
-              <Input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                className="mt-1 h-8.5 text-xs font-mono"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 2. KPI Metrics */}
+      <MetricGrid
+        columns={4}
+        items={[
+          { title: "Catalog Items", value: `${total} Records`, colorTheme: "indigo", footnote: `${items.length} loaded on page` },
+          { title: "Active in Store", value: `${activeCount} Published`, colorTheme: "emerald", badge: { text: "Live Storefront", variant: "success" }, footnote: "Publicly visible to shoppers" },
+          { title: "Draft Products", value: `${draftCount} Pending`, colorTheme: "amber", footnote: "Unpublished catalog items" },
+          { title: "Featured Highlights", value: `${featuredCount} Featured`, colorTheme: "cyan", footnote: "Homepage & deals showcase" },
+        ]}
+      />
 
-      {/* 3. Bulk Edit Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-card p-3 shadow-2xs text-xs">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <span className="font-semibold text-foreground">Bulk Variant Adjustments:</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Price ($):</span>
-            <Input
-              type="number"
-              value={bulkPrice}
-              onChange={(e) => setBulkPrice(e.target.value)}
-              className="h-7 w-20 text-xs font-mono"
-            />
+      {/* 3. Search & Filters Toolbar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border/70 shadow-2xs">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by product name, slug, description..."
+            className="h-8.5 pl-8 text-xs bg-background/80"
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground">
+              ×
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-medium">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1) }}
+              className="h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="DRAFT">DRAFT</option>
+              <option value="ARCHIVED">ARCHIVED</option>
+            </select>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Stock (Units):</span>
-            <Input
-              type="number"
-              value={bulkStock}
-              onChange={(e) => setBulkStock(e.target.value)}
-              className="h-7 w-20 text-xs font-mono"
-            />
+
+          {/* Category Filter */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-medium">Category:</span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
+              className="h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring max-w-[140px]"
+            >
+              <option value="ALL">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
-          <Button size="sm" onClick={handleApplyBulk} className="h-7 text-xs">
-            Apply to All
+
+          {/* Sort By */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-medium">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as ProductSortBy)}
+              className="h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="name">Name</option>
+              <option value="updatedAt">Updated Date</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+
+          {/* Sort Order Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+            className="h-8.5 gap-1 text-xs border-border/80 px-2.5"
+            title={`Sort ${sortOrder === "asc" ? "Ascending" : "Descending"}`}
+          >
+            <ArrowUpDown className="size-3.5 text-muted-foreground" />
+            <span className="uppercase font-mono text-[10px]">{sortOrder}</span>
           </Button>
-        </div>
 
-        <div className="text-xs text-muted-foreground">
-          Total Inventory across variants: <strong className="text-foreground">{totalStock} Units</strong>
+          {(search || statusFilter !== "ALL" || categoryFilter !== "ALL" || brandFilter !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearch(""); setDebouncedSearch(""); setStatusFilter("ALL"); setCategoryFilter("ALL"); setBrandFilter("ALL"); setPage(1) }}
+              className="h-8.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Reset Filters
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* 4. Variant SKUs Table */}
-      <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        <Table>
-          <TableHeader>
-            <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <TableHead className="font-bold">ENABLED</TableHead>
-              <TableHead className="font-bold">COLOR</TableHead>
-              <TableHead className="font-bold">SWITCH TYPE</TableHead>
-              <TableHead className="font-bold">SKU CODE</TableHead>
-              <TableHead className="font-bold">BARCODE (EAN)</TableHead>
-              <TableHead className="font-bold text-right">UNIT PRICE ($)</TableHead>
-              <TableHead className="font-bold text-right">STOCK LEVEL</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="text-xs font-normal">
-            {variants.map((v) => (
-              <TableRow key={v.id} className={v.enabled ? "hover:bg-muted/40" : "opacity-50"}>
-                <TableCell>
-                  <Switch checked={v.enabled} onCheckedChange={(checked) => handleToggleVariant(v.id, checked)} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="size-3 rounded-full border" style={{ backgroundColor: v.colorDot }} />
-                    <span className="font-semibold text-foreground">{v.color}</span>
-                  </div>
-                </TableCell>
-                <TableCell><Badge variant="outline">{v.switchType}</Badge></TableCell>
-                <TableCell className="font-mono font-medium text-indigo-600 dark:text-indigo-400">{v.sku}</TableCell>
-                <TableCell className="font-mono text-muted-foreground">{v.barcode}</TableCell>
-                <TableCell className="text-right font-mono font-bold text-foreground">${v.price}</TableCell>
-                <TableCell className="text-right font-mono font-bold text-foreground">{v.stock}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* 4. Split Layout: Table (Left) & Inspector (Right) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="space-y-3 lg:col-span-8">
+          <ProductTable
+            items={items}
+            total={total}
+            totalPages={totalPages}
+            page={page}
+            pageSize={limit}
+            isLoading={isLoading}
+            selectedProduct={selectedProduct}
+            hasActiveFilters={Boolean(debouncedSearch || statusFilter !== "ALL" || categoryFilter !== "ALL" || brandFilter !== "ALL")}
+            onSelectProduct={setSelectedProduct}
+            onEditProduct={handleOpenEdit}
+            onDeleteProduct={handleOpenDelete}
+            onPublishProduct={(p) => publishMutation.mutate(p.id)}
+            onDraftProduct={(p) => draftMutation.mutate(p.id)}
+            onArchiveProduct={(p) => archiveMutation.mutate(p.id)}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => { setLimit(newSize); setPage(1) }}
+          />
+        </div>
+
+        <div className="space-y-4 lg:col-span-4">
+          <ProductInspector
+            selectedProduct={selectedProduct}
+            onEdit={(p) => handleOpenEdit(p)}
+            onDelete={(p) => handleOpenDelete(p)}
+            onPublish={(p) => publishMutation.mutate(p.id)}
+            onDraft={(p) => draftMutation.mutate(p.id)}
+            onArchive={(p) => archiveMutation.mutate(p.id)}
+          />
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteProductDialog
+        product={productToDelete}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        onSuccess={() => refetch()}
+      />
     </div>
   )
 }
