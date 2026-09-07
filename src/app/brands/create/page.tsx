@@ -1,6 +1,6 @@
 /**
  * @file page.tsx
- * @description Dedicated Category Creation Page (< 150 lines).
+ * @description Dedicated Brand Registration Page (< 150 lines).
  * Features split layout with form fields and real-time storefront preview card.
  */
 
@@ -11,77 +11,64 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common"
-import { CreateCategoryForm } from "@/components/categories/create-category-form"
-import { CategoryFormPreview } from "@/components/categories/category-form-preview"
-import { useCategoriesQuery } from "@/hooks/use-category-query"
-import type { CategoryStatus } from "@/types/category"
+import { CreateBrandForm } from "@/components/brands/create-brand-form"
+import { BrandFormPreview } from "@/components/brands/brand-form-preview"
+import type { BrandStatus } from "@/types/brand"
 
-export default function CreateCategoryPage() {
-  const { data: rawCategories } = useCategoriesQuery()
-  const existingCategories = rawCategories?.items ?? (Array.isArray(rawCategories) ? rawCategories : [])
-
+export default function CreateBrandPage() {
+  // Live form state for real-time preview
   const [previewData, setPreviewData] = React.useState<{
     name: string
     slug: string
-    parentId: string
-    status: CategoryStatus
-    sortOrder: number
-    imageUrl: string
+    logoUrl: string
     description: string
+    status: BrandStatus
   }>({
     name: "",
     slug: "",
-    parentId: "",
-    status: "ACTIVE",
-    sortOrder: 0,
-    imageUrl: "",
+    logoUrl: "",
     description: "",
+    status: "ACTIVE",
   })
 
   return (
     <div className="flex-1 space-y-6 p-4 lg:p-8 max-w-[1400px] mx-auto">
       {/* 1. Header & Back Navigation */}
       <div className="flex items-center justify-between">
-        <Link href="/categories">
+        <Link href="/brands">
           <Button
             variant="ghost"
             size="sm"
             className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground -ml-2"
           >
             <ArrowLeft className="size-3.5" />
-            <span>Back to Categories</span>
+            <span>Back to Brands</span>
           </Button>
         </Link>
       </div>
 
       <PageHeader
-        title="Create New Category"
-        badge="Catalog Taxonomy"
+        title="Register New Brand"
+        badge="Catalog Registry"
         badgeVariant="brand"
-        description="Add a taxonomy node, configure hierarchical parent links, SEO URL slugs, and faceted navigation filters."
+        description="Register a verified supplier, direct manufacturer, or brand to associate with catalog products."
       />
 
       {/* 2. Split Layout: Form (Left) & Real-time Live Preview (Right) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* Left: Input Form */}
         <div className="lg:col-span-7">
-          <CreateCategoryForm
-            existingCategories={existingCategories}
-            onFormChange={setPreviewData}
-          />
+          <CreateBrandForm onFormChange={setPreviewData} />
         </div>
 
         {/* Right: Live Preview */}
         <div className="lg:col-span-5 sticky top-6">
-          <CategoryFormPreview
+          <BrandFormPreview
             name={previewData.name}
             slug={previewData.slug}
-            parentId={previewData.parentId}
-            status={previewData.status}
-            sortOrder={previewData.sortOrder}
-            imageUrl={previewData.imageUrl}
+            logoUrl={previewData.logoUrl}
             description={previewData.description}
-            existingCategories={existingCategories}
+            status={previewData.status}
           />
         </div>
       </div>

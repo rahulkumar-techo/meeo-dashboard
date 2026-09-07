@@ -1,164 +1,242 @@
 /**
  * @file page.tsx
- * @description Brand Registry & Vendor Partner Management Console (< 220 lines).
+ * @description Brand Registry & Vendor Partner Management Console (< 200 lines).
+ * Connects to live /api/v1/brand endpoints for paginated listing, searching, sorting, and dialog operations.
  */
 
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
-import { Download, Plus, Store, ExternalLink } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Plus, RefreshCw, Search, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  PageHeader,
-  MetricGrid,
-  StatusBadge,
-  DataTableToolbar,
-  DataTablePagination,
-  EmptyState,
-} from "@/components/common"
-import { BRANDS_DATA, BrandEntity } from "@/data/brands"
+import { Input } from "@/components/ui/input"
+import { PageHeader, MetricGrid } from "@/components/common"
+import { useBrandsQuery } from "@/hooks/use-brand-query"
+import { BrandTable } from "@/components/brands/brand-table"
+import { BrandInspector } from "@/components/brands/brand-inspector"
+import { EditBrandDialog } from "@/components/brands/edit-brand-dialog"
+import { DeleteBrandDialog } from "@/components/brands/delete-brand-dialog"
+import type { Brand, BrandStatus, BrandSortBy, SortOrder } from "@/types/brand"
 
 export default function BrandsPage() {
-  const [brands, setBrands] = React.useState<BrandEntity[]>(BRANDS_DATA)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [categoryFilter, setCategoryFilter] = React.useState("all")
+  // Query parameters state
   const [page, setPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(10)
+  const [limit, setLimit] = React.useState(20)
+  const [sortBy, setSortBy] = React.useState<BrandSortBy>("name")
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>("asc")
+  const [search, setSearch] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
+  const [statusFilter, setStatusFilter] = React.useState<BrandStatus | "ALL">("ALL")
 
-  const filteredBrands = React.useMemo(() => {
-    return brands.filter((b) => {
-      if (categoryFilter !== "all" && b.category.toLowerCase() !== categoryFilter.toLowerCase()) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        return (
-          b.name.toLowerCase().includes(q) ||
-          b.code.toLowerCase().includes(q) ||
-          b.category.toLowerCase().includes(q)
-        )
+  // Selected brand for detail inspection
+  const [selectedBrand, setSelectedBrand] = React.useState<Brand | null>(null)
+
+  // Dialog states for updating and deleting brands
+  const [brandToEdit, setBrandToEdit] = React.useState<Brand | null>(null)
+  const [isEditOpen, setIsEditOpen] = React.useState(false)
+  const [brandToDelete, setBrandToDelete] = React.useState<Brand | null>(null)
+  const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
+
+  // Debounce search query to avoid excessive API requests
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Build query parameter payload
+  const queryParams = React.useMemo(() => ({
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    search: debouncedSearch.trim() || undefined,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+  }), [page, limit, sortBy, sortOrder, debouncedSearch, statusFilter])
+
+  // Fetch live brands via TanStack Query
+  const { data, isLoading, isFetching, refetch } = useBrandsQuery(queryParams)
+
+  const items = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = data?.totalPages ?? 1
+
+  // Automatically keep the inspector panel in sync with the first item or active selection
+  React.useEffect(() => {
+    if (items.length > 0) {
+      if (!selectedBrand || !items.some((b) => b.id === selectedBrand.id)) {
+        setSelectedBrand(items[0])
+      } else {
+        const updated = items.find((b) => b.id === selectedBrand.id)
+        if (updated) setSelectedBrand(updated)
       }
-      return true
-    })
-  }, [brands, categoryFilter, searchQuery])
+    } else {
+      setSelectedBrand(null)
+    }
+  }, [items])
+
+  // Derived KPI calculations
+  const activeCount = React.useMemo(() => items.filter((b) => b.status === "ACTIVE").length, [items])
+  const totalProducts = React.useMemo(() => items.reduce((acc, b) => acc + (b._count?.products ?? 0), 0), [items])
+
+  const handleOpenEdit = (b: Brand, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setBrandToEdit(b)
+    setIsEditOpen(true)
+  }
+
+  const handleOpenDelete = (b: Brand, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setBrandToDelete(b)
+    setIsDeleteOpen(true)
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
       {/* 1. Page Header */}
       <PageHeader
         title="Brand Registry & Vendor Partnerships"
-        badge="Direct & 3rd-Party"
+        badge={`${total} Brands`}
         badgeVariant="brand"
-        description="Manage brand ownership, first-party vs third-party supplier margins, verified manufacturer badges, and catalog SKU distributions."
+        description="Manage verified manufacturer brands, official website domains, product lines, and vendor catalog distributions."
       >
-        <Button variant="outline" size="sm" className="h-8.5 gap-1.5 text-xs font-medium border-border/80">
-          <Download className="size-3.5 text-muted-foreground" />
-          <span>Export Vendors (CSV)</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+        >
+          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : "text-muted-foreground"}`} />
+          <span>Refresh</span>
         </Button>
-        <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium">
-          <Plus className="size-3.5" />
-          <span>Register New Brand</span>
-        </Button>
+        <Link href="/brands/create">
+          <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+            <Plus className="size-3.5" />
+            <span>Register Brand</span>
+          </Button>
+        </Link>
       </PageHeader>
 
-      {/* 2. KPI Metrics */}
+      {/* 2. KPI Metrics Grid */}
       <MetricGrid
         columns={4}
         items={[
-          { title: "Registered Brands", value: "3 Brands", colorTheme: "indigo", footnote: "154 active catalog SKUs" },
-          { title: "1st Party Direct Turnover", value: "$552,140.00", colorTheme: "emerald", trend: { value: "+28.4%", isPositive: true }, footnote: "Gross Margin: 62.0%" },
-          { title: "3rd Party Vendor GMV", value: "$341,200.00", colorTheme: "cyan", trend: { value: "+14.1%", isPositive: true }, footnote: "Blended margin: 41.2%" },
-          { title: "Supplier Health Score", value: "99.4%", colorTheme: "emerald", badge: { text: "Optimal", variant: "success" }, footnote: "Zero fulfillment delays" },
+          { title: "Registered Brands", value: `${total} Records`, colorTheme: "indigo", footnote: `${items.length} loaded on page` },
+          { title: "Active Brands", value: `${activeCount} Published`, colorTheme: "emerald", badge: { text: "Live in Store", variant: "success" }, footnote: "Available for product assignment" },
+          { title: "Catalog Products Mapped", value: `${totalProducts} SKUs`, colorTheme: "cyan", footnote: "Total linked products" },
+          { title: "Registry Status", value: "100% Synced", colorTheme: "emerald", badge: { text: "Verified", variant: "success" }, footnote: "Direct vendor catalog links" },
         ]}
       />
 
-      {/* 3. Filter Toolbar */}
-      <DataTableToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search brand name, vendor code, category..."
-        filters={
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-          >
-            <option value="all">All Categories</option>
-            <option value="keyboards">Keyboards</option>
-            <option value="audio">Audio</option>
-          </select>
-        }
-        activeFiltersCount={categoryFilter !== "all" ? 1 : 0}
-        onResetFilters={() => { setCategoryFilter("all"); setSearchQuery("") }}
-      />
-
-      {/* 4. Table */}
-      <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredBrands.length === 0 ? (
-          <EmptyState
-            title="No Brands Found"
-            description="No brand records matched your filters."
-            actionLabel="Reset Filters"
-            onAction={() => { setCategoryFilter("all"); setSearchQuery("") }}
+      {/* 3. Search & Filter Toolbar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border/70 shadow-2xs">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by brand name, slug, description..."
+            className="h-8.5 pl-8 text-xs bg-background/80"
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <TableHead className="font-bold">BRAND / VENDOR</TableHead>
-                  <TableHead className="font-bold">VENDOR TYPE</TableHead>
-                  <TableHead className="font-bold">CATEGORY</TableHead>
-                  <TableHead className="font-bold">CATALOG SKUS</TableHead>
-                  <TableHead className="font-bold">TARGET MARGIN</TableHead>
-                  <TableHead className="font-bold">STATUS</TableHead>
-                  <TableHead className="font-bold text-right">30D GMV</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-normal">
-                {filteredBrands.map((b) => (
-                  <TableRow key={b.id} className="hover:bg-muted/40 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex size-7 items-center justify-center rounded-md bg-indigo-500/10 font-mono font-bold text-indigo-700 dark:text-indigo-300 text-xs">
-                          {b.monogram}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-foreground">{b.name}</p>
-                          <p className="text-[10.5px] text-muted-foreground font-mono">{b.code}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]">{b.vendorType}</Badge></TableCell>
-                    <TableCell className="font-medium">{b.category}</TableCell>
-                    <TableCell className="font-mono">{b.skusCount} SKUs</TableCell>
-                    <TableCell className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{b.targetMargin}</TableCell>
-                    <TableCell><StatusBadge status={b.status.toLowerCase()} showDot /></TableCell>
-                    <TableCell className="text-right font-mono font-bold text-foreground">{b.gmv30d}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+          {search && (
+            <button type="button" onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground">
+              ×
+            </button>
+          )}
+        </div>
 
-        <DataTablePagination
-          currentPage={page}
-          totalPages={1}
-          pageSize={pageSize}
-          totalItems={filteredBrands.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-medium">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1) }}
+              className="h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="DRAFT">DRAFT</option>
+              <option value="INACTIVE">INACTIVE</option>
+              <option value="ARCHIVED">ARCHIVED</option>
+            </select>
+          </div>
+
+          {/* Sort By Dropdown */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground font-medium">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as BrandSortBy)}
+              className="h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+            >
+              <option value="name">Brand Name</option>
+              <option value="createdAt">Created Date</option>
+              <option value="updatedAt">Updated Date</option>
+            </select>
+          </div>
+
+          {/* Sort Order Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+            className="h-8.5 gap-1 text-xs border-border/80 px-2.5"
+            title={`Sort ${sortOrder === "asc" ? "Ascending" : "Descending"}`}
+          >
+            <ArrowUpDown className="size-3.5 text-muted-foreground" />
+            <span className="uppercase font-mono text-[10px]">{sortOrder}</span>
+          </Button>
+
+          {(search || statusFilter !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearch(""); setDebouncedSearch(""); setStatusFilter("ALL"); setPage(1) }}
+              className="h-8.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Reset Filters
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* 4. Split Layout: Table (Left) & Inspector (Right) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="space-y-3 lg:col-span-8">
+          <BrandTable
+            items={items}
+            total={total}
+            totalPages={totalPages}
+            page={page}
+            pageSize={limit}
+            isLoading={isLoading}
+            selectedBrand={selectedBrand}
+            hasActiveFilters={Boolean(debouncedSearch || statusFilter !== "ALL")}
+            onSelectBrand={setSelectedBrand}
+            onEditBrand={handleOpenEdit}
+            onDeleteBrand={handleOpenDelete}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => { setLimit(newSize); setPage(1) }}
+          />
+        </div>
+
+        <div className="space-y-4 lg:col-span-4">
+          <BrandInspector
+            selectedBrand={selectedBrand}
+            onEdit={(b) => handleOpenEdit(b)}
+            onDelete={(b) => handleOpenDelete(b)}
+          />
+        </div>
+      </div>
+
+      {/* Dialog Modals */}
+      <EditBrandDialog brand={brandToEdit} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={() => refetch()} />
+      <DeleteBrandDialog brand={brandToDelete} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} onSuccess={() => refetch()} />
     </div>
   )
 }
