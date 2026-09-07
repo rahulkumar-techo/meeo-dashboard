@@ -149,27 +149,20 @@ apiClient.interceptors.response.use(
       } catch (refreshError: any) {
         processQueue(refreshError, null)
 
-        const isAuthFailure =
-          refreshError?.response?.status === 401 ||
-          refreshError?.response?.status === 403 ||
-          refreshError?.message === "No refresh token available in storage"
+        // Refresh failed (CORS, 401, 403, network error, or invalid token) -> immediately logout and redirect to login
+        useUserStore.getState().logout()
 
-        if (isAuthFailure) {
-          useUserStore.getState().logout()
-
-          // Redirect to login only if in browser and not already on auth page
-          if (
-            typeof window !== "undefined" &&
-            !window.location.pathname.startsWith("/login") &&
-            !window.location.pathname.startsWith("/signup") &&
-            !window.location.pathname.startsWith("/verify-otp") &&
-            !window.location.pathname.startsWith("/forgot-password") &&
-            !window.location.pathname.startsWith("/reset-password")
-          ) {
-            window.location.href = `/login?redirect=${encodeURIComponent(
-              window.location.pathname + window.location.search
-            )}`
-          }
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.startsWith("/login") &&
+          !window.location.pathname.startsWith("/signup") &&
+          !window.location.pathname.startsWith("/verify-otp") &&
+          !window.location.pathname.startsWith("/forgot-password") &&
+          !window.location.pathname.startsWith("/reset-password")
+        ) {
+          window.location.href = `/login?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search
+          )}`
         }
 
         return Promise.reject(refreshError)
@@ -178,8 +171,27 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // If request already retried after refresh and still got 401
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      useUserStore.getState().logout()
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/signup") &&
+        !window.location.pathname.startsWith("/verify-otp") &&
+        !window.location.pathname.startsWith("/forgot-password") &&
+        !window.location.pathname.startsWith("/reset-password")
+      ) {
+        window.location.href = `/login?redirect=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`
+      }
+    }
+
     return Promise.reject(error)
   }
 )
+
+
 
 
