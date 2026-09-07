@@ -146,15 +146,30 @@ apiClient.interceptors.response.use(
         } else {
           throw new Error("Invalid token format received from refresh endpoint")
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError, null)
-        useUserStore.getState().logout()
 
-        // Redirect to login only if in browser and not already on auth page
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.href = `/login?redirect=${encodeURIComponent(
-            window.location.pathname
-          )}`
+        const isAuthFailure =
+          refreshError?.response?.status === 401 ||
+          refreshError?.response?.status === 403 ||
+          refreshError?.message === "No refresh token available in storage"
+
+        if (isAuthFailure) {
+          useUserStore.getState().logout()
+
+          // Redirect to login only if in browser and not already on auth page
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.startsWith("/login") &&
+            !window.location.pathname.startsWith("/signup") &&
+            !window.location.pathname.startsWith("/verify-otp") &&
+            !window.location.pathname.startsWith("/forgot-password") &&
+            !window.location.pathname.startsWith("/reset-password")
+          ) {
+            window.location.href = `/login?redirect=${encodeURIComponent(
+              window.location.pathname + window.location.search
+            )}`
+          }
         }
 
         return Promise.reject(refreshError)
@@ -166,3 +181,5 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+

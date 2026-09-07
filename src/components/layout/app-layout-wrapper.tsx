@@ -25,7 +25,20 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, accessToken, hasHydrated } = useUserStore()
+  const [mountedHydrated, setMountedHydrated] = React.useState(false)
 
+  React.useEffect(() => {
+    if (useUserStore.persist.hasHydrated()) {
+      setMountedHydrated(true)
+    } else {
+      const unsub = useUserStore.persist.onFinishHydration(() => {
+        setMountedHydrated(true)
+      })
+      return () => unsub()
+    }
+  }, [])
+
+  const isHydrated = hasHydrated || mountedHydrated
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname?.startsWith(route))
 
   // Fetch / update current user profile via TanStack Query when authenticated
@@ -33,7 +46,7 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
 
   // Route Protection Guard
   React.useEffect(() => {
-    if (!hasHydrated) return
+    if (!isHydrated) return
 
     // If user is not authenticated and trying to access a protected page
     if (!isAuthenticated && !isAuthRoute) {
@@ -42,12 +55,14 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
 
     // If user is already authenticated and trying to access login/signup/auth pages
     if (isAuthenticated && isAuthRoute) {
-      router.replace("/")
+      const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
+      const redirect = searchParams.get("redirect") || "/"
+      router.replace(redirect)
     }
-  }, [hasHydrated, isAuthenticated, isAuthRoute, pathname, router])
+  }, [isHydrated, isAuthenticated, isAuthRoute, pathname, router])
 
   // While store is rehydrating from localStorage, show a clean splash loader
-  if (!hasHydrated) {
+  if (!isHydrated) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
@@ -61,6 +76,7 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
       </div>
     )
   }
+
 
   // If visiting an auth page (Login, Signup, OTP, etc.)
   if (isAuthRoute) {

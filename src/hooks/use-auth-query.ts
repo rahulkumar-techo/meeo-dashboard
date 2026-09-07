@@ -23,17 +23,24 @@ export function useCurrentUserQuery() {
   return useQuery({
     queryKey: AUTH_QUERY_KEY,
     queryFn: async () => {
-      const res = await authService.getMe()
-      if (res.success && res.data) {
-        setUser(res.data)
-        return res.data
+      try {
+        const res = await authService.getMe()
+        if (res.success && res.data) {
+          setUser(res.data)
+          return res.data
+        }
+        return null
+      } catch (err) {
+        // Return null gracefully without failing entire page rendering
+        return null
       }
-      return null
     },
     enabled: Boolean(accessToken && isAuthenticated),
     staleTime: 5 * 60 * 1000,
+    retry: false,
   })
 }
+
 
 /**
  * Mutation for user login.

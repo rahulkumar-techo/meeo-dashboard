@@ -24,6 +24,12 @@ interface UserState {
   logout: () => void
 }
 
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+}
+
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
@@ -76,7 +82,9 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "meeo-auth-session",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined" ? window.localStorage : noopStorage
+      ),
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
@@ -84,8 +92,11 @@ export const useUserStore = create<UserState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true)
+        if (state) {
+          state.setHasHydrated(true)
+        }
       },
     }
   )
 )
+
