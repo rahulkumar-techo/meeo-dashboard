@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar/appSidebar";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { ThemeProvider } from "@/components/theme";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { AppLayoutWrapper } from "@/components/layout/app-layout-wrapper";
 
 const poppins = Poppins({
   variable: "--font-sans",
@@ -47,17 +46,11 @@ export default function RootLayout({
         className={`${poppins.variable} font-sans antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
-        <ThemeProvider defaultTheme="system">
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
-              <DashboardHeader />
-              <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
-                {children}
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider defaultTheme="system">
+            <AppLayoutWrapper>{children}</AppLayoutWrapper>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

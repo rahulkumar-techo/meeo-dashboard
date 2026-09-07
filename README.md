@@ -44,8 +44,13 @@ This codebase is organized around strict modular software engineering practices 
 ```text
 src/
 ├── app/                           # Next.js 16 App Router Pages (<= 330 lines each)
-│   ├── layout.tsx                 # Root layout with Poppins font, ThemeProvider, SidebarProvider
+│   ├── layout.tsx                 # Root layout with Poppins font, ThemeProvider, and dynamic AppLayoutWrapper
 │   ├── page.tsx                   # Master Overview Dashboard
+│   ├── login/                     # Secure user login with demo credentials prefiller
+│   ├── signup/                    # Administrator registration with password validation
+│   ├── verify-otp/                # 4-digit segmented OTP verification with 60s countdown timer
+│   ├── forgot-password/           # Password recovery email request
+│   ├── reset-password/            # 4-digit OTP password reset
 │   ├── admin/                     # RBAC users, roles, audit logs, system settings
 │   ├── analytics/                 # Business performance metrics & scheduled reports
 │   ├── brands/                    # Brand roster & partner performance
@@ -60,6 +65,14 @@ src/
 │   └── reviews/                   # Customer ratings & review moderation queue
 │
 ├── components/
+│   ├── auth/                      # Authentication Components
+│   │   ├── auth-card-layout.tsx   # Glassmorphic auth card shell with theme switcher & branding
+│   │   ├── otp-input.tsx          # 4-box segmented OTP input with auto-advance and paste
+│   │   └── index.ts               # Auth barrel export
+│   │
+│   ├── layout/                    # Application Layout Shells
+│   │   └── app-layout-wrapper.tsx # Dynamic shell: full-screen for auth, sidebar for dashboard
+│   │
 │   ├── theme/                     # Dark Mode & Theme Engine
 │   │   ├── theme-provider.tsx     # Context provider with Light/Dark/System resolution & localStorage
 │   │   ├── theme-toggle.tsx       # Animated mode switcher dropdown (Light / Dark / System)
