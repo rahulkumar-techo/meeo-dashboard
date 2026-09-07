@@ -4,6 +4,7 @@ import "./globals.css";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar/appSidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { ThemeProvider } from "@/components/theme";
 
 const poppins = Poppins({
   variable: "--font-sans",
@@ -23,20 +24,42 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('meeo-dashboard-theme');
+                  var isDark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches) || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${poppins.variable} font-sans antialiased`}
+        className={`${poppins.variable} font-sans antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full overflow-x-hidden">
-            <DashboardHeader />
-            <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
-              {children}
-            </div>
-          </SidebarInset>
-        </SidebarProvider>
+        <ThemeProvider defaultTheme="system">
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full overflow-x-hidden">
+              <DashboardHeader />
+              <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
+                {children}
+              </main>
+            </SidebarInset>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+
