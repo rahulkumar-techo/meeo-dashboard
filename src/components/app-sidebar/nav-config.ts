@@ -5,6 +5,7 @@ import {
   Layers,
   Award,
   Boxes,
+  Tag,
   Users,
   Star,
   CreditCard,
@@ -113,6 +114,11 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Brands",
         url: "/brands",
         icon: Award,
+      },
+      {
+        title: "Attributes",
+        url: "/attributes",
+        icon: Tag,
       },
       {
         title: "Inventory",

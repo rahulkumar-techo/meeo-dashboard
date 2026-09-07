@@ -19,6 +19,7 @@ import {
   Rocket,
   Archive,
   FileEdit,
+  Layers,
 } from "lucide-react"
 import {
   Table,
@@ -184,11 +185,17 @@ export function ProductTable({
                   </TableCell>
 
                   {/* Variants Count */}
-                  <TableCell className="text-center font-mono text-[11px]">
-                    <span className="inline-flex items-center gap-1 text-foreground">
-                      <Package className="size-3 text-muted-foreground" />
-                      {variantsCount} SKUs
-                    </span>
+                  <TableCell className="text-center font-mono text-[11px]" onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/products/${prod.id}/variants`}>
+                      <Badge
+                        variant="secondary"
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-mono hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-300 transition-colors cursor-pointer"
+                        title="Manage Product Variants"
+                      >
+                        <Layers className="size-3 text-indigo-600" />
+                        <span>{variantsCount} SKUs</span>
+                      </Badge>
+                    </Link>
                   </TableCell>
 
                   {/* Status Badge */}
@@ -223,15 +230,30 @@ export function ProductTable({
                         </Button>
                       )}
 
+                      {/* Manage Variants Button */}
+                      <Link href={`/products/${prod.id}/variants`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="size-7 p-0 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-500/10 rounded-md"
+                          title="Manage Variants & SKUs"
+                        >
+                          <Layers className="size-3.5" />
+                        </Button>
+                      </Link>
+
+                      {/* Edit Product Details */}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={(e) => onEditProduct(prod, e)}
                         className="size-7 p-0 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-500/10 rounded-md"
-                        title="Edit Product"
+                        title="Edit Product Details"
                       >
                         <Edit2 className="size-3.5" />
                       </Button>
+
+                      {/* Delete Product */}
                       <Button
                         variant="ghost"
                         size="sm"

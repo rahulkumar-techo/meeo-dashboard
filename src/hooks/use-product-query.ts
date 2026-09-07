@@ -17,6 +17,8 @@ import type {
   ProductListResponseData,
 } from "@/types/product"
 
+import type { Attribute } from "@/types/attribute"
+
 export const PRODUCTS_QUERY_KEY = ["products"]
 
 /**
@@ -75,6 +77,21 @@ export function useProductQuery(id: string) {
       return res.data
     },
     enabled: Boolean(id),
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Hook to retrieve active grouped attributes for a specific product.
+ */
+export function useProductAttributesQuery(productId: string) {
+  return useQuery<Attribute[]>({
+    queryKey: [...PRODUCTS_QUERY_KEY, productId, "attributes"],
+    queryFn: async () => {
+      const res = await productService.getProductAttributes(productId)
+      return res.data ?? []
+    },
+    enabled: Boolean(productId),
     staleTime: 60 * 1000,
   })
 }

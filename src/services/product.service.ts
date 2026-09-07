@@ -15,6 +15,7 @@ import type {
   UploadProductImagePayload,
   AttachProductImagePayload,
 } from "@/types/product"
+import type { Attribute } from "@/types/attribute"
 
 export const productService = {
   /**
@@ -34,6 +35,15 @@ export const productService = {
    */
   async getProductById(id: string): Promise<ProductApiResponse<Product>> {
     const response = await apiClient.get<ProductApiResponse<Product>>(`/products/${id}`)
+    return response.data
+  },
+
+  /**
+   * Get grouped active attributes for a specific product.
+   * Endpoint: GET /api/v1/products/:id/attributes
+   */
+  async getProductAttributes(id: string): Promise<ProductApiResponse<Attribute[]>> {
+    const response = await apiClient.get<ProductApiResponse<Attribute[]>>(`/products/${id}/attributes`)
     return response.data
   },
 

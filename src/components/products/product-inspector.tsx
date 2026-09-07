@@ -7,6 +7,7 @@
 
 import * as React from "react"
 import Image from "next/image"
+import Link from "next/link"
 import {
   Edit2,
   Trash2,
@@ -17,6 +18,7 @@ import {
   Building2,
   Package,
   Star,
+  Layers,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -214,20 +216,32 @@ export function ProductInspector({
           </div>
 
           <div className="flex items-center gap-2 pt-1">
+            <Link href={`/products/${selectedProduct.id}/variants`} className="flex-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-8 text-xs gap-1.5 font-medium border-border hover:bg-muted text-foreground"
+              >
+                <Layers className="size-3.5 text-indigo-600" />
+                <span>SKU Variants ({variantsCount})</span>
+              </Button>
+            </Link>
             <Button
               size="sm"
               variant="outline"
               onClick={() => onEdit(selectedProduct)}
-              className="flex-1 h-8 text-xs gap-1.5 font-medium border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+              className="h-8 text-xs gap-1.5 font-medium border-indigo-200 dark:border-indigo-900/50 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+              title="Edit Product Details"
             >
               <Edit2 className="size-3.5" />
-              <span>Edit Details</span>
+              <span>Edit</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={() => onDelete(selectedProduct)}
               className="h-8 text-xs gap-1.5 px-3 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 border-rose-200 dark:border-rose-900/50"
+              title="Delete Product"
             >
               <Trash2 className="size-3.5" />
             </Button>

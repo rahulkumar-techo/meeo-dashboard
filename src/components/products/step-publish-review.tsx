@@ -8,7 +8,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Rocket, FileText, ArrowLeft, CheckCircle2, Loader2, Package, FolderTree, Building2, Star } from "lucide-react"
+import { Rocket, FileText, ArrowLeft, CheckCircle2, Loader2, Package, FolderTree, Building2, Star, Layers } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -168,7 +168,18 @@ export function StepPublishReview({
             <span>Back to Images</span>
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/products/${activeProduct.id}/variants`)}
+              className="h-8.5 gap-1.5 text-xs border-indigo-200 text-indigo-600 dark:border-indigo-900/60 dark:text-indigo-400 hover:bg-indigo-500/10 font-medium"
+            >
+              <Layers className="size-3.5" />
+              <span>Configure Variants & SKUs</span>
+            </Button>
+
             <Button
               type="button"
               variant="outline"

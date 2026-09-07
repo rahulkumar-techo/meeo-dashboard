@@ -12,7 +12,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/common"
 import { ProductWizardStepper } from "@/components/products/product-wizard-stepper"
@@ -133,7 +133,18 @@ export default function EditProductPage() {
         badge={`Step ${currentStep} of 3`}
         badgeVariant="brand"
         description="Modify product attributes, media gallery assets, and publish status through the guided wizard."
-      />
+      >
+        <Link href={`/products/${id}/variants`}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8.5 gap-1.5 text-xs font-medium border-border hover:bg-muted"
+          >
+            <Layers className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Manage SKU Variants</span>
+          </Button>
+        </Link>
+      </PageHeader>
 
       {/* 2. Visual Stepper Bar */}
       <ProductWizardStepper
