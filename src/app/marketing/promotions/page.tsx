@@ -1,197 +1,66 @@
 /**
  * @file page.tsx
- * @description Real-Time Promotions & Campaign Rules Orchestrator (< 230 lines).
+ * @description Promotions & Campaign Rules Orchestrator.
+ * Currently under development (Feature not available right now). Zero mock data.
  */
 
 "use client"
 
 import * as React from "react"
-import { Plus, Sliders } from "lucide-react"
+import Link from "next/link"
+import { Sparkles, ArrowRight, Tag, ShieldAlert, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  PageHeader,
-  MetricGrid,
-  DataTableToolbar,
-  EmptyState,
-  ConfirmDialog,
-} from "@/components/common"
-import {
-  PromotionRuleCard,
-  PromotionSimulator,
-  PromotionRuleData,
-} from "@/components/modules/marketing"
-import { MARKETING_PROMOTIONS } from "@/data/marketing"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { PageHeader } from "@/components/common/page-header"
 
 export default function PromotionsPage() {
-  const [promotions, setPromotions] = React.useState<PromotionRuleData[]>(MARKETING_PROMOTIONS)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState<string>("all")
-  const [typeFilter, setTypeFilter] = React.useState<string>("all")
-  const [showSimulator, setShowSimulator] = React.useState<boolean>(false)
-  const [deleteRuleId, setDeleteRuleId] = React.useState<string | null>(null)
-
-  // Filter promotions
-  const filteredPromotions = React.useMemo(() => {
-    return promotions.filter((rule) => {
-      if (statusFilter !== "all" && rule.status !== statusFilter) return false
-      if (typeFilter !== "all" && rule.type !== typeFilter) return false
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const match =
-          rule.name.toLowerCase().includes(q) ||
-          rule.codeRef?.toLowerCase().includes(q) ||
-          rule.triggerSummary.toLowerCase().includes(q) ||
-          rule.actionSummary.toLowerCase().includes(q)
-        if (!match) return false
-      }
-
-      return true
-    })
-  }, [promotions, statusFilter, typeFilter, searchQuery])
-
-  const handleToggleStatus = (ruleId: string, active: boolean) => {
-    setPromotions((prev) =>
-      prev.map((r) =>
-        r.id === ruleId ? { ...r, status: active ? "active" : "paused" } : r
-      )
-    )
-  }
-
-  const handleDuplicate = (rule: PromotionRuleData) => {
-    const newRule: PromotionRuleData = {
-      ...rule,
-      id: `prm_${Math.floor(1000 + Math.random() * 9000)}`,
-      name: `${rule.name} (Copy)`,
-      codeRef: rule.codeRef ? `${rule.codeRef}-COPY` : undefined,
-      status: "scheduled",
-      redemptions: 0,
-      attributedGmv: 0,
-    }
-    setPromotions((prev) => [newRule, ...prev])
-  }
-
-  const handleDelete = () => {
-    if (deleteRuleId) {
-      setPromotions((prev) => prev.filter((r) => r.id !== deleteRuleId))
-      setDeleteRuleId(null)
-    }
-  }
-
   return (
-    <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
+    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1400px] mx-auto">
       {/* 1. Page Header */}
       <PageHeader
-        title="Promotions & Campaign Rules Engine"
-        badge="Omnichannel Rule Orchestrator"
-        badgeVariant="brand"
-        description="Configure dynamic discount rules, BOGO bundles, tiered cart savings, margin protection guards, and real-time coupon simulators."
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowSimulator((prev) => !prev)}
-          className="h-8.5 gap-1.5 text-xs font-medium"
-        >
-          <Sliders className="size-3.5" />
-          <span>{showSimulator ? "Hide Simulator" : "Rule Engine Sandbox"}</span>
-        </Button>
-        <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium">
-          <Plus className="size-3.5" />
-          <span>Create Promotion</span>
-        </Button>
-      </PageHeader>
-
-      {/* 2. Metric KPI Summary */}
-      <MetricGrid
-        columns={4}
-        items={[
-          { title: "Active Campaigns", value: "4 Active", colorTheme: "emerald", badge: { text: "1 Scheduled", variant: "outline" }, footnote: "Stacking limits enforced" },
-          { title: "Attributed 30D GMV", value: "$616,750.00", colorTheme: "indigo", trend: { value: "+24.8%", isPositive: true }, footnote: "49.4% of total turnover" },
-          { title: "Total Redemptions", value: "7,240", colorTheme: "cyan", trend: { value: "+18.2%", isPositive: true }, footnote: "Avg discount: 14.8%" },
-          { title: "Blended Margin Impact", value: "-2.1%", colorTheme: "amber", badge: { text: "Safe Guard: -5.0%", variant: "warning" }, footnote: "Margin delta protected" },
-        ]}
+        title="Promotions & Campaign Rules"
+        badge="In Development"
+        badgeVariant="outline"
+        description="Dynamic cart rules, BOGO bundles, tiered basket savings, and automated discount orchestrators."
       />
 
-      {/* 3. Interactive Sandbox Simulator */}
-      {showSimulator && (
-        <div className="pt-1 pb-2">
-          <PromotionSimulator initialCartValue={185.0} />
-        </div>
-      )}
-
-      {/* 4. Filter Toolbar */}
-      <DataTableToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Filter promotions by name, promo code, trigger rule..."
-        filters={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="paused">Paused</option>
-              <option value="expired">Expired</option>
-            </select>
-
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-            >
-              <option value="all">All Rule Types</option>
-              <option value="tiered_cart">Tiered Cart Value</option>
-              <option value="bundle_bogo">Bundle Pairing (BOGO)</option>
-              <option value="flash_sale">Flash Sale / Markdown</option>
-              <option value="free_shipping">Free Shipping Surcharge</option>
-              <option value="category_pct">Category Percentage</option>
-            </select>
+      {/* 2. Feature Not Available Notice Card */}
+      <Card className="border-border/80 bg-gradient-to-br from-card via-card to-muted/30 shadow-2xs overflow-hidden">
+        <CardContent className="p-8 sm:p-12 flex flex-col items-center justify-center text-center space-y-5 max-w-xl mx-auto">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-8 ring-indigo-500/5">
+            <Sparkles className="size-8" />
           </div>
-        }
-        activeFiltersCount={(statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0)}
-        onResetFilters={() => { setStatusFilter("all"); setTypeFilter("all"); setSearchQuery("") }}
-      />
 
-      {/* 5. Promotion Rules Grid */}
-      <div className="space-y-3">
-        {filteredPromotions.length === 0 ? (
-          <EmptyState
-            title="No Promotion Rules Found"
-            description="No campaign rules match your search or filter options."
-            actionLabel="Reset Filters"
-            onAction={() => { setStatusFilter("all"); setTypeFilter("all"); setSearchQuery("") }}
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-3.5">
-            {filteredPromotions.map((rule) => (
-              <PromotionRuleCard
-                key={rule.id}
-                rule={rule}
-                onToggleStatus={handleToggleStatus}
-                onDuplicate={handleDuplicate}
-                onDelete={(id) => setDeleteRuleId(id)}
-                onSimulate={() => setShowSimulator(true)}
-              />
-            ))}
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono px-2 py-0.5 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 gap-1"
+              >
+                <Clock className="size-3 inline" /> Feature Not Available Right Now
+              </Badge>
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Promotions Engine Under Development
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              The automated omnichannel promotions and dynamic bundle rules engine is not yet available in this release. Active promotional discount codes can be managed via the Coupons console.
+            </p>
           </div>
-        )}
-      </div>
 
-      {/* 6. Confirm Delete Dialog */}
-      <ConfirmDialog
-        open={deleteRuleId !== null}
-        onOpenChange={(open) => !open && setDeleteRuleId(null)}
-        title="Delete Promotion Rule"
-        description="Are you sure you want to permanently delete this promotional rule? Active customer carts applying this rule will immediately lose the discount."
-        confirmLabel="Delete Rule"
-        variant="destructive"
-        onConfirm={handleDelete}
-      />
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/marketing/coupons"
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+            >
+              <Tag className="size-3.5" />
+              <span>Go to Coupons Management</span>
+              <ArrowRight className="size-3.5 ml-0.5" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
