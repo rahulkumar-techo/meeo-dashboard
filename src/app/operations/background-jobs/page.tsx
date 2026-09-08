@@ -1,286 +1,495 @@
 /**
  * @file page.tsx
- * @description Background Worker Clusters & Job Pipeline (< 220 lines).
+ * @description Background Jobs & Worker Fleet Observability Dashboard.
+ * Connects directly to backend BullMQ Redis queues, worker pod telemetry, in-flight jobs, DLQ triggers, and bulk lifecycle actions.
  */
 
 "use client"
 
 import * as React from "react"
-import { Trash2, RotateCcw, Eye } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Trash2,
+  RotateCcw,
+  RefreshCw,
+  Zap,
+  Flame,
+  Layers,
+  Server,
+  AlertCircle,
+  CheckCircle2,
+  X,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   PageHeader,
-  MetricGrid,
-  StatusBadge,
   DataTableToolbar,
   DataTablePagination,
-  EmptyState,
-  DetailDrawer,
   ConfirmDialog,
 } from "@/components/common"
-import { WorkerHealthCard } from "@/components/modules/operations"
 import {
-  OPERATIONS_WORKERS,
-  OPERATIONS_JOBS,
-  BackgroundJobData,
-} from "@/data/operations"
+  WorkerNodesTelemetry,
+  JobMetrics,
+  QueueHealthCards,
+  JobTable,
+  JobDetailSheet,
+  BulkActionDialog,
+  JobGuideCard,
+} from "@/components/jobs"
+import {
+  useJobsOverviewQuery,
+  useWorkersQuery,
+  useJobsQuery,
+  useRetryJobMutation,
+  useCancelJobMutation,
+  useBulkJobActionMutation,
+} from "@/hooks/use-job-query"
+import type {
+  JobItem,
+  JobCategory,
+  BulkJobActionType,
+} from "@/types/job"
 
 export default function BackgroundJobsPage() {
-  const [jobs, setJobs] = React.useState<BackgroundJobData[]>(OPERATIONS_JOBS)
-  const [selectedJob, setSelectedJob] = React.useState<BackgroundJobData | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = React.useState(false)
-  const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = React.useState(false)
+  // Query parameters state
+  const [activeCategory, setActiveCategory] = React.useState<string>("ALL")
+  const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [queueFilter, setQueueFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(20)
 
-  // Filter jobs
-  const filteredJobs = React.useMemo(() => {
-    return jobs.filter((j) => {
-      if (queueFilter !== "all" && j.queue !== queueFilter) return false
-      if (statusFilter !== "all" && j.status !== statusFilter) return false
+  // Status Notification Banner
+  const [bannerMessage, setBannerMessage] = React.useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const match =
-          j.id.toLowerCase().includes(q) ||
-          j.handler.toLowerCase().includes(q) ||
-          j.workerNode.toLowerCase().includes(q)
-        if (!match) return false
-      }
+  // Modals & Drawers state
+  const [selectedJob, setSelectedJob] = React.useState<JobItem | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false)
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = React.useState(false)
+  const [bulkDialogInitialAction, setBulkDialogInitialAction] =
+    React.useState<BulkJobActionType>("RETRY_ALL_FAILED")
+  const [confirmPurgeOpen, setConfirmPurgeOpen] = React.useState(false)
 
-      return true
-    })
-  }, [jobs, queueFilter, statusFilter, searchQuery])
+  // In-flight action trackers
+  const [retryingId, setRetryingId] = React.useState<string | null>(null)
+  const [cancellingId, setCancellingId] = React.useState<string | null>(null)
 
-  // Replay job
-  const handleReplayJob = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((j) =>
-        j.id === jobId
-          ? {
-              ...j,
-              status: "running",
-              runtime: "10ms",
-              attempts: "1/3",
-              errorReason: undefined,
-              stackTrace: undefined,
-            }
-          : j
+  // Debounce search input
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Queries
+  const {
+    data: overview,
+    isLoading: isOverviewLoading,
+    refetch: refetchOverview,
+    isRefetching: isOverviewRefetching,
+  } = useJobsOverviewQuery()
+
+  const {
+    data: workers,
+    isLoading: isWorkersLoading,
+    refetch: refetchWorkers,
+  } = useWorkersQuery()
+
+  const {
+    data: jobsData,
+    isLoading: isJobsLoading,
+    refetch: refetchJobs,
+    isRefetching: isJobsRefetching,
+  } = useJobsQuery({
+    filter: activeCategory !== "ALL" ? activeCategory : undefined,
+    status: statusFilter !== "ALL" ? statusFilter : undefined,
+    search: debouncedSearch || undefined,
+    page,
+    limit: pageSize,
+  })
+
+  // Mutations
+  const retryMutation = useRetryJobMutation()
+  const cancelMutation = useCancelJobMutation()
+  const bulkActionMutation = useBulkJobActionMutation()
+
+  const jobs = jobsData?.items ?? []
+  const pagination = jobsData?.pagination ?? {
+    page: 1,
+    limit: pageSize,
+    total: 0,
+    totalPages: 1,
+  }
+
+  const showBanner = (type: "success" | "error", text: string) => {
+    setBannerMessage({ type, text })
+    setTimeout(() => {
+      setBannerMessage((prev) => (prev?.text === text ? null : prev))
+    }, 4000)
+  }
+
+  // Handle Manual Refresh
+  const handleRefreshAll = () => {
+    refetchOverview()
+    refetchWorkers()
+    refetchJobs()
+    showBanner("success", "Telemetry and background jobs pipeline refreshed")
+  }
+
+  // Handle Single Job Retry
+  const handleRetryJob = async (jobId: string) => {
+    try {
+      setRetryingId(jobId)
+      const res = await retryMutation.mutateAsync(jobId)
+      showBanner(
+        "success",
+        res.message || `Job ${jobId} reset and enqueued for execution`
       )
-    )
-    setIsDetailOpen(false)
+      refetchOverview()
+      refetchJobs()
+    } catch (err: any) {
+      showBanner(
+        "error",
+        err?.response?.data?.message || err?.message || "Failed to retry job"
+      )
+    } finally {
+      setRetryingId(null)
+    }
   }
 
-  const handlePurgeFailed = () => {
-    setJobs((prev) => prev.filter((j) => j.status !== "failed"))
+  // Handle Single Job Cancel
+  const handleCancelJob = async (jobId: string) => {
+    try {
+      setCancellingId(jobId)
+      const res = await cancelMutation.mutateAsync(jobId)
+      showBanner(
+        "success",
+        res.message || `Job ${jobId} cancelled successfully`
+      )
+      refetchOverview()
+      refetchJobs()
+      if (selectedJob?.jobId === jobId || selectedJob?.id === jobId) {
+        setIsDetailOpen(false)
+      }
+    } catch (err: any) {
+      showBanner(
+        "error",
+        err?.response?.data?.message || err?.message || "Failed to cancel job"
+      )
+    } finally {
+      setCancellingId(null)
+    }
   }
+
+  // Handle Bulk Actions
+  const handleExecuteBulkAction = async (action: BulkJobActionType) => {
+    try {
+      const res = await bulkActionMutation.mutateAsync({ action })
+      showBanner(
+        "success",
+        res.data?.message ||
+          res.message ||
+          `Action ${action} executed successfully`
+      )
+      setIsBulkDialogOpen(false)
+      setConfirmPurgeOpen(false)
+      refetchOverview()
+      refetchJobs()
+    } catch (err: any) {
+      showBanner(
+        "error",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to execute bulk action"
+      )
+    }
+  }
+
+  // Reset Filters
+  const handleResetFilters = () => {
+    setActiveCategory("ALL")
+    setStatusFilter("ALL")
+    setSearchQuery("")
+    setPage(1)
+  }
+
+  const activeFiltersCount =
+    (activeCategory !== "ALL" ? 1 : 0) +
+    (statusFilter !== "ALL" ? 1 : 0) +
+    (searchQuery ? 1 : 0)
+
+  const isRefreshing = isOverviewRefetching || isJobsRefetching
+
+  const workerNodeCount =
+    overview?.workerNodes?.totalNodes ?? workers?.length ?? 0
+  const dlqDepth = overview?.summary?.deadLetterQueueDepth ?? 0
 
   return (
-    <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
-      {/* 1. Header */}
+    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto">
+      {/* 1. Page Header */}
       <PageHeader
         title="Background Jobs & Worker Fleet"
-        badge="BullMQ Cluster (14 Workers)"
+        badge={`BullMQ Cluster (${workerNodeCount} Pod${workerNodeCount === 1 ? "" : "s"})`}
         badgeVariant="brand"
-        description="Real-time Redis job scheduler, concurrency throttle, priority queues, and unrecoverable DLQ recovery."
+        description="Real-time BullMQ Redis scheduler, worker pod CPU/RAM telemetry, priority queue routing, and DLQ recovery."
       >
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => setIsPurgeConfirmOpen(true)}
-          className="h-8.5 gap-2 text-xs font-medium"
-        >
-          <Trash2 className="size-3.5" />
-          Purge Dead Letter Queue
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+            className="h-8.5 gap-1.5 text-xs font-medium"
+          >
+            <RefreshCw
+              className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            <span>Refresh</span>
+          </Button>
+
+          {dlqDepth > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setConfirmPurgeOpen(true)}
+              className="h-8.5 gap-1.5 text-xs font-medium shadow-xs"
+            >
+              <Trash2 className="size-3.5" />
+              <span>Purge DLQ ({dlqDepth})</span>
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={() => {
+              setBulkDialogInitialAction("RETRY_ALL_FAILED")
+              setIsBulkDialogOpen(true)
+            }}
+            className="h-8.5 gap-1.5 text-xs font-medium bg-primary text-primary-foreground shadow-xs"
+          >
+            <Zap className="size-3.5" />
+            <span>Bulk Actions</span>
+          </Button>
+        </div>
       </PageHeader>
 
-      {/* 2. Worker Nodes Health */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-          Worker Node Health & Utilization
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {OPERATIONS_WORKERS.map((worker) => (
-            <WorkerHealthCard key={worker.id} worker={worker} />
-          ))}
+      {/* Banner Feedback */}
+      {bannerMessage && (
+        <div
+          className={`flex items-center justify-between rounded-lg p-3 text-xs border ${
+            bannerMessage.type === "success"
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+              : "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {bannerMessage.type === "success" ? (
+              <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertCircle className="size-4 shrink-0 text-rose-600" />
+            )}
+            <span>{bannerMessage.text}</span>
+          </div>
+          <button
+            onClick={() => setBannerMessage(null)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* 3. Job Stats Metrics */}
-      <MetricGrid
-        columns={4}
-        items={[
-          { title: "Active Jobs In-Flight", value: "14", colorTheme: "indigo", badge: { text: "Throttled", variant: "outline" }, footnote: "Concurrency limit: 24" },
-          { title: "Jobs Processed (24h)", value: "248,190", colorTheme: "emerald", trend: { value: "+8.4%", isPositive: true }, footnote: "99.98% success rate" },
-          { title: "Avg Execution Latency", value: "142ms", colorTheme: "cyan", badge: { text: "Optimal", variant: "success" }, footnote: "P99: 890ms" },
-          { title: "Dead Letter Queue (DLQ)", value: "1", colorTheme: "rose", badge: { text: "Needs Action", variant: "destructive" }, footnote: "SyncFedExTracking timeout" },
-        ]}
-      />
+      {/* 2. Operational Guide / Runbook */}
+      <JobGuideCard />
 
-      {/* 4. Toolbar */}
-      <DataTableToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Filter jobs by ID, handler name, worker pod..."
-        filters={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={queueFilter}
-              onChange={(e) => setQueueFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-            >
-              <option value="all">All Queues</option>
-              <option value="critical-checkout">critical-checkout (P0)</option>
-              <option value="order-fulfillment-sync">order-fulfillment-sync (P10)</option>
-              <option value="marketing-email-batch">marketing-email-batch (P20)</option>
-              <option value="dead-letter-triage">dead-letter-triage</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-            >
-              <option value="all">All Statuses</option>
-              <option value="running">Running</option>
-              <option value="completed">Completed</option>
-              <option value="retrying">Retrying</option>
-              <option value="failed">Failed</option>
-            </select>
+      {/* 3. Live Worker Pods Telemetry */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <Server className="size-4 text-primary" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Worker Nodes Health & Pod Utilization Telemetry
+            </h3>
           </div>
-        }
-        activeFiltersCount={(queueFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-        onResetFilters={() => { setQueueFilter("all"); setStatusFilter("all"); setSearchQuery("") }}
-      />
-
-      {/* 5. Jobs Table */}
-      <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredJobs.length === 0 ? (
-          <EmptyState
-            title="No Jobs Found"
-            description="No jobs match your search or filter options."
-            actionLabel="Reset Filters"
-            onAction={() => { setQueueFilter("all"); setStatusFilter("all"); setSearchQuery("") }}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <TableHead className="font-bold">STATUS</TableHead>
-                  <TableHead className="font-bold">JOB ID</TableHead>
-                  <TableHead className="font-bold">HANDLER</TableHead>
-                  <TableHead className="font-bold">QUEUE</TableHead>
-                  <TableHead className="font-bold">WORKER</TableHead>
-                  <TableHead className="font-bold">RUNTIME</TableHead>
-                  <TableHead className="font-bold">ATTEMPTS</TableHead>
-                  <TableHead className="font-bold text-right">ACTIONS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-normal">
-                {filteredJobs.map((job) => (
-                  <TableRow
-                    key={job.id}
-                    onClick={() => { setSelectedJob(job); setIsDetailOpen(true) }}
-                    className="cursor-pointer hover:bg-muted/40 transition-colors"
-                  >
-                    <TableCell><StatusBadge status={job.status} showDot /></TableCell>
-                    <TableCell className="font-mono font-medium text-foreground">{job.id}</TableCell>
-                    <TableCell className="font-mono text-indigo-600 dark:text-indigo-400 font-medium">{job.handler}</TableCell>
-                    <TableCell className="font-mono text-[11px] text-muted-foreground">{job.queue}</TableCell>
-                    <TableCell className="font-mono text-[11px] text-muted-foreground">{job.workerNode}</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{job.runtime}</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{job.attempts}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedJob(job); setIsDetailOpen(true) }} className="h-7 px-2 text-xs">
-                        <Eye className="mr-1 size-3.5" /> Inspect
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        <DataTablePagination
-          currentPage={page}
-          totalPages={1}
-          pageSize={pageSize}
-          totalItems={filteredJobs.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
+          <span className="text-[11px] font-mono text-muted-foreground">
+            Heartbeat: {overview?.timestamp ? new Date(overview.timestamp).toLocaleTimeString() : "Live"}
+          </span>
+        </div>
+        <WorkerNodesTelemetry
+          workers={workers}
+          isLoading={isWorkersLoading}
         />
       </div>
 
-      {/* 6. Job Detail Drawer */}
-      {selectedJob && (
-        <DetailDrawer
-          open={isDetailOpen}
-          onOpenChange={setIsDetailOpen}
-          size="xl"
-          title={
-            <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
-              <span>{selectedJob.handler}</span>
-              <StatusBadge status={selectedJob.status} showDot />
-            </div>
-          }
-          description={`Job ID: ${selectedJob.id} • Worker: ${selectedJob.workerNode} (PID ${selectedJob.pid})`}
-          footer={
-            <div className="flex w-full items-center justify-between">
-              <span className="text-xs font-mono text-muted-foreground">Priority: {selectedJob.priority}</span>
-              {selectedJob.status === "failed" && (
-                <Button size="sm" onClick={() => handleReplayJob(selectedJob.id)} className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">
-                  <RotateCcw className="mr-1.5 size-3.5" /> Retry Job Now
-                </Button>
-              )}
-            </div>
-          }
-        >
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/70 bg-card/60 p-3.5 text-xs">
-            <div><span className="text-muted-foreground text-[11px]">Queue:</span><p className="font-mono font-medium text-foreground">{selectedJob.queue}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Started:</span><p className="font-medium text-foreground">{selectedJob.startedAgo}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Runtime:</span><p className="font-mono text-foreground">{selectedJob.runtime}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Memory:</span><p className="font-mono text-foreground">{selectedJob.memory}</p></div>
-          </div>
+      {/* 4. Real-time Overview KPIs */}
+      <div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Layers className="size-4 text-primary" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Throughput & Queue Telemetry
+          </h3>
+        </div>
+        <JobMetrics
+          summary={overview?.summary}
+          isLoading={isOverviewLoading}
+        />
+      </div>
 
-          {selectedJob.errorReason && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-              <p className="font-semibold">Execution Exception:</p>
-              <p className="font-mono text-[11px] mt-0.5">{selectedJob.errorReason}</p>
-            </div>
-          )}
-
-          <div>
-            <p className="text-xs font-semibold text-foreground mb-1.5">Job Payload Arguments</p>
-            <pre className="max-h-48 overflow-auto rounded-lg border border-border/80 bg-zinc-950 p-3 font-mono text-[11px] text-zinc-100 dark:bg-zinc-900">
-              <code>{JSON.stringify(selectedJob.args, null, 2)}</code>
-            </pre>
-          </div>
-        </DetailDrawer>
+      {/* 5. Queue Backlog Cards */}
+      {overview?.queues && overview.queues.length > 0 && (
+        <div>
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Queue Health & Backlogs (Click to Filter)
+          </h4>
+          <QueueHealthCards
+            queues={overview.queues}
+            selectedCategory={activeCategory}
+            onSelectCategory={(cat) => {
+              setActiveCategory(cat as string)
+              setPage(1)
+            }}
+          />
+        </div>
       )}
 
-      {/* 7. Confirm Dialog for Purge */}
+      {/* 6. Queue Category Filter Tabs */}
+      <div className="space-y-3">
+        <Tabs
+          value={activeCategory}
+          onValueChange={(val) => {
+            setActiveCategory(val)
+            setPage(1)
+          }}
+          className="w-full"
+        >
+          <TabsList className="grid grid-cols-2 sm:grid-cols-5 h-auto p-1 bg-muted/70">
+            <TabsTrigger value="ALL" className="text-xs py-1.5 font-medium">
+              All Queues
+            </TabsTrigger>
+            <TabsTrigger
+              value="CRITICAL_CHECKOUTS"
+              className="text-xs py-1.5 font-medium"
+            >
+              Critical Checkouts
+            </TabsTrigger>
+            <TabsTrigger
+              value="ORDER_FULFILLMENT_SYNC"
+              className="text-xs py-1.5 font-medium"
+            >
+              Fulfillment Sync
+            </TabsTrigger>
+            <TabsTrigger
+              value="MARKETING_EMAIL_BATCH"
+              className="text-xs py-1.5 font-medium"
+            >
+              Marketing Batch
+            </TabsTrigger>
+            <TabsTrigger
+              value="DEAD_LETTER_TRIGGER"
+              className="text-xs py-1.5 font-medium text-rose-600 dark:text-rose-400 data-[state=active]:bg-rose-500/15"
+            >
+              <Flame className="mr-1 size-3.5 inline" />
+              Dead Letter ({dlqDepth})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* 7. Filter Toolbar */}
+        <DataTableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Filter jobs by ID, handler name, worker pod..."
+          filters={
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="WAITING">WAITING</option>
+                <option value="DELAYED">DELAYED</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="FAILED">FAILED</option>
+                <option value="DEAD_LETTER">DEAD LETTER</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          }
+          activeFiltersCount={activeFiltersCount}
+          onResetFilters={handleResetFilters}
+        />
+      </div>
+
+      {/* 8. Interactive Jobs Table */}
+      <div className="space-y-3">
+        <JobTable
+          jobs={jobs}
+          isLoading={isJobsLoading}
+          onInspect={(job) => {
+            setSelectedJob(job)
+            setIsDetailOpen(true)
+          }}
+          onRetry={handleRetryJob}
+          onCancel={handleCancelJob}
+          isRetryingId={retryingId}
+          isCancellingId={cancellingId}
+          onResetFilters={handleResetFilters}
+        />
+
+        {/* Pagination */}
+        <DataTablePagination
+          currentPage={pagination.page || page}
+          totalPages={pagination.totalPages || 1}
+          pageSize={pagination.limit || pageSize}
+          totalItems={pagination.total || jobs.length}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+        />
+      </div>
+
+      {/* 9. Deep Inspection Detail Sheet */}
+      <JobDetailSheet
+        job={selectedJob}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onRetry={handleRetryJob}
+        onCancel={handleCancelJob}
+        isRetrying={Boolean(retryingId && retryingId === (selectedJob?.jobId || selectedJob?.id))}
+        isCancelling={Boolean(cancellingId && cancellingId === (selectedJob?.jobId || selectedJob?.id))}
+      />
+
+      {/* 10. Bulk Queue Action Dialog */}
+      <BulkActionDialog
+        open={isBulkDialogOpen}
+        onOpenChange={setIsBulkDialogOpen}
+        initialAction={bulkDialogInitialAction}
+        onExecute={handleExecuteBulkAction}
+        isSubmitting={bulkActionMutation.isPending}
+      />
+
+      {/* 11. Confirm Purge DLQ Dialog */}
       <ConfirmDialog
-        open={isPurgeConfirmOpen}
-        onOpenChange={setIsPurgeConfirmOpen}
+        open={confirmPurgeOpen}
+        onOpenChange={setConfirmPurgeOpen}
         title="Purge Dead Letter Queue"
-        description="Are you sure you want to discard all failed background jobs? This action is permanent and unrecoverable."
+        description="Are you sure you want to permanently purge all unrecoverable jobs from the Dead Letter Queue? This action cannot be undone."
         confirmLabel="Purge Dead Letters"
         variant="destructive"
-        onConfirm={handlePurgeFailed}
+        onConfirm={() => handleExecuteBulkAction("PURGE_DEAD_LETTER")}
+        loading={bulkActionMutation.isPending}
       />
     </div>
   )

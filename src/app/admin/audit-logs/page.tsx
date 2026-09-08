@@ -1,141 +1,210 @@
 /**
  * @file page.tsx
- * @description Immutable Compliance Audit Trail & Administrative Event Ledger (< 200 lines).
+ * @description System Security & Compliance Audit Logs Dashboard.
+ * Connects directly to immutable forensic log endpoints (/api/v1/admin/audit-logs) with zero mock data.
  */
 
 "use client"
 
 import * as React from "react"
-import { Download, ShieldCheck, Terminal, Eye } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import {
+  Download,
+  RefreshCw,
+  ShieldCheck,
+  Filter,
+  Search,
+  Calendar,
+  Layers,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   PageHeader,
-  MetricGrid,
-  StatusBadge,
   DataTableToolbar,
   DataTablePagination,
-  EmptyState,
 } from "@/components/common"
-import { ADMIN_AUDIT_LOGS, AuditLogEntry } from "@/data/admin"
+import {
+  AuditMetrics,
+  AuditLogTable,
+  AuditLogDetailSheet,
+  AuditGuideCard,
+} from "@/components/audit-logs"
+import { useAuditLogsQuery } from "@/hooks/use-audit-log-query"
+import type { AuditLogItem } from "@/types/audit-log"
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = React.useState<AuditLogEntry[]>(ADMIN_AUDIT_LOGS)
+  // Filter states
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
+  const [entityTypeFilter, setEntityTypeFilter] = React.useState("ALL")
   const [page, setPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(10)
+  const [pageSize, setPageSize] = React.useState(20)
 
-  const filteredLogs = React.useMemo(() => {
-    return logs.filter((l) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        return (
-          l.id.toLowerCase().includes(q) ||
-          l.action.toLowerCase().includes(q) ||
-          l.actor.toLowerCase().includes(q) ||
-          l.resource.toLowerCase().includes(q)
-        )
-      }
-      return true
+  // Modals state
+  const [selectedLog, setSelectedLog] = React.useState<AuditLogItem | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false)
+
+  // Debounce search
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // API Query
+  const {
+    data: auditData,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useAuditLogsQuery({
+    entityType: entityTypeFilter !== "ALL" ? entityTypeFilter : undefined,
+    action: debouncedSearch || undefined,
+    page,
+    limit: pageSize,
+  })
+
+  const logs = auditData?.items ?? []
+  const pagination = auditData?.pagination ?? {
+    page: 1,
+    limit: pageSize,
+    total: 0,
+    totalPages: 1,
+  }
+
+  const handleResetFilters = () => {
+    setSearchQuery("")
+    setEntityTypeFilter("ALL")
+    setPage(1)
+  }
+
+  // Export JSON functionality
+  const handleExportJSON = () => {
+    if (logs.length === 0) return
+    const blob = new Blob([JSON.stringify(logs, null, 2)], {
+      type: "application/json",
     })
-  }, [logs, searchQuery])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `audit-logs-export-${new Date().toISOString().split("T")[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const activeFiltersCount =
+    (entityTypeFilter !== "ALL" ? 1 : 0) + (searchQuery ? 1 : 0)
 
   return (
-    <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
+    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto">
       {/* 1. Page Header */}
       <PageHeader
         title="Compliance Audit Trail & Administrative Ledger"
         badge="WORM Tamper-Evident"
         badgeVariant="success"
-        description="Cryptographically signed ledger of all administrative mutations, permission escalations, refund approvals, and security events."
+        description="Immutable, cryptographically signed ledger of all administrative mutations, permission escalations, refund approvals, and security events."
       >
-        <Button variant="outline" size="sm" className="h-8.5 gap-1.5 text-xs font-medium border-border/80">
-          <Download className="size-3.5 text-muted-foreground" />
-          <span>Export Audit Log (JSON)</span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="h-8.5 gap-1.5 text-xs font-medium"
+          >
+            <RefreshCw
+              className={`size-3.5 ${isRefetching ? "animate-spin" : ""}`}
+            />
+            <span>Refresh</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportJSON}
+            disabled={logs.length === 0}
+            className="h-8.5 gap-1.5 text-xs font-medium"
+          >
+            <Download className="size-3.5 text-muted-foreground" />
+            <span>Export Evidence (JSON)</span>
+          </Button>
+        </div>
       </PageHeader>
 
-      {/* 2. KPI Metrics */}
-      <MetricGrid
-        columns={4}
-        items={[
-          { title: "Logged Actions (30D)", value: "14,820", colorTheme: "indigo", footnote: "100% write-once audit guarantee" },
-          { title: "Sensitive Mutations", value: "3 Events", colorTheme: "amber", badge: { text: "Verified", variant: "warning" }, footnote: "Refunds & permissions" },
-          { title: "Cryptographic Chain", value: "Valid", colorTheme: "emerald", badge: { text: "SHA-256", variant: "success" }, footnote: "Zero hash anomalies" },
-          { title: "SOC-2 Compliance", value: "Certified", colorTheme: "cyan", footnote: "Annual audit verified" },
-        ]}
+      {/* 2. Operational Guide / Runbook */}
+      <AuditGuideCard />
+
+      {/* 3. KPI Metrics */}
+      <AuditMetrics
+        items={logs}
+        totalCount={pagination.total}
+        isLoading={isLoading}
       />
 
-      {/* 3. Filter Toolbar */}
+      {/* 4. Filter Toolbar */}
       <DataTableToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search action name, operator actor, resource ID..."
+        searchPlaceholder="Filter by action (e.g. UPDATE_USER_ROLE, REFUND_ISSUED)..."
+        filters={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={entityTypeFilter}
+              onChange={(e) => {
+                setEntityTypeFilter(e.target.value)
+                setPage(1)
+              }}
+              className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+            >
+              <option value="ALL">All Entity Types</option>
+              <option value="User">User</option>
+              <option value="Role">Role</option>
+              <option value="Payment">Payment</option>
+              <option value="Order">Order</option>
+              <option value="Inventory">Inventory</option>
+              <option value="Coupon">Coupon</option>
+            </select>
+          </div>
+        }
+        activeFiltersCount={activeFiltersCount}
+        onResetFilters={handleResetFilters}
       />
 
-      {/* 4. Table */}
-      <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredLogs.length === 0 ? (
-          <EmptyState
-            title="No Audit Records Found"
-            description="No audit trail events matched your search."
-            actionLabel="Reset Filters"
-            onAction={() => setSearchQuery("")}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <TableHead className="font-bold">STATUS</TableHead>
-                  <TableHead className="font-bold">EVENT ID</TableHead>
-                  <TableHead className="font-bold">ACTION</TableHead>
-                  <TableHead className="font-bold">ACTOR</TableHead>
-                  <TableHead className="font-bold">RESOURCE TARGET</TableHead>
-                  <TableHead className="font-bold">IP INGRESS</TableHead>
-                  <TableHead className="font-bold text-right">TIMESTAMP</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-normal">
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id} className="hover:bg-muted/40 transition-colors">
-                    <TableCell><StatusBadge status={log.status} showDot /></TableCell>
-                    <TableCell className="font-mono font-medium text-foreground">{log.id}</TableCell>
-                    <TableCell className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{log.action}</TableCell>
-                    <TableCell>
-                      <p className="font-semibold text-foreground">{log.actor}</p>
-                      <p className="text-[10.5px] text-muted-foreground">{log.actorEmail}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{log.resource}</p>
-                      <p className="text-[10.5px] font-mono text-muted-foreground">{log.resourceId}</p>
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{log.ipAddress}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{log.timestamp}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+      {/* 5. Interactive Audit Log Table */}
+      <div className="space-y-3">
+        <AuditLogTable
+          logs={logs}
+          isLoading={isLoading}
+          onInspect={(log) => {
+            setSelectedLog(log)
+            setIsDetailOpen(true)
+          }}
+          onResetFilters={handleResetFilters}
+        />
 
+        {/* Pagination */}
         <DataTablePagination
-          currentPage={page}
-          totalPages={1}
-          pageSize={pageSize}
-          totalItems={filteredLogs.length}
+          currentPage={pagination.page || page}
+          totalPages={pagination.totalPages || 1}
+          pageSize={pagination.limit || pageSize}
+          totalItems={pagination.total || logs.length}
           onPageChange={setPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
         />
       </div>
+
+      {/* 6. Deep State Diff Inspector Sheet */}
+      <AuditLogDetailSheet
+        log={selectedLog}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   )
 }

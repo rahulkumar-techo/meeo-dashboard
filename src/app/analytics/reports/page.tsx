@@ -1,13 +1,13 @@
 /**
  * @file page.tsx
- * @description Scheduled Reports & Automated Data Exports Console (< 220 lines).
+ * @description Scheduled Reports & Automated Data Exports Console.
+ * Manages recurring BI data exports, customer email distribution, and data lake synchronization.
  */
 
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { Download, Plus, FileSpreadsheet, Calendar, Mail } from "lucide-react"
+import { Download, Plus, FileSpreadsheet, Calendar, Mail, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,10 +26,20 @@ import {
   DataTablePagination,
   EmptyState,
 } from "@/components/common"
-import { SCHEDULED_REPORTS_DATA, ScheduledReport } from "@/data/reports"
+
+export interface ScheduledReport {
+  id: string
+  name: string
+  format: "CSV" | "PDF" | "XLSX" | "PARQUET" | string
+  frequency: "Daily" | "Weekly" | "Monthly" | string
+  recipients: string
+  lastGenerated: string
+  fileSize: string
+  status: "active" | "paused" | "failed" | string
+}
 
 export default function ReportsPage() {
-  const [reports, setReports] = React.useState<ScheduledReport[]>(SCHEDULED_REPORTS_DATA)
+  const [reports, setReports] = React.useState<ScheduledReport[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(10)
@@ -53,7 +63,7 @@ export default function ReportsPage() {
       {/* 1. Header */}
       <PageHeader
         title="Scheduled Reports & Automated Data Exports"
-        badge="Autonomous Delivery"
+        badge="Data Pipelines"
         badgeVariant="brand"
         description="Automate recurring PDF/CSV/Parquet business intelligence exports, stakeholder email distribution, and data lake synchronization."
       >
@@ -67,10 +77,31 @@ export default function ReportsPage() {
       <MetricGrid
         columns={4}
         items={[
-          { title: "Active Export Schedules", value: "3 Schedules", colorTheme: "indigo", footnote: "Daily, Weekly, Monthly jobs" },
-          { title: "Reports Dispatched (30D)", value: "48 Reports", colorTheme: "emerald", footnote: "100% on-time delivery" },
-          { title: "Data Lake Export Volume", value: "142 MB", colorTheme: "cyan", footnote: "Compressed Parquet archives" },
-          { title: "Scheduler Engine", value: "Optimal", colorTheme: "emerald", badge: { text: "CRON Active", variant: "success" }, footnote: "Zero failed runs" },
+          {
+            title: "Active Export Schedules",
+            value: `${reports.filter((r) => r.status === "active").length} Schedules`,
+            colorTheme: "indigo",
+            footnote: "Automated recurring jobs",
+          },
+          {
+            title: "Reports Configured",
+            value: `${reports.length}`,
+            colorTheme: "emerald",
+            footnote: "Total registered exports",
+          },
+          {
+            title: "Export Formats",
+            value: "CSV / PDF",
+            colorTheme: "cyan",
+            footnote: "Supported export standards",
+          },
+          {
+            title: "Scheduler Pipeline",
+            value: "Live",
+            colorTheme: "emerald",
+            badge: { text: "CRON Engine", variant: "success" },
+            footnote: "Background worker fleet ready",
+          },
         ]}
       />
 
@@ -85,10 +116,10 @@ export default function ReportsPage() {
       <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
         {filteredReports.length === 0 ? (
           <EmptyState
-            title="No Scheduled Reports Found"
-            description="No reports matched your search."
-            actionLabel="Reset Search"
-            onAction={() => setSearchQuery("")}
+            title="No Scheduled Reports Configured"
+            description="Create an automated scheduled export to deliver recurring commerce telemetry to executives and data analysts."
+            actionLabel="Create Scheduled Report"
+            onAction={() => {}}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -106,18 +137,37 @@ export default function ReportsPage() {
               </TableHeader>
               <TableBody className="text-xs font-normal">
                 {filteredReports.map((rep) => (
-                  <TableRow key={rep.id} className="hover:bg-muted/40 transition-colors">
+                  <TableRow
+                    key={rep.id}
+                    className="hover:bg-muted/40 transition-colors"
+                  >
                     <TableCell>
                       <p className="font-semibold text-foreground">{rep.name}</p>
-                      <p className="text-[10.5px] text-muted-foreground font-mono">{rep.id} • {rep.fileSize}</p>
+                      <p className="text-[10.5px] text-muted-foreground font-mono">
+                        {rep.id} • {rep.fileSize}
+                      </p>
                     </TableCell>
-                    <TableCell><Badge variant="outline" className="font-mono text-[10px]">{rep.format}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {rep.format}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-medium">{rep.frequency}</TableCell>
-                    <TableCell className="text-muted-foreground truncate max-w-xs">{rep.recipients}</TableCell>
-                    <TableCell className="text-muted-foreground">{rep.lastGenerated}</TableCell>
-                    <TableCell><StatusBadge status={rep.status} showDot /></TableCell>
+                    <TableCell className="text-muted-foreground truncate max-w-xs">
+                      {rep.recipients}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {rep.lastGenerated}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={rep.status} showDot />
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                      >
                         <Download className="mr-1 size-3.5" /> Download
                       </Button>
                     </TableCell>
@@ -130,7 +180,7 @@ export default function ReportsPage() {
 
         <DataTablePagination
           currentPage={page}
-          totalPages={1}
+          totalPages={Math.ceil(filteredReports.length / pageSize) || 1}
           pageSize={pageSize}
           totalItems={filteredReports.length}
           onPageChange={setPage}

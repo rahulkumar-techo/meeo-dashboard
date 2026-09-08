@@ -1,237 +1,296 @@
 /**
  * @file page.tsx
- * @description Outbox Operations & Reliability Triage Page (< 200 lines).
+ * @description Central Transactional Outbox & Background Jobs Operations Console.
+ * Directly integrates with Admin Outbox API (GET /api/v1/outbox/events, GET /metrics, POST /publish-now, POST /events/:id/retry, GET /processed).
  */
 
 "use client"
 
 import * as React from "react"
-import { RotateCcw, Check, Eye } from "lucide-react"
+import { Play, RotateCcw, RefreshCw, ShieldCheck, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   PageHeader,
-  MetricGrid,
-  StatusBadge,
   DataTableToolbar,
   DataTablePagination,
   EmptyState,
 } from "@/components/common"
 import {
-  OutboxPayloadDrawer,
-  OutboxEventRecord,
-} from "@/components/modules/operations"
+  OutboxMetrics,
+  OutboxGuideCard,
+  OutboxTable,
+  OutboxDetailSheet,
+  PublishNowDialog,
+  ProcessedIdempotencyModal,
+} from "@/components/outbox"
 import {
-  OPERATIONS_OUTBOX_EVENTS,
-  OutboxEventData,
-} from "@/data/operations"
+  useOutboxEventsQuery,
+  useOutboxMetricsQuery,
+  useRetryOutboxEventMutation,
+} from "@/hooks/use-outbox-query"
+import type { OutboxEventItem, OutboxEventStatus } from "@/types/outbox"
 
 export default function OutboxOperationsPage() {
-  const [events, setEvents] = React.useState<OutboxEventData[]>(OPERATIONS_OUTBOX_EVENTS)
-  const [selectedEvent, setSelectedEvent] = React.useState<OutboxEventData | null>(null)
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [aggregateFilter, setAggregateFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
+  const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [aggregateFilter, setAggregateFilter] = React.useState<string>("all")
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(20)
 
-  // Filter events
-  const filteredEvents = React.useMemo(() => {
-    return events.filter((e) => {
-      if (aggregateFilter !== "all" && e.aggregateType !== aggregateFilter) return false
-      if (statusFilter !== "all" && e.status !== statusFilter) return false
+  // Modals state
+  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null)
+  const [detailSheetOpen, setDetailSheetOpen] = React.useState(false)
+  const [publishDialogOpen, setPublishDialogOpen] = React.useState(false)
+  const [idempotencyModalOpen, setIdempotencyModalOpen] = React.useState(false)
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const match =
-          e.id.toLowerCase().includes(q) ||
-          e.aggregateId.toLowerCase().includes(q) ||
-          e.eventName.toLowerCase().includes(q) ||
-          e.idempotencyKey.toLowerCase().includes(q)
-        if (!match) return false
-      }
+  // Queries
+  const {
+    data: outboxData,
+    isLoading: isEventsLoading,
+    isFetching: isEventsFetching,
+    refetch: refetchEvents,
+  } = useOutboxEventsQuery({
+    page,
+    limit: pageSize,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    aggregateType: aggregateFilter !== "all" ? aggregateFilter : undefined,
+    eventType: searchQuery.trim() || undefined,
+  })
 
-      return true
-    })
-  }, [events, aggregateFilter, statusFilter, searchQuery])
+  const {
+    data: metricsData,
+    isLoading: isMetricsLoading,
+    refetch: refetchMetrics,
+  } = useOutboxMetricsQuery()
 
-  // Replay event handler
-  const handleReplayEvent = (eventRecord: OutboxEventRecord) => {
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id === eventRecord.id) {
-          return {
-            ...e,
-            status: "published",
-            nextRetryOrLatency: "12ms (Replayed)",
-            attempts: "1 / 3",
-            errorMessage: undefined,
-            failureReason: undefined,
-            stackTrace: undefined,
-          }
-        }
-        return e
-      })
-    )
-    setIsDrawerOpen(false)
+  const retryMutation = useRetryOutboxEventMutation()
+
+  const items = outboxData?.items ?? []
+  const totalPages = outboxData?.pagination?.totalPages ?? 1
+  const totalItems = outboxData?.pagination?.total ?? items.length
+
+  const handleInspect = (event: OutboxEventItem) => {
+    setSelectedEventId(event.id)
+    setDetailSheetOpen(true)
   }
 
-  const handleInspect = (event: OutboxEventData) => {
-    setSelectedEvent(event)
-    setIsDrawerOpen(true)
+  const handleRetry = async (event: OutboxEventItem) => {
+    await retryMutation.mutateAsync(event.id)
+    refetchEvents()
+    refetchMetrics()
+  }
+
+  const handleExportCSV = () => {
+    if (items.length === 0) return
+    const headers = [
+      "Event ID",
+      "Event Type",
+      "Aggregate Type",
+      "Aggregate ID",
+      "Status",
+      "Attempts",
+      "Max Attempts",
+      "Locked By",
+      "Published At",
+      "Created At",
+    ]
+    const rows = items.map((e) => [
+      e.id,
+      e.eventType,
+      e.aggregateType,
+      e.aggregateId,
+      e.status,
+      e.attempts,
+      e.maxAttempts,
+      e.lockedBy ?? "",
+      e.publishedAt ? new Date(e.publishedAt).toISOString() : "",
+      new Date(e.createdAt).toISOString(),
+    ])
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `outbox_events_${Date.now()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
+    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto">
       {/* 1. Page Header */}
       <PageHeader
-        title="Outbox Events & Reliability Triage"
-        badge="Live Dispatcher (248 evt/min)"
-        badgeVariant="success"
-        description="Transactional outbox pattern event stream, CDC replication lag, webhook fanouts, idempotency locks, and unrecoverable DLQ replay."
+        title="Transactional Outbox & Background Jobs"
+        badge="BullMQ + Redis"
+        badgeVariant="brand"
+        description="Transactional dual-write prevention, distributed poller locks, BullMQ queue streams, and dead-letter queue (DLQ) recovery."
       >
-        <Button
-          size="sm"
-          onClick={() => {
-            const firstFailed = events.find((e) => e.status === "failed")
-            if (firstFailed) handleReplayEvent(firstFailed)
-          }}
-          className="h-8.5 gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-xs text-xs"
-        >
-          <RotateCcw className="size-3.5" />
-          Dead-Letter Replay (Bulk)
-        </Button>
-        <Button variant="outline" size="sm" className="h-8.5 gap-2 text-xs">
-          <Check className="size-3.5" />
-          Clear Resolved
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchEvents()
+              refetchMetrics()
+            }}
+            disabled={isEventsFetching}
+            className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+          >
+            <RefreshCw
+              className={`size-3.5 text-muted-foreground ${
+                isEventsFetching ? "animate-spin text-indigo-500" : ""
+              }`}
+            />
+            <span>Refresh</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIdempotencyModalOpen(true)}
+            className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+          >
+            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Idempotency Audit</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={items.length === 0}
+            className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+          >
+            <Download className="size-3.5 text-muted-foreground" />
+            <span>Export CSV</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => setPublishDialogOpen(true)}
+            className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <Play className="size-3.5" />
+            <span>Publish Batch Now</span>
+          </Button>
+        </div>
       </PageHeader>
 
-      {/* 2. KPI Metrics */}
-      <MetricGrid
-        columns={5}
-        items={[
-          { title: "Pending Events", value: "14", colorTheme: "indigo", badge: { text: "Normal", variant: "outline" }, footnote: "buffer 1.2%" },
-          { title: "In-Flight Workers", value: "8 / 12", colorTheme: "emerald", badge: { text: "Healthy", variant: "success" }, footnote: "66.7% capacity" },
-          { title: "Published (1hr)", value: "14,892", colorTheme: "indigo", trend: { value: "+12.4%", isPositive: true }, footnote: "avg 248/min" },
-          { title: "P99 Dispatch Latency", value: "28ms", colorTheme: "emerald", badge: { text: "Target < 50ms", variant: "success" }, footnote: "CDC lag: 4ms" },
-          { title: "Dead Letter Queue", value: "1", colorTheme: "rose", badge: { text: "Action Req", variant: "destructive" }, footnote: "Needs manual replay" },
-        ]}
-      />
+      {/* 2. Live Metrics */}
+      <OutboxMetrics metricsData={metricsData} isLoading={isMetricsLoading} />
 
-      {/* 3. Toolbar & Filters */}
+      {/* 3. Outbox Architecture Guide */}
+      <OutboxGuideCard />
+
+      {/* 4. Filter Toolbar */}
       <DataTableToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Filter by Event ID, Aggregate ID, Event Name, Idempotency..."
+        searchPlaceholder="Search Event Type (e.g. ORDER_CONFIRMED, PAYMENT_SUCCEEDED)..."
         filters={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={aggregateFilter}
-              onChange={(e) => setAggregateFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-            >
-              <option value="all">All Aggregates</option>
-              <option value="Order">Order</option>
-              <option value="Payment">Payment</option>
-              <option value="Inventory">Inventory</option>
-              <option value="Customer">Customer</option>
-            </select>
-
+          <div className="flex items-center gap-2">
+            {/* Status Filter */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
+              onChange={(e) => {
+                setStatusFilter(e.target.value)
+                setPage(1)
+              }}
+              className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
             >
-              <option value="all">All Statuses</option>
-              <option value="published">Published</option>
-              <option value="processing">Processing</option>
-              <option value="retrying">Retrying</option>
-              <option value="failed">Failed / DLQ</option>
+              <option value="all">All Event Statuses</option>
+              <option value="PUBLISHED">Published (Enqueued)</option>
+              <option value="PENDING">Pending Poller</option>
+              <option value="PROCESSING">Processing (Lock Claimed)</option>
+              <option value="FAILED">Failed / Dead-Letter (DLQ)</option>
+            </select>
+
+            {/* Aggregate Filter */}
+            <select
+              value={aggregateFilter}
+              onChange={(e) => {
+                setAggregateFilter(e.target.value)
+                setPage(1)
+              }}
+              className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+            >
+              <option value="all">All Aggregates</option>
+              <option value="Order">Order Aggregate</option>
+              <option value="Payment">Payment Aggregate</option>
+              <option value="Product">Product Aggregate</option>
+              <option value="Inventory">Inventory Aggregate</option>
+              <option value="User">User Aggregate</option>
             </select>
           </div>
         }
-        activeFiltersCount={(aggregateFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-        onResetFilters={() => { setAggregateFilter("all"); setStatusFilter("all"); setSearchQuery("") }}
+        activeFiltersCount={
+          (statusFilter !== "all" ? 1 : 0) + (aggregateFilter !== "all" ? 1 : 0)
+        }
+        onResetFilters={() => {
+          setStatusFilter("all")
+          setAggregateFilter("all")
+          setSearchQuery("")
+          setPage(1)
+        }}
       />
 
-      {/* 4. Events Data Table */}
+      {/* 5. Outbox Events Table */}
       <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredEvents.length === 0 ? (
+        {!isEventsLoading && items.length === 0 ? (
           <EmptyState
             title="No Outbox Events Found"
-            description="No events match your selected filters. Try resetting the search or filter criteria."
+            description="No transactional outbox records matched your active query filters."
             actionLabel="Reset Filters"
-            onAction={() => { setAggregateFilter("all"); setStatusFilter("all"); setSearchQuery("") }}
+            onAction={() => {
+              setStatusFilter("all")
+              setAggregateFilter("all")
+              setSearchQuery("")
+            }}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <TableHead className="font-bold">STATUS</TableHead>
-                  <TableHead className="font-bold">EVENT ID</TableHead>
-                  <TableHead className="font-bold">AGGREGATE</TableHead>
-                  <TableHead className="font-bold">EVENT TYPE</TableHead>
-                  <TableHead className="font-bold">ATTEMPTS</TableHead>
-                  <TableHead className="font-bold">LATENCY / RETRY</TableHead>
-                  <TableHead className="font-bold">CREATED</TableHead>
-                  <TableHead className="font-bold text-right">ACTIONS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-normal">
-                {filteredEvents.map((evt) => (
-                  <TableRow
-                    key={evt.id}
-                    onClick={() => handleInspect(evt)}
-                    className="cursor-pointer hover:bg-muted/40 transition-colors"
-                  >
-                    <TableCell><StatusBadge status={evt.status} showDot /></TableCell>
-                    <TableCell className="font-mono font-medium text-foreground">{evt.id}</TableCell>
-                    <TableCell>
-                      <span className="font-medium text-foreground">{evt.aggregateType}</span>
-                      <span className="ml-1 text-[11px] font-mono text-muted-foreground">({evt.aggregateId})</span>
-                    </TableCell>
-                    <TableCell className="font-mono text-indigo-600 dark:text-indigo-400 font-medium">{evt.eventName}</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{evt.attempts}</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{evt.nextRetryOrLatency}</TableCell>
-                    <TableCell className="text-muted-foreground">{evt.timestamp}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleInspect(evt) }} className="h-7 px-2 text-xs">
-                        <Eye className="mr-1 size-3.5" /> Inspect
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <OutboxTable
+            events={items}
+            isLoading={isEventsLoading}
+            onInspect={handleInspect}
+            onRetry={handleRetry}
+          />
         )}
 
         <DataTablePagination
           currentPage={page}
-          totalPages={1}
+          totalPages={totalPages}
           pageSize={pageSize}
-          totalItems={filteredEvents.length}
+          totalItems={totalItems}
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
       </div>
 
-      {/* 5. Slide-Over Event Payload Drawer */}
-      <OutboxPayloadDrawer
-        event={selectedEvent}
-        open={isDrawerOpen}
-        onOpenChange={setIsDrawerOpen}
-        onReplayEvent={handleReplayEvent}
+      {/* 6. Modals & Slide-Over Drawers */}
+      <OutboxDetailSheet
+        eventId={selectedEventId}
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+        onRetrySuccess={() => {
+          refetchEvents()
+          refetchMetrics()
+        }}
+      />
+
+      <PublishNowDialog
+        open={publishDialogOpen}
+        onOpenChange={setPublishDialogOpen}
+        onSuccess={() => {
+          refetchEvents()
+          refetchMetrics()
+        }}
+      />
+
+      <ProcessedIdempotencyModal
+        open={idempotencyModalOpen}
+        onOpenChange={setIdempotencyModalOpen}
       />
     </div>
   )
