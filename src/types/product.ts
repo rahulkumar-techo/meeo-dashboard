@@ -41,6 +41,11 @@ export interface Product {
   images?: ProductImage[]
   variants?: ProductVariant[]
   variantsCount?: number
+  _count?: {
+    variants?: number
+    images?: number
+    [key: string]: number | undefined
+  }
   seoTitle?: string | null
   seoDescription?: string | null
   createdById?: string | null

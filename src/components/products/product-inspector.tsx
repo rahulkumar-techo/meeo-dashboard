@@ -57,7 +57,11 @@ export function ProductInspector({
 
   const images = selectedProduct.images ?? []
   const heroImage = images.length > 0 ? images[0].url : null
-  const variantsCount = selectedProduct.variants?.length ?? selectedProduct.variantsCount ?? 0
+  const variantsCount =
+    selectedProduct._count?.variants ??
+    selectedProduct.variants?.length ??
+    selectedProduct.variantsCount ??
+    0
 
   return (
     <Card className="border-border/70 bg-card/95 shadow-2xs text-xs overflow-hidden">

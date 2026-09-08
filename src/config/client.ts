@@ -1,11 +1,11 @@
 /**
  * @file client.ts
- * @description Configured Axios HTTP client with request token injection and silent token refresh queue.
+ * @description Configured Axios HTTP client with silent token refresh queue using HttpOnly cookies (withCredentials).
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
 import { useUserStore } from "@/store/user.store"
-import type { ApiResponse, RefreshResponseData } from "@/types/auth"
+import type { ApiResponse } from "@/types/auth"
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://meeo-server.onrender.com/api/v1"
@@ -22,32 +22,75 @@ export const apiClient = axios.create({
 // Variables for managing in-flight token refresh and request queue
 let isRefreshing = false
 let failedQueue: Array<{
-  resolve: (token: string) => void
+  resolve: () => void
   reject: (error: unknown) => void
 }> = []
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
-    } else if (token) {
-      prom.resolve(token)
+    } else {
+      prom.resolve()
     }
   })
   failedQueue = []
 }
 
-// Request Interceptor: Attach Access Token & handle FormData
+/**
+ * Executes a token refresh attempt against POST /auth/refresh via HttpOnly cookies.
+ */
+export async function executeSilentRefresh(): Promise<{ success: boolean }> {
+  // Directly hit the backend refresh route
+  const response = await axios.post<ApiResponse<{ accessToken: string }>>(
+    `${API_BASE_URL}/auth/refresh`,
+    {},
+    {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
+
+  if (response.status >= 200 && response.status < 300 && response.data?.data?.accessToken) {
+    // 🔥 FIXED: Store the new fresh access token directly in the client state memory
+    const newAccessToken = response.data.data.accessToken;
+    
+    // Yahan aapke store ke structure ke mutabik state update honi chahiye (e.g., setAccessToken method)
+    // Assuming your store has a method to update the token:
+    if ((useUserStore.getState() as any).setAccessToken) {
+      (useUserStore.getState() as any).setAccessToken(newAccessToken);
+    } else {
+      // Fallback: If you only store full user state, patch it accordingly
+      const currentStore = useUserStore.getState() as any;
+      useUserStore.setState({ ...currentStore, accessToken: newAccessToken });
+    }
+
+    return { success: true }
+  }
+
+  throw new Error("Invalid response received from refresh endpoint")
+}
+
+// Request Interceptor: Attach Access Token from State & Handle FormData
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useUserStore.getState().accessToken
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`
+    // 🔥 FIXED: Pull access token from state memory and attach to active headers
+    const state = useUserStore.getState() as any;
+    const token = state?.accessToken;
+
+    if (token && config.headers) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
 
     // When payload is FormData, delete Content-Type so browser/Axios sets multipart/form-data with boundary
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
-      delete config.headers["Content-Type"]
+      if (config.headers && typeof (config.headers as any).delete === "function") {
+        config.headers.delete("Content-Type")
+      } else if (config.headers) {
+        delete config.headers["Content-Type"]
+      }
     }
 
     return config
@@ -55,7 +98,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response Interceptor: Handle 401 & Silent Refresh
+// Response Interceptor: Handle 401 & Silent Refresh via HttpOnly cookies
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse>) => {
@@ -78,11 +121,11 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // Queue the request until token refresh completes
-        return new Promise<string>((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
-          .then((newToken) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`
+          .then(() => {
+            originalRequest._retry = true
             return apiClient(originalRequest)
           })
           .catch((err) => Promise.reject(err))
@@ -92,70 +135,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const storedRefreshToken = useUserStore.getState().refreshToken
-
-        if (!storedRefreshToken) {
-          throw new Error("No refresh token available in storage")
+        await executeSilentRefresh()
+        processQueue(null)
+        
+        // 🔥 FIXED: Refresh call hone ke baad request header par naya fresh token explicitly overwrite karein
+        const updatedState = useUserStore.getState() as any;
+        if (updatedState?.accessToken && originalRequest.headers) {
+          originalRequest.headers["Authorization"] = `Bearer ${updatedState.accessToken}`;
         }
 
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${storedRefreshToken}`,
-          "x-refresh-token": storedRefreshToken,
-        }
-
-        const body = {
-          refreshToken: storedRefreshToken,
-          refresh_token: storedRefreshToken,
-          token: storedRefreshToken,
-        }
-
-        // Attempt silent token refresh
-        let refreshResponse
-        try {
-          refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, body, {
-            withCredentials: true,
-            headers,
-          })
-        } catch (initialErr: any) {
-          // If /auth/refresh returns 404, fallback to /v1/auth/refresh
-          if (initialErr.response?.status === 404) {
-            refreshResponse = await axios.post(`${API_BASE_URL}/v1/auth/refresh`, body, {
-              withCredentials: true,
-              headers,
-            })
-          } else {
-            throw initialErr
-          }
-        }
-
-        const resData: any = refreshResponse.data?.data || refreshResponse.data || {}
-
-        const newAccessToken: string | null =
-          resData.accessToken ||
-          resData.tokens?.accessToken ||
-          resData.access_token ||
-          resData.token ||
-          (typeof resData === "string" ? resData : null)
-
-        const newRefreshToken: string | null =
-          resData.refreshToken ||
-          resData.tokens?.refreshToken ||
-          resData.refresh_token ||
-          storedRefreshToken
-
-        if (newAccessToken) {
-          useUserStore.getState().setTokens(newAccessToken, newRefreshToken || storedRefreshToken)
-          processQueue(null, newAccessToken)
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-          return apiClient(originalRequest)
-        } else {
-          throw new Error("Invalid token format received from refresh endpoint")
-        }
+        return apiClient(originalRequest)
       } catch (refreshError: any) {
-        processQueue(refreshError, null)
+        processQueue(refreshError)
 
-        // Refresh failed (CORS, 401, 403, network error, or invalid token) -> immediately logout and redirect to login
         useUserStore.getState().logout()
 
         if (
@@ -197,7 +189,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-
-
-

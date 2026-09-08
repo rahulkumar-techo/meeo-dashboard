@@ -3,7 +3,7 @@
  * @description Authentication service communicating with Meeo server API endpoints.
  */
 
-import { apiClient } from "@/config/client"
+import { apiClient, executeSilentRefresh } from "@/config/client"
 import type {
   ApiResponse,
   LoginPayload,
@@ -13,6 +13,7 @@ import type {
   ForgotPasswordPayload,
   ResetPasswordPayload,
   AuthResponseData,
+  RefreshResponseData,
   AuthUser,
 } from "@/types/auth"
 
@@ -89,6 +90,18 @@ export const authService = {
   async getMe(): Promise<ApiResponse<AuthUser>> {
     const response = await apiClient.get<ApiResponse<AuthUser>>("/auth/me")
     return response.data
+  },
+
+  /**
+   * Refresh authentication session via HttpOnly cookies.
+   */
+  async refreshToken(): Promise<ApiResponse<null>> {
+    await executeSilentRefresh()
+    return {
+      success: true,
+      message: "Session refreshed successfully",
+      data: null,
+    }
   },
 
   /**

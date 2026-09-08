@@ -18,7 +18,7 @@ export const AUTH_QUERY_KEY = ["auth", "currentUser"]
  * Hook to query and cache current authenticated user profile using TanStack Query.
  */
 export function useCurrentUserQuery() {
-  const { accessToken, isAuthenticated, setUser } = useUserStore()
+  const { isAuthenticated, setUser } = useUserStore()
 
   return useQuery({
     queryKey: AUTH_QUERY_KEY,
@@ -35,7 +35,7 @@ export function useCurrentUserQuery() {
         return null
       }
     },
-    enabled: Boolean(accessToken && isAuthenticated),
+    enabled: Boolean(isAuthenticated),
     staleTime: 5 * 60 * 1000,
     retry: false,
   })
@@ -53,28 +53,14 @@ export function useLoginMutation() {
     mutationFn: async (payload: LoginPayload) => {
       return await authService.login(payload)
     },
-    onSuccess: (data: any) => {
-      const payload = data?.data || data || {}
-      const user = payload.user || payload.profile || (payload.email ? payload : null)
-      const accessToken =
-        payload.accessToken ||
-        payload.tokens?.accessToken ||
-        payload.access_token ||
-        payload.token
-      const refreshToken =
-        payload.refreshToken ||
-        payload.tokens?.refreshToken ||
-        payload.refresh_token
+    onSuccess: (response: any) => {
+      const data = response?.data || response
+      const user = data?.user || (data?.email ? data : null)
+      const accessToken = data?.accessToken
 
-      if (accessToken) {
-        setAuth(
-          user || { id: "user", email: "", firstName: "Admin", lastName: "User", isVerified: true },
-          accessToken,
-          refreshToken
-        )
-        if (user) {
-          queryClient.setQueryData(AUTH_QUERY_KEY, user)
-        }
+      if (user) {
+        setAuth(user, accessToken)
+        queryClient.setQueryData(AUTH_QUERY_KEY, user)
       }
     },
   })

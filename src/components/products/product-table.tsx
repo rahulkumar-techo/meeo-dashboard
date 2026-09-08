@@ -117,7 +117,11 @@ export function ProductTable({
             items.map((prod) => {
               const isSelected = selectedProduct?.id === prod.id
               const heroImage = prod.images && prod.images.length > 0 ? prod.images[0].url : null
-              const variantsCount = prod.variants?.length ?? prod.variantsCount ?? 0
+              const variantsCount =
+                prod._count?.variants ??
+                prod.variants?.length ??
+                prod.variantsCount ??
+                0
 
               return (
                 <TableRow

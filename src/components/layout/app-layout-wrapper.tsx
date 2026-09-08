@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar/appSidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useUserStore } from "@/store/user.store"
 import { useCurrentUserQuery } from "@/hooks/use-auth-query"
+import { authService } from "@/services/auth.service"
 import { Loader2 } from "lucide-react"
 
 const AUTH_ROUTES = [
@@ -24,7 +25,7 @@ interface AppLayoutWrapperProps {
 export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { isAuthenticated, accessToken, hasHydrated } = useUserStore()
+  const { isAuthenticated, hasHydrated } = useUserStore()
   const [mountedHydrated, setMountedHydrated] = React.useState(false)
 
   React.useEffect(() => {
@@ -48,18 +49,17 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   React.useEffect(() => {
     if (!isHydrated) return
 
-    // If user is not authenticated and trying to access a protected page
-    if (!isAuthenticated && !isAuthRoute) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname || "/")}`)
+    if (isAuthRoute) {
+      if (isAuthenticated) {
+        router.replace("/")
+      }
+    } else {
+      if (!isAuthenticated) {
+        const redirectParam = pathname ? `?redirect=${encodeURIComponent(pathname)}` : ""
+        router.replace(`/login${redirectParam}`)
+      }
     }
-
-    // If user is already authenticated and trying to access login/signup/auth pages
-    if (isAuthenticated && isAuthRoute) {
-      const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
-      const redirect = searchParams.get("redirect") || "/"
-      router.replace(redirect)
-    }
-  }, [isHydrated, isAuthenticated, isAuthRoute, pathname, router])
+  }, [isHydrated, isAuthRoute, isAuthenticated, pathname, router])
 
   // While store is rehydrating from localStorage, show a clean splash loader
   if (!isHydrated) {
@@ -77,19 +77,22 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
     )
   }
 
-
-  // If visiting an auth page (Login, Signup, OTP, etc.)
+  // If on an Auth route (login, signup, etc.), render the auth card directly without sidebar/header
   if (isAuthRoute) {
-    return <div className="min-h-screen w-full">{children}</div>
+    return <>{children}</>
   }
 
-  // If unauthenticated and on a protected page, render nothing while redirecting to /login
-  if (!isAuthenticated || !accessToken) {
+  // If on a protected route but not authenticated, render loading while redirect completes
+  if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="size-6 animate-spin text-indigo-600" />
-          <p className="text-xs text-muted-foreground">Redirecting to secure login...</p>
+          <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+          <p className="text-xs font-medium text-muted-foreground animate-pulse">
+            Redirecting to login...
+          </p>
         </div>
       </div>
     )

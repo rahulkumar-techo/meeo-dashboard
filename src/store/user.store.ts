@@ -1,6 +1,6 @@
 /**
  * @file user.store.ts
- * @description Persistent Zustand store for managing client authentication state and user session.
+ * @description Persistent Zustand store for managing client authentication state and user profile.
  */
 
 import { create } from "zustand"
@@ -10,14 +10,13 @@ import type { AuthUser } from "@/types/auth"
 interface UserState {
   user: AuthUser | null
   accessToken: string | null
-  refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
   hasHydrated: boolean
 
   // Actions
-  setAuth: (user: AuthUser, accessToken: string, refreshToken?: string) => void
-  setTokens: (accessToken: string, refreshToken?: string) => void
+  setAuth: (user: AuthUser, accessToken?: string | null) => void
+  setAccessToken: (accessToken: string | null) => void
   setUser: (user: AuthUser) => void
   setLoading: (isLoading: boolean) => void
   setHasHydrated: (hasHydrated: boolean) => void
@@ -32,30 +31,24 @@ const noopStorage = {
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
       hasHydrated: false,
 
-      setAuth: (user, accessToken, refreshToken) => {
+      setAuth: (user, accessToken) => {
         set({
           user,
-          accessToken,
-          refreshToken: refreshToken ?? get().refreshToken,
+          accessToken: accessToken ?? null,
           isAuthenticated: true,
           isLoading: false,
         })
       },
 
-      setTokens: (accessToken, refreshToken) => {
-        set({
-          accessToken,
-          refreshToken: refreshToken ?? get().refreshToken,
-          isAuthenticated: true,
-        })
+      setAccessToken: (accessToken) => {
+        set({ accessToken })
       },
 
       setUser: (user) => {
@@ -74,7 +67,6 @@ export const useUserStore = create<UserState>()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
         })
@@ -88,7 +80,6 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
