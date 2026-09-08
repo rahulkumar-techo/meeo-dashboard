@@ -29,10 +29,10 @@ export function HeaderProfileMenu() {
   const initials = user
     ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() ||
       user.email?.[0]?.toUpperCase() ||
-      "U"
+      "PA"
     : CURRENT_ADMIN.initials
 
-  const role = user?.role || (isAuthenticated ? "Administrator" : CURRENT_ADMIN.role)
+  const role = user?.role || (isAuthenticated ? "Super Admin" : CURRENT_ADMIN.role)
 
   const handleSignOut = () => {
     logoutMutation.mutate(undefined, {

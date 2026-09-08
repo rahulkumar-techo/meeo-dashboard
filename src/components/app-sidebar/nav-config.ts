@@ -70,11 +70,11 @@ export const CURRENT_SYSTEM_STATUS: SystemStatus = {
 }
 
 export const CURRENT_ADMIN: AdminUser = {
-  name: "Sarah Jenkins",
-  email: "sarah.jenkins@meeo.io",
+  name: "Platform Administrator",
+  email: "admin@platform.com",
   role: "Super Admin",
-  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  initials: "SJ",
+  avatar: "",
+  initials: "PA",
 }
 
 export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
