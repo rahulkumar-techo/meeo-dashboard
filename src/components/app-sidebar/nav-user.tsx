@@ -9,12 +9,16 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CURRENT_ADMIN, type AdminUser } from "./nav-config"
+import { useLogoutMutation } from "@/hooks/use-auth-query"
 
 interface NavUserProps {
   user?: AdminUser
 }
 
 export function NavUser({ user = CURRENT_ADMIN }: NavUserProps) {
+
+ const getLogOut =  useLogoutMutation();
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -36,6 +40,8 @@ export function NavUser({ user = CURRENT_ADMIN }: NavUserProps) {
             </div>
           </div>
           <button
+          /// logout btn trigger 
+          onClick={()=>getLogOut.mutate()}
             type="button"
             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             title="Sign out"
