@@ -1,208 +1,352 @@
 /**
  * @file page.tsx
- * @description Customer Directory & Cohort Intelligence Console (< 220 lines).
+ * @description Customer Directory & 360 Intelligence Console with live ecommerce metrics, VIP tiers, and fraud risk tracking.
  */
 
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { Download, Plus, Eye, Mail, ShieldAlert } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
+import {
+  Download,
+  Users,
+  Crown,
+  ShieldAlert,
+  UserX,
+  Plus,
+  Layers,
+  ArrowUpDown,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { PageHeader, DataTableToolbar } from "@/components/common"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  useCustomersQuery,
+  useCustomerMetricsQuery,
+} from "@/hooks/use-customer-query"
 import {
-  PageHeader,
-  MetricGrid,
-  StatusBadge,
-  DataTableToolbar,
-  DataTablePagination,
-  EmptyState,
-  DetailDrawer,
-} from "@/components/common"
-import { CUSTOMERS_LIST_DATA, CustomerRecord } from "@/data/customers"
+  CustomerMetricsCards,
+  CustomerTable,
+  CustomerStatusDialog,
+  EditCustomerDialog,
+  CustomerGuideCard,
+} from "@/components/customers"
+import type { AdminCustomer, CustomerStatus, LoyaltyTier } from "@/types/customer"
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = React.useState<CustomerRecord[]>(CUSTOMERS_LIST_DATA)
-  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(null)
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-  const [page, setPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(10)
+  const router = useRouter()
 
-  const filteredCustomers = React.useMemo(() => {
-    return customers.filter((c) => {
-      if (statusFilter !== "all" && c.status.toLowerCase() !== statusFilter.toLowerCase()) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        return (
-          c.name.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.id.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [customers, statusFilter, searchQuery])
+  // Tab state
+  const [activeTab, setActiveTab] = React.useState<string>("all")
+
+  // Filter & Pagination state
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [tierFilter, setTierFilter] = React.useState<string>("all")
+  const [sortBy, setSortBy] = React.useState<string>("createdAt")
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc")
+  const [page, setPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(20)
+
+  // Dialog state
+  const [selectedCustomer, setSelectedCustomer] = React.useState<AdminCustomer | null>(null)
+  const [statusDialogOpen, setStatusDialogOpen] = React.useState(false)
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+
+  // Map active tab to query filters
+  const queryParams = React.useMemo(() => {
+    const p: any = {
+      page,
+      limit: pageSize,
+      search: searchQuery.trim() || undefined,
+      sortBy,
+      sortOrder,
+    }
+
+    if (statusFilter !== "all") {
+      p.status = statusFilter
+    }
+
+    if (tierFilter !== "all") {
+      p.tier = tierFilter
+    }
+
+    if (activeTab === "vip") {
+      // Filter VIP
+      p.tier = "GOLD,PLATINUM"
+    } else if (activeTab === "risk") {
+      p.riskFlagOnly = true
+    } else if (activeTab === "moderated") {
+      p.status = "SUSPENDED,BLOCKED"
+    }
+
+    return p
+  }, [page, pageSize, searchQuery, statusFilter, tierFilter, sortBy, sortOrder, activeTab])
+
+  // Queries
+  const {
+    data: customersData,
+    isLoading: isCustomersLoading,
+    refetch: refetchCustomers,
+  } = useCustomersQuery(queryParams)
+
+  const {
+    data: metricsData,
+    isLoading: isMetricsLoading,
+    refetch: refetchMetrics,
+  } = useCustomerMetricsQuery()
+
+  const items = customersData?.items ?? []
+  const total = customersData?.pagination?.total ?? items.length
+  const totalPages = customersData?.pagination?.totalPages ?? 1
+
+  const handleRefresh = () => {
+    refetchCustomers()
+    refetchMetrics()
+  }
+
+  // Navigate to customer 360 view
+  const handleInspect360 = (customer: AdminCustomer) => {
+    router.push(`/customers/${customer.id}`)
+  }
+
+  // Client-side CSV export generator
+  const handleExportCSV = () => {
+    if (items.length === 0) return
+    const headers = [
+      "User ID",
+      "Email",
+      "First Name",
+      "Last Name",
+      "Status",
+      "Loyalty Tier",
+      "Total Orders",
+      "Total Spend ($)",
+      "Risk Score (0-100)",
+      "Risk Level",
+      "Created At",
+    ]
+    const rows = items.map((c) => [
+      c.id,
+      `"${c.email}"`,
+      `"${c.firstName || ""}"`,
+      `"${c.lastName || ""}"`,
+      c.status,
+      c.tier,
+      c.totalOrders,
+      c.totalSpend,
+      c.riskScore,
+      c.riskLevel,
+      c.createdAt,
+    ])
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute(
+      "download",
+      `customers_export_${new Date().toISOString().slice(0, 10)}.csv`
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-4 lg:p-6 max-w-[1600px] mx-auto">
-      {/* 1. Header */}
+    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto">
+      {/* 1. Page Header */}
       <PageHeader
         title="Customer Directory & Intelligence"
-        badge="8,940 Active Profiles"
+        badge="Omnichannel CRM"
         badgeVariant="brand"
-        description="Unified 360 customer profiles, purchase velocity cohorts, automated fraud risk tagging, and support communication ledger."
+        description="Unified 360 customer profiles, non-cancelled spend tiers, automated fraud risk engine, and session management."
       >
-        <Button variant="outline" size="sm" className="h-8.5 gap-1.5 text-xs font-medium border-border/80">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCSV}
+          className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+        >
           <Download className="size-3.5 text-muted-foreground" />
-          <span>Export Cohorts (CSV)</span>
-        </Button>
-        <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium">
-          <Plus className="size-3.5" />
-          <span>New Customer</span>
+          <span>Export Customers (CSV)</span>
         </Button>
       </PageHeader>
 
-      {/* 2. KPI Metrics */}
-      <MetricGrid
-        columns={4}
-        items={[
-          { title: "Total Customers", value: "8,940", colorTheme: "indigo", trend: { value: "+9.8%", isPositive: true }, footnote: "Active across global stores" },
-          { title: "Repeat Purchase Rate", value: "38.2%", colorTheme: "emerald", trend: { value: "+3.4%", isPositive: true }, footnote: "Avg orders: 2.8 per buyer" },
-          { title: "Average Lifetime Value", value: "$412.80", colorTheme: "cyan", trend: { value: "+14.2%", isPositive: true }, footnote: "VIP threshold: $1,000+" },
-          { title: "Risk Flagged Accounts", value: "12 Profiles", colorTheme: "rose", badge: { text: "Action Req", variant: "destructive" }, footnote: "High fraud velocity" },
-        ]}
+      {/* 2. KPI Metrics Grid */}
+      <CustomerMetricsCards
+        metrics={metricsData}
+        isLoading={isMetricsLoading}
       />
 
-      {/* 3. Filter Toolbar */}
-      <DataTableToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search customer name, email, account ID..."
-        filters={
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8.5 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-hidden"
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="attention">Attention Needed</option>
-          </select>
-        }
-        activeFiltersCount={statusFilter !== "all" ? 1 : 0}
-        onResetFilters={() => { setStatusFilter("all"); setSearchQuery("") }}
-      />
+      {/* 3. Onboarding & Intelligence Guide */}
+      <CustomerGuideCard />
 
-      {/* 4. Table */}
-      <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredCustomers.length === 0 ? (
-          <EmptyState
-            title="No Customers Found"
-            description="No customer accounts matched your search."
-            actionLabel="Reset Filters"
-            onAction={() => { setStatusFilter("all"); setSearchQuery("") }}
+      {/* 4. Tabbed Views */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => {
+          setActiveTab(tab)
+          setStatusFilter("all")
+          setTierFilter("all")
+          setPage(1)
+        }}
+        className="space-y-4"
+      >
+        <TabsList className="bg-muted/60 p-1 border border-border/60">
+          <TabsTrigger value="all" className="text-xs gap-1.5 font-medium">
+            <Users className="size-3.5" />
+            <span>All Customers</span>
+          </TabsTrigger>
+          <TabsTrigger value="vip" className="text-xs gap-1.5 font-medium">
+            <Crown className="size-3.5 text-amber-500" />
+            <span>VIP High Spenders</span>
+          </TabsTrigger>
+          <TabsTrigger value="risk" className="text-xs gap-1.5 font-medium relative">
+            <ShieldAlert className="size-3.5 text-rose-500" />
+            <span>Risk & Action Req</span>
+            {metricsData?.riskFlaggedAccounts ? (
+              <span className="ml-1 rounded-full bg-rose-600 text-white px-1.5 py-0.2 text-[10px] font-bold">
+                {metricsData.riskFlaggedAccounts}
+              </span>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="moderated" className="text-xs gap-1.5 font-medium">
+            <UserX className="size-3.5 text-slate-500" />
+            <span>Suspended / Blocked</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="space-y-4">
+          {/* Toolbar */}
+          <DataTableToolbar
+            searchQuery={searchQuery}
+            onSearchChange={(q) => {
+              setSearchQuery(q)
+              setPage(1)
+            }}
+            searchPlaceholder="Search customer name, email address, phone..."
+            filters={
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="ACTIVE">Active (Healthy)</option>
+                  <option value="PENDING_VERIFICATION">Pending Verification</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="BLOCKED">Blocked</option>
+                </select>
+
+                {/* Tier Filter */}
+                <select
+                  value={tierFilter}
+                  onChange={(e) => {
+                    setTierFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+                >
+                  <option value="all">All Loyalty Tiers</option>
+                  <option value="PLATINUM">Platinum VIP ($5k+)</option>
+                  <option value="GOLD">Gold VIP ($1k–$4.9k)</option>
+                  <option value="SILVER">Silver ($200–$999)</option>
+                  <option value="BRONZE">Bronze ($0–$199)</option>
+                </select>
+
+                {/* Sort Filter */}
+                <select
+                  value={`${sortBy}:${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split(":")
+                    setSortBy(field)
+                    setSortOrder(order as "asc" | "desc")
+                    setPage(1)
+                  }}
+                  className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden font-mono"
+                >
+                  <option value="createdAt:desc">Newest Registered</option>
+                  <option value="totalSpend:desc">Highest Lifetime Spend</option>
+                  <option value="totalOrders:desc">Most Orders Placed</option>
+                  <option value="riskScore:desc">Highest Risk Score</option>
+                  <option value="lastLoginAt:desc">Recently Active</option>
+                </select>
+              </div>
+            }
+            activeFiltersCount={
+              (statusFilter !== "all" ? 1 : 0) +
+              (tierFilter !== "all" ? 1 : 0) +
+              (sortBy !== "createdAt" ? 1 : 0)
+            }
+            onResetFilters={() => {
+              setStatusFilter("all")
+              setTierFilter("all")
+              setSortBy("createdAt")
+              setSortOrder("desc")
+              setSearchQuery("")
+              setPage(1)
+            }}
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <TableHead className="font-bold">CUSTOMER</TableHead>
-                  <TableHead className="font-bold">TIER</TableHead>
-                  <TableHead className="font-bold">STATUS</TableHead>
-                  <TableHead className="font-bold">TOTAL ORDERS</TableHead>
-                  <TableHead className="font-bold">TOTAL SPEND</TableHead>
-                  <TableHead className="font-bold">RISK SCORE</TableHead>
-                  <TableHead className="font-bold text-right">ACTIONS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs font-normal">
-                {filteredCustomers.map((cust) => (
-                  <TableRow
-                    key={cust.id}
-                    onClick={() => { setSelectedCustomer(cust); setIsDrawerOpen(true) }}
-                    className="cursor-pointer hover:bg-muted/40 transition-colors"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="size-7 border border-border">
-                          <AvatarImage src={cust.avatar} />
-                          <AvatarFallback>{cust.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-foreground">{cust.name}</p>
-                          <p className="text-[10.5px] text-muted-foreground">{cust.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px] font-medium">{cust.tier}</Badge></TableCell>
-                    <TableCell><StatusBadge status={cust.status.toLowerCase()} showDot /></TableCell>
-                    <TableCell className="font-mono">{cust.ordersCount} ({cust.ordersCadence})</TableCell>
-                    <TableCell className="font-mono font-bold text-foreground">{cust.totalSpend}</TableCell>
-                    <TableCell>
-                      <span className={`font-mono text-xs ${parseFloat(cust.riskScore) > 0.5 ? "text-rose-600 font-bold" : "text-emerald-600 font-medium"}`}>
-                        {cust.riskScore} ({cust.riskLabel})
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <Link href="/customers/360" onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
-                            360° View
-                          </Button>
-                        </Link>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
 
-        <DataTablePagination
-          currentPage={page}
-          totalPages={1}
-          pageSize={pageSize}
-          totalItems={filteredCustomers.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </div>
+          {/* Customer Table */}
+          <CustomerTable
+            items={items}
+            total={total}
+            totalPages={totalPages}
+            page={page}
+            pageSize={pageSize}
+            isLoading={isCustomersLoading}
+            hasActiveFilters={Boolean(
+              searchQuery ||
+                statusFilter !== "all" ||
+                tierFilter !== "all" ||
+                sortBy !== "createdAt"
+            )}
+            onInspect360={handleInspect360}
+            onModerateStatus={(customer) => {
+              setSelectedCustomer(customer)
+              setStatusDialogOpen(true)
+            }}
+            onEditProfile={(customer) => {
+              setSelectedCustomer(customer)
+              setEditDialogOpen(true)
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            onResetFilters={() => {
+              setStatusFilter("all")
+              setTierFilter("all")
+              setSortBy("createdAt")
+              setSortOrder("desc")
+              setSearchQuery("")
+              setPage(1)
+            }}
+          />
+        </TabsContent>
+      </Tabs>
 
-      {/* 5. Detail Drawer */}
-      {selectedCustomer && (
-        <DetailDrawer
-          open={isDrawerOpen}
-          onOpenChange={setIsDrawerOpen}
-          size="lg"
-          title={<div className="flex items-center gap-2"><span>{selectedCustomer.name}</span><Badge variant="outline">{selectedCustomer.tier}</Badge></div>}
-          description={selectedCustomer.email}
-          footer={
-            <Link href="/customers/360" className="w-full">
-              <Button size="sm" className="w-full text-xs">Open Complete 360° Profile →</Button>
-            </Link>
-          }
-        >
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/70 bg-card/60 p-3.5 text-xs">
-            <div><span className="text-muted-foreground text-[11px]">Phone:</span><p className="font-medium">{selectedCustomer.phone}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Address:</span><p className="font-medium">{selectedCustomer.address}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Average Order:</span><p className="font-mono font-bold text-foreground">{selectedCustomer.avgOrderValue}</p></div>
-            <div><span className="text-muted-foreground text-[11px]">Return Rate:</span><p className="font-mono text-emerald-600">{selectedCustomer.returnRate}</p></div>
-          </div>
-        </DetailDrawer>
-      )}
+      {/* 5. Status Moderation Modal */}
+      <CustomerStatusDialog
+        customer={selectedCustomer}
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        onSuccess={handleRefresh}
+      />
+
+      {/* 6. Edit Profile Modal */}
+      <EditCustomerDialog
+        customer={selectedCustomer}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={handleRefresh}
+      />
     </div>
   )
 }
