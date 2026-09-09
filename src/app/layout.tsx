@@ -17,7 +17,19 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Meeo | Enterprise Commerce Dashboard",
   description: "Meeo Enterprise E-Commerce Administration and Management Platform",
+  manifest: "/branding/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/branding/favicon.ico" },
+      { url: "/branding/favicon.svg", type: "image/svg+xml" },
+      { url: "/branding/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: [
+      { url: "/branding/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
+
 
 export default function RootLayout({
   children,
