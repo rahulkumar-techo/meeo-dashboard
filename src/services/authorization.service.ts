@@ -151,4 +151,18 @@ export const authorizationService = {
     >(`/admin/users/${userId}/sessions/${sessionId}`)
     return response.data
   },
+
+  /**
+   * 11. Forcibly Revoke All Active User Login Sessions
+   * Endpoint: DELETE /api/v1/admin/users/:userId/sessions
+   */
+  async revokeAllUserSessions(
+    userId: string
+  ): Promise<AuthorizationApiResponse<{ revokedCount: number }>> {
+    const response = await apiClient.delete<
+      AuthorizationApiResponse<{ revokedCount: number }>
+    >(`/admin/users/${userId}/sessions`)
+    return response.data
+  },
 }
+

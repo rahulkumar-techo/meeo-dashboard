@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { User, Settings, ShieldCheck, LogOut, LogIn } from "lucide-react"
+import { User, Settings, ShieldCheck, LogOut, LogIn, Smartphone } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -12,13 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useUserStore } from "@/store/user.store"
-import { useLogoutMutation } from "@/hooks/use-auth-query"
+import { useLogoutMutation, useLogoutAllMutation } from "@/hooks/use-auth-query"
 import { CURRENT_ADMIN } from "@/components/app-sidebar/nav-config"
+import { toast } from "sonner"
 
 export function HeaderProfileMenu() {
   const router = useRouter()
   const { user, isAuthenticated } = useUserStore()
   const logoutMutation = useLogoutMutation()
+  const logoutAllMutation = useLogoutAllMutation()
 
   const displayName = user
     ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email
@@ -37,6 +39,16 @@ export function HeaderProfileMenu() {
   const handleSignOut = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
+        toast.success("Signed out successfully")
+        router.push("/login")
+      },
+    })
+  }
+
+  const handleSignOutAll = () => {
+    logoutAllMutation.mutate(undefined, {
+      onSettled: () => {
+        toast.success("Signed out from all devices")
         router.push("/login")
       },
     })
@@ -102,13 +114,23 @@ export function HeaderProfileMenu() {
         <DropdownMenuSeparator />
 
         {isAuthenticated ? (
-          <DropdownMenuItem
-            onClick={handleSignOut}
-            className="flex items-center gap-2 text-xs text-rose-600 focus:text-rose-600 cursor-pointer"
-          >
-            <LogOut className="size-3.5" />
-            <span>Sign Out</span>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="flex items-center gap-2 text-xs text-rose-600 focus:text-rose-600 cursor-pointer"
+            >
+              <LogOut className="size-3.5" />
+              <span>Sign Out</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={handleSignOutAll}
+              className="flex items-center gap-2 text-xs text-rose-600 focus:text-rose-600 cursor-pointer"
+            >
+              <Smartphone className="size-3.5" />
+              <span>Sign Out All Devices</span>
+            </DropdownMenuItem>
+          </>
         ) : (
           <DropdownMenuItem
             onClick={() => router.push("/login")}
@@ -122,3 +144,4 @@ export function HeaderProfileMenu() {
     </DropdownMenu>
   )
 }
+

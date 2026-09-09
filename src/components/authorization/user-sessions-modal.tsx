@@ -21,7 +21,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   useUserSessionsQuery,
   useRevokeSessionMutation,
+  useRevokeAllUserSessionsMutation,
 } from "@/hooks/use-authorization-query"
+
 import type { AdminCustomer } from "@/types/customer"
 
 export interface UserSessionsModalProps {
@@ -38,8 +40,10 @@ export function UserSessionsModal({
   const userId = user?.id || ""
   const { data: sessions, isLoading } = useUserSessionsQuery(userId, open)
   const revokeMutation = useRevokeSessionMutation()
+  const revokeAllMutation = useRevokeAllUserSessionsMutation()
 
   const [revokingId, setRevokingId] = React.useState<string | null>(null)
+  const [isRevokingAll, setIsRevokingAll] = React.useState(false)
 
   const userName = user
     ? user.firstName
@@ -53,6 +57,15 @@ export function UserSessionsModal({
       await revokeMutation.mutateAsync({ userId, sessionId })
     } finally {
       setRevokingId(null)
+    }
+  }
+
+  const handleRevokeAll = async () => {
+    try {
+      setIsRevokingAll(true)
+      await revokeAllMutation.mutateAsync(userId)
+    } finally {
+      setIsRevokingAll(false)
     }
   }
 
@@ -128,7 +141,7 @@ export function UserSessionsModal({
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isThisRevoking}
+                      disabled={isThisRevoking || isRevokingAll}
                       onClick={() => handleRevoke(sess.id)}
                       className="h-7 px-2 text-[11px] border-rose-500/30 text-rose-600 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-400 dark:hover:bg-rose-950/30 shrink-0"
                     >
@@ -142,7 +155,23 @@ export function UserSessionsModal({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          {sessionList.length > 0 ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isRevokingAll}
+              onClick={handleRevokeAll}
+              className="text-xs h-8"
+            >
+              <Ban className="mr-1.5 size-3.5" />
+              <span>{isRevokingAll ? "Revoking All..." : "Revoke All Sessions"}</span>
+            </Button>
+          ) : (
+            <div />
+          )}
+
           <Button
             type="button"
             variant="ghost"
@@ -156,3 +185,4 @@ export function UserSessionsModal({
     </Dialog>
   )
 }
+

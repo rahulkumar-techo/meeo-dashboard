@@ -207,3 +207,20 @@ export function useRevokeSessionMutation() {
     },
   })
 }
+
+/**
+ * Hook to revoke all user sessions
+ */
+export function useRevokeAllUserSessionsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (userId: string) => authorizationService.revokeAllUserSessions(userId),
+    onSuccess: (_, userId) => {
+      queryClient.invalidateQueries({
+        queryKey: AUTHORIZATION_QUERY_KEYS.userSessions(userId),
+      })
+    },
+  })
+}
+

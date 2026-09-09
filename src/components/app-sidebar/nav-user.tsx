@@ -1,23 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { LogOut } from "lucide-react"
+import { LogOut, MoreVertical, Smartphone } from "lucide-react"
 import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CURRENT_ADMIN, type AdminUser } from "./nav-config"
 import { useUserStore } from "@/store/user.store"
-import { useLogoutMutation } from "@/hooks/use-auth-query"
+import { useLogoutMutation, useLogoutAllMutation } from "@/hooks/use-auth-query"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface NavUserProps {
   user?: AdminUser
 }
 
 export function NavUser({ user: defaultUser = CURRENT_ADMIN }: NavUserProps) {
+  const router = useRouter()
   const { user: authUser, isAuthenticated } = useUserStore()
   const logoutMutation = useLogoutMutation()
+  const logoutAllMutation = useLogoutAllMutation()
 
   const displayName = authUser
     ? `${authUser.firstName || ""} ${authUser.lastName || ""}`.trim() || authUser.email
@@ -32,6 +43,24 @@ export function NavUser({ user: defaultUser = CURRENT_ADMIN }: NavUserProps) {
     : defaultUser.initials
 
   const role = authUser?.role || (isAuthenticated ? "Super Admin" : defaultUser.role)
+
+  const handleSignOut = () => {
+    logoutMutation.mutate(undefined, {
+      onSettled: () => {
+        toast.success("Signed out successfully")
+        router.push("/login")
+      },
+    })
+  }
+
+  const handleSignOutAll = () => {
+    logoutAllMutation.mutate(undefined, {
+      onSettled: () => {
+        toast.success("Signed out from all devices")
+        router.push("/login")
+      },
+    })
+  }
 
   return (
     <SidebarMenu>
@@ -53,16 +82,39 @@ export function NavUser({ user: defaultUser = CURRENT_ADMIN }: NavUserProps) {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => logoutMutation.mutate()}
-            type="button"
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-rose-600 transition-colors shrink-0 ml-1"
-            title="Sign out"
-          >
-            <LogOut className="size-3.5" />
-          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0 ml-1 focus-visible:outline-hidden"
+              title="Account Options"
+            >
+              <MoreVertical className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-48">
+              <div className="px-2 py-1.5 text-left text-xs">
+                <p className="font-semibold text-foreground truncate">{displayName}</p>
+                <p className="text-[10px] text-muted-foreground font-mono">{role}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-xs text-rose-600 focus:text-rose-600 cursor-pointer"
+              >
+                <LogOut className="size-3.5" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleSignOutAll}
+                className="flex items-center gap-2 text-xs text-rose-600 focus:text-rose-600 cursor-pointer"
+              >
+                <Smartphone className="size-3.5" />
+                <span>Sign Out All Devices</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </SidebarMenuItem>
     </SidebarMenu>
   )
 }
+

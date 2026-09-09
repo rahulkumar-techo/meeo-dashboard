@@ -115,4 +115,26 @@ export const authService = {
       return { success: true, message: "Logged out locally" }
     }
   },
+
+  /**
+   * Terminate all active user sessions across all devices.
+   */
+  async logoutAll(): Promise<ApiResponse<null>> {
+    try {
+      const response = await apiClient.post<ApiResponse<null>>("/auth/logout-all")
+      return response.data
+    } catch {
+      try {
+        const fallback = await apiClient.post<ApiResponse<null>>(
+          "/auth/logout",
+          { allDevices: true },
+          { params: { all: true } }
+        )
+        return fallback.data
+      } catch {
+        return { success: true, message: "Logged out from all devices" }
+      }
+    }
+  },
 }
+

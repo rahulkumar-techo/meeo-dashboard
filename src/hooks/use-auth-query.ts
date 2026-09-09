@@ -122,7 +122,7 @@ export function useResetPasswordMutation() {
 }
 
 /**
- * Mutation for user logout.
+ * Mutation for user logout (current device).
  */
 export function useLogoutMutation() {
   const queryClient = useQueryClient()
@@ -139,3 +139,23 @@ export function useLogoutMutation() {
     },
   })
 }
+
+/**
+ * Mutation for global user logout from all connected devices.
+ */
+export function useLogoutAllMutation() {
+  const queryClient = useQueryClient()
+  const { logout } = useUserStore()
+
+  return useMutation({
+    mutationFn: async () => {
+      return await authService.logoutAll()
+    },
+    onSettled: () => {
+      logout()
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY })
+      queryClient.clear()
+    },
+  })
+}
+
