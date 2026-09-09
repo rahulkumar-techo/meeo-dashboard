@@ -20,7 +20,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   PageHeader,
   DataTableToolbar,
+  SocketStatusBadge,
 } from "@/components/common"
+
 import {
   useInventoriesQuery,
   useLowStockAlertsQuery,
@@ -180,6 +182,7 @@ export default function InventoryPage() {
         badgeVariant="brand"
         description="Comprehensive stock tracking, automated TTL checkout reservations, immutable transaction audit logs, and overselling guards."
       >
+        <SocketStatusBadge variant="badge" label="Live Matrix" className="h-8.5" />
         <Button
           variant="outline"
           size="sm"

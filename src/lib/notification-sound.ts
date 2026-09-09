@@ -85,3 +85,11 @@ class NotificationAudioEngine {
 }
 
 export const notificationAudio = new NotificationAudioEngine()
+
+/**
+ * Convenience helper to play notification audio chime.
+ */
+export function playNotificationSound() {
+  notificationAudio.playChime()
+}
+

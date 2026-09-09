@@ -10,12 +10,17 @@ import { HeaderNotificationsPopover } from "./header-notifications-popover"
 import { HeaderQuickCreateMenu } from "./header-quick-create-menu"
 import { HeaderProfileMenu } from "./header-profile-menu"
 
+import { useSocket } from "@/context/socket-provider"
+import { SocketStatusBadge } from "@/components/common/socket-status-badge"
+
+
 /**
  * Main application top navigation header.
  * Fully responsive across mobile, tablet, and desktop viewports with dark mode integration.
  */
 export function DashboardHeader() {
   const [searchOpen, setSearchOpen] = React.useState(false)
+  const { isConnected } = useSocket()
 
   return (
     <>
@@ -62,18 +67,15 @@ export function DashboardHeader() {
             <Search className="size-4" />
           </Button>
 
-          {/* System Health Uptime Pill (Visible on large screens) */}
-          <div className="hidden xl:flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-xs">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-[11px] font-medium text-foreground">
-              All systems operational
-            </span>
-            <span className="rounded bg-background px-1.5 py-0.2 font-mono text-[10px] text-muted-foreground border border-border/40">
-              99.98%
-            </span>
+          {/* Real-time WebSocket Stream Blinker */}
+          <div className="hidden lg:flex items-center">
+            <SocketStatusBadge variant="pill" />
+          </div>
+          <div className="hidden sm:flex lg:hidden items-center">
+            <SocketStatusBadge variant="badge" />
+          </div>
+          <div className="flex sm:hidden items-center">
+            <SocketStatusBadge variant="dot" />
           </div>
 
           {/* Quick Create Dropdown Menu */}

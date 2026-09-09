@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/theme";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AppLayoutWrapper } from "@/components/layout/app-layout-wrapper";
 
+import { SocketProvider } from "@/context/socket-provider";
+import { Toaster } from "sonner";
+
 const poppins = Poppins({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -48,11 +51,15 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ThemeProvider defaultTheme="system">
-            <AppLayoutWrapper>{children}</AppLayoutWrapper>
+            <SocketProvider>
+              <AppLayoutWrapper>{children}</AppLayoutWrapper>
+              <Toaster richColors position="top-right" />
+            </SocketProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>
     </html>
   );
 }
+
 

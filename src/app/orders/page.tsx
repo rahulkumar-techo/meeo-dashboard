@@ -20,9 +20,10 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PageHeader, DataTableToolbar } from "@/components/common"
+import { PageHeader, DataTableToolbar, SocketStatusBadge } from "@/components/common"
 import {
   useAdminOrdersQuery,
+
   useAdminOrderMetricsQuery,
   useConfirmOrderMutation,
   useProcessOrderMutation,
@@ -210,6 +211,7 @@ export default function OrdersPage() {
         badgeVariant="brand"
         description="Omnichannel order triage, inventory hold commitments, courier tracking dispatch, and terminal delivery settlements."
       >
+        <SocketStatusBadge variant="badge" label="Live Stream" className="h-8.5" />
         <Button
           variant="outline"
           size="sm"
@@ -229,6 +231,7 @@ export default function OrdersPage() {
           <span>Export Orders</span>
         </Button>
       </PageHeader>
+
 
       {/* 2. KPI Metrics Grid */}
       <OrderMetrics metrics={metricsData} isLoading={isMetricsLoading} />

@@ -20,7 +20,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   PageHeader,
   StatusBadge,
+  SocketStatusBadge,
 } from "@/components/common"
+
 import {
   DashboardPeriodSelect,
   DashboardKpiGrid,
@@ -118,9 +120,8 @@ export default function DashboardPage() {
                 <Truck className="size-4 text-indigo-600" />
                 <CardTitle className="text-sm font-bold tracking-tight">Recent Orders Live Stream</CardTitle>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Live streaming</span>
+              <div className="flex items-center gap-1.5">
+                <SocketStatusBadge variant="badge" label="Live Stream" />
               </div>
             </div>
           </CardHeader>

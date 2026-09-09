@@ -13,3 +13,5 @@ export * from "./empty-state"
 export * from "./triage-banner"
 export * from "./detail-drawer"
 export * from "./confirm-dialog"
+export * from "./socket-status-badge"
+
