@@ -30,9 +30,53 @@ export function useAdminPayments(params?: PaymentQueryParams) {
   return useQuery({
     queryKey: PAYMENT_QUERY_KEYS.list(params),
     queryFn: async () => {
-      const res = await paymentService.getAdminPayments(params)
-      return res.data
+      const res: any = await paymentService.getAdminPayments(params)
+
+      // Case 1: Backend envelope { success: true, data: [...], meta: { page, limit, total, totalPages } }
+      if (res && Array.isArray(res.data)) {
+        return {
+          items: res.data,
+          pagination: res.meta ?? {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: res.data.length,
+            totalPages: Math.ceil(res.data.length / (params?.limit ?? 20)) || 1,
+          },
+        }
+      }
+
+      // Case 2: Standard structure { success: true, data: { items: [...], pagination: {...} } }
+      if (res?.data && Array.isArray(res.data.items)) {
+        return {
+          items: res.data.items,
+          pagination: res.data.pagination ?? {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: res.data.items.length,
+            totalPages: Math.ceil(res.data.items.length / (params?.limit ?? 20)) || 1,
+          },
+        }
+      }
+
+      // Case 3: Raw array response
+      if (Array.isArray(res)) {
+        return {
+          items: res,
+          pagination: {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: res.length,
+            totalPages: 1,
+          },
+        }
+      }
+
+      return {
+        items: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      }
     },
+    staleTime: 15 * 1000,
   })
 }
 
@@ -43,10 +87,11 @@ export function usePaymentDetail(id: string, enabled = true) {
   return useQuery({
     queryKey: PAYMENT_QUERY_KEYS.detail(id),
     queryFn: async () => {
-      const res = await paymentService.getPaymentById(id)
-      return res.data
+      const res: any = await paymentService.getPaymentById(id)
+      return res?.data ?? res ?? null
     },
     enabled: enabled && Boolean(id),
+    staleTime: 20 * 1000,
   })
 }
 

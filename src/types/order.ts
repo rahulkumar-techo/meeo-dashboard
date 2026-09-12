@@ -44,17 +44,32 @@ export interface OrderAddress {
 }
 
 /**
+ * Variant snapshot attached to line items
+ */
+export interface OrderVariantSnapshot {
+  sku?: string
+  barcode?: string
+  thumbnail?: string | null
+  attributes?: Array<{ value: string; attribute: string }>
+}
+
+/**
  * Line item snapshot in an order
  */
 export interface OrderItem {
   id: string
+  productId?: string
   variantId: string
   productName: string
   sku: string
   quantity: number
   unitPrice: number | string
-  totalPrice: number | string
+  totalPrice?: number | string
+  total?: number | string
+  discountTotal?: number | string
+  taxTotal?: number | string
   image?: string | null
+  variantSnapshot?: OrderVariantSnapshot | null
 }
 
 /**
@@ -97,15 +112,36 @@ export interface AdminOrder {
   shippingTotal: number | string
   taxTotal: number | string
   grandTotal: number | string
+  financials?: {
+    currency?: string
+    subtotal?: number | string
+    discountTotal?: number | string
+    taxTotal?: number | string
+    shippingTotal?: number | string
+    grandTotal?: number | string
+  } | null
   notes?: string | null
   user?: OrderUser | null
+  customer?: OrderUser | null
   address?: OrderAddress | null
+  shippingAddress?: OrderAddress | null
   itemCount?: number
   items?: OrderItem[]
   statusHistory?: OrderStatusHistory[]
   shipment?: OrderShipment | null
+  coupon?: any
+  reservations?: any[]
   createdAt: string
   updatedAt?: string
+}
+
+/**
+ * Order Financials sub-object from metrics endpoint
+ */
+export interface AdminOrderFinancials {
+  totalRevenue: number
+  averageOrderValue: number
+  paidOrderCount?: number
 }
 
 /**
@@ -116,6 +152,11 @@ export interface AdminOrderMetrics {
   totalRevenue: number
   averageOrderValue: number
   activeFulfillments: number
+  fulfilledOrders?: number
+  activeFulfillmentCount?: number
+  countsByStatus?: Record<string, number | undefined>
+  financials?: AdminOrderFinancials
+  currency?: string
   statusCounts: {
     PENDING?: number
     PAYMENT_PENDING?: number

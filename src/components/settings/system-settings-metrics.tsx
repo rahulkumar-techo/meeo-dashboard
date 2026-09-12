@@ -74,7 +74,7 @@ export function SystemSettingsMetrics({
         text: `T+${settings.settlementDelayDays || 2} Days`,
         variant: "outline",
       },
-      footnote: `Min payout: $${settings.minimumPayoutAmount?.toFixed(2) || "50.00"}`,
+      footnote: `Min payout: ₹${settings.minimumPayoutAmount?.toFixed(2) || "50.00"}` ,
     },
     {
       title: "Feature Flags",

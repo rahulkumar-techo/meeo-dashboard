@@ -3,15 +3,37 @@
  * @description Type definitions for Authentication, User sessions, and API request/response payloads.
  */
 
+export interface AuthRoleDetailPermission {
+  id: string
+  name: string
+  description?: string
+}
+
+export interface AuthRoleDetail {
+  id: string
+  name: string
+  description?: string
+  permissions?: AuthRoleDetailPermission[]
+}
+
 export interface AuthUser {
   id: string
   email: string
   firstName: string
   lastName: string
   phone?: string | null
-  isVerified: boolean
-  role?: string
+  avatarUrl?: string | null
   avatar?: string
+  emailVerified?: boolean
+  phoneVerified?: boolean
+  isVerified?: boolean
+  status?: string
+  role?: string
+  roles?: string[]
+  permissions?: string[]
+  roleDetails?: AuthRoleDetail[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AuthTokens {

@@ -24,34 +24,94 @@ export const ORDERS_QUERY_KEY = ["orders", "admin"]
 export const ORDER_METRICS_QUERY_KEY = ["orders", "admin", "metrics"]
 
 /**
+ * Normalizes backend order format to ensure all properties (financials, customer, shippingAddress, items) are consistently mapped.
+ */
+export function normalizeAdminOrder(order: any): AdminOrder {
+  if (!order) return order
+  const financials = order.financials || {}
+  const items = Array.isArray(order.items)
+    ? order.items.map((item: any) => ({
+        ...item,
+        totalPrice:
+          item.total ??
+          item.totalPrice ??
+          Number(item.unitPrice || 0) * Number(item.quantity || 1),
+        image: item.variantSnapshot?.thumbnail || item.image || null,
+      }))
+    : []
+
+  return {
+    ...order,
+    currency: financials.currency || order.currency || "INR",
+    subtotal: financials.subtotal ?? order.subtotal ?? 0,
+    discountTotal: financials.discountTotal ?? order.discountTotal ?? 0,
+    shippingTotal: financials.shippingTotal ?? order.shippingTotal ?? 0,
+    taxTotal: financials.taxTotal ?? order.taxTotal ?? 0,
+    grandTotal: financials.grandTotal ?? order.grandTotal ?? 0,
+    financials: {
+      currency: financials.currency || order.currency || "INR",
+      subtotal: financials.subtotal ?? order.subtotal ?? 0,
+      discountTotal: financials.discountTotal ?? order.discountTotal ?? 0,
+      shippingTotal: financials.shippingTotal ?? order.shippingTotal ?? 0,
+      taxTotal: financials.taxTotal ?? order.taxTotal ?? 0,
+      grandTotal: financials.grandTotal ?? order.grandTotal ?? 0,
+    },
+    user: order.customer || order.user || null,
+    customer: order.customer || order.user || null,
+    address: order.shippingAddress || order.address || null,
+    shippingAddress: order.shippingAddress || order.address || null,
+    itemCount: items.length || order.itemCount || 1,
+    items,
+  }
+}
+
+/**
  * Hook to retrieve paginated admin orders with search and status filters.
  */
 export function useAdminOrdersQuery(params?: AdminOrderQueryParams) {
   return useQuery<AdminOrderListResponseData>({
     queryKey: [...ORDERS_QUERY_KEY, params],
     queryFn: async () => {
-      const res = await orderService.getAdminOrders(params)
-      const data = res?.data ?? (res as any)
+      const res: any = await orderService.getAdminOrders(params)
+      const data = res?.data ?? res
 
-      if (data && Array.isArray(data.items)) {
+      // Case 1: Backend envelope { success: true, data: [...], meta: { page, limit, total, totalPages } }
+      if (Array.isArray(data)) {
+        const items = data.map(normalizeAdminOrder)
         return {
-          items: data.items,
-          pagination: data.pagination ?? {
+          items,
+          pagination: res?.meta ?? {
             page: params?.page ?? 1,
             limit: params?.limit ?? 20,
-            total: data.items.length,
-            totalPages: Math.ceil(data.items.length / (params?.limit ?? 20)),
+            total: items.length,
+            totalPages: Math.ceil(items.length / (params?.limit ?? 20)) || 1,
           },
         }
       }
 
-      if (Array.isArray(data)) {
+      // Case 2: data has items array
+      if (data && Array.isArray(data.items)) {
+        const items = data.items.map(normalizeAdminOrder)
         return {
-          items: data,
+          items,
+          pagination: data.pagination ?? res?.meta ?? {
+            page: params?.page ?? 1,
+            limit: params?.limit ?? 20,
+            total: items.length,
+            totalPages: Math.ceil(items.length / (params?.limit ?? 20)) || 1,
+          },
+        }
+      }
+
+      // Case 3: Raw array response
+      if (Array.isArray(res)) {
+        const items = res.map(normalizeAdminOrder)
+        return {
+          items,
           pagination: {
             page: params?.page ?? 1,
             limit: params?.limit ?? 20,
-            total: data.length,
+            total: items.length,
             totalPages: 1,
           },
         }
@@ -75,16 +135,59 @@ export function useAdminOrderMetricsQuery(
   return useQuery<AdminOrderMetrics>({
     queryKey: [...ORDER_METRICS_QUERY_KEY, params],
     queryFn: async () => {
-      const res = await orderService.getAdminMetrics(params)
-      return (
-        res?.data ?? {
-          totalOrders: 0,
-          totalRevenue: 0,
-          averageOrderValue: 0,
-          activeFulfillments: 0,
-          statusCounts: {},
-        }
+      const res: any = await orderService.getAdminMetrics(params)
+      const data = res?.data ?? res ?? {}
+
+      const totalRevenue = Number(
+        data.financials?.totalRevenue ??
+          data.totalRevenue ??
+          data.revenue ??
+          data.grossRevenue ??
+          data.totalPlatformRevenue ??
+          0
       )
+
+      const averageOrderValue = Number(
+        data.financials?.averageOrderValue ??
+          data.averageOrderValue ??
+          data.aov ??
+          data.avgOrderValue ??
+          0
+      )
+
+      const totalOrders = Number(
+        data.totalOrders ??
+          data.total ??
+          data.count ??
+          0
+      )
+
+      const activeFulfillments = Number(
+        data.activeFulfillmentCount ??
+          data.activeFulfillments ??
+          data.activeOrders ??
+          data.pipeline ??
+          0
+      )
+
+      const statusCounts = data.countsByStatus ?? data.statusCounts ?? data.byStatus ?? {}
+
+      return {
+        totalOrders,
+        totalRevenue,
+        averageOrderValue,
+        activeFulfillments,
+        fulfilledOrders: Number(data.fulfilledOrders ?? data.deliveredCount ?? 0),
+        activeFulfillmentCount: activeFulfillments,
+        countsByStatus: statusCounts,
+        statusCounts,
+        financials: data.financials ?? {
+          totalRevenue,
+          averageOrderValue,
+          paidOrderCount: Number(data.financials?.paidOrderCount ?? 0),
+        },
+        currency: data.currency,
+      }
     },
     staleTime: 30 * 1000,
   })
@@ -99,7 +202,8 @@ export function useOrderByIdQuery(id: string) {
     queryFn: async () => {
       if (!id) return null
       const res = await orderService.getOrderById(id)
-      return res?.data ?? null
+      const order = res?.data ?? res ?? null
+      return order ? normalizeAdminOrder(order) : null
     },
     enabled: Boolean(id),
     staleTime: 20 * 1000,

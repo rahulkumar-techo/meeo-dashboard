@@ -26,6 +26,7 @@ import {
   DataTablePagination,
   EmptyState,
 } from "@/components/common"
+import { formatCurrency } from "@/lib/formatters"
 import {
   PaymentStatusBadge,
   PaymentDetailSheet,
@@ -68,7 +69,6 @@ export default function RefundsPage() {
   // Focus on refunds or filter as requested
   const items: PaymentListItem[] = React.useMemo(() => {
     if (statusFilter !== "all") return rawItems
-    // In "all" default for refunds page, show refunded/partially refunded + eligible succeeded payments
     return rawItems
   }, [rawItems, statusFilter])
 
@@ -82,7 +82,9 @@ export default function RefundsPage() {
     let partiallyRefundedCount = 0
     let refundableBalance = 0
 
-    rawItems.forEach((p) => {
+    const currency = rawItems.find((p: PaymentListItem) => p.currency)?.currency || "INR"
+
+    rawItems.forEach((p: PaymentListItem) => {
       const ref = Number(p.refundedAmount) || 0
       const amt = Number(p.amount) || 0
       totalRefunded += ref
@@ -95,6 +97,7 @@ export default function RefundsPage() {
     })
 
     return {
+      currency,
       totalRefunded,
       fullyRefundedCount,
       partiallyRefundedCount,
@@ -202,19 +205,27 @@ export default function RefundsPage() {
         items={[
           {
             title: "Total Refunded Debits",
-            value: `$${metrics.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            value: isLoading
+              ? "..."
+              : formatCurrency(metrics.totalRefunded, {
+                  currency: metrics.currency,
+                }),
             colorTheme: "amber",
             footnote: "Audited against double-entry ledger",
           },
           {
             title: "Settled Refund Records",
-            value: `${metrics.totalRefundCases} Payments`,
+            value: isLoading ? "..." : `${metrics.totalRefundCases} Payments`,
             colorTheme: "indigo",
             footnote: `${metrics.fullyRefundedCount} full, ${metrics.partiallyRefundedCount} partial`,
           },
           {
             title: "Available Refund Pool",
-            value: `$${metrics.refundableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            value: isLoading
+              ? "..."
+              : formatCurrency(metrics.refundableBalance, {
+                  currency: metrics.currency,
+                }),
             colorTheme: "emerald",
             footnote: "Unrefunded captured balances",
           },
@@ -346,9 +357,10 @@ export default function RefundsPage() {
                             href="/orders"
                             className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
                           >
-                            {pay.orderId.length > 16
-                              ? `${pay.orderId.slice(0, 10)}...`
-                              : pay.orderId}
+                            {pay.order?.orderNumber ||
+                              (pay.orderId.length > 16
+                                ? `${pay.orderId.slice(0, 10)}...`
+                                : pay.orderId)}
                           </Link>
                         </TableCell>
 
@@ -362,21 +374,23 @@ export default function RefundsPage() {
                         </TableCell>
 
                         <TableCell className="text-right font-mono font-medium text-foreground">
-                          ${amount.toFixed(2)}
+                          {formatCurrency(amount, { currency: pay.currency })}
                         </TableCell>
 
                         <TableCell className="text-right font-mono">
                           {refunded > 0 ? (
                             <span className="font-bold text-orange-600 dark:text-orange-400">
-                              -${refunded.toFixed(2)}
+                              -{formatCurrency(refunded, { currency: pay.currency })}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">$0.00</span>
+                            <span className="text-muted-foreground">
+                              {formatCurrency(0, { currency: pay.currency })}
+                            </span>
                           )}
                         </TableCell>
 
                         <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                          ${remaining.toFixed(2)}
+                          {formatCurrency(remaining, { currency: pay.currency })}
                         </TableCell>
 
                         <TableCell>

@@ -17,6 +17,7 @@ import { BrandTable } from "@/components/brands/brand-table"
 import { BrandInspector } from "@/components/brands/brand-inspector"
 import { EditBrandDialog } from "@/components/brands/edit-brand-dialog"
 import { DeleteBrandDialog } from "@/components/brands/delete-brand-dialog"
+import { PermissionGate } from "@/components/auth"
 import type { Brand, BrandStatus, BrandSortBy, SortOrder } from "@/types/brand"
 
 export default function BrandsPage() {
@@ -101,6 +102,7 @@ export default function BrandsPage() {
         title="Brand Registry & Vendor Partnerships"
         badge={`${total} Brands`}
         badgeVariant="brand"
+        module="brand"
         description="Manage verified manufacturer brands, official website domains, product lines, and vendor catalog distributions."
       >
         <Button
@@ -113,12 +115,14 @@ export default function BrandsPage() {
           <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : "text-muted-foreground"}`} />
           <span>Refresh</span>
         </Button>
-        <Link href="/brands/create">
-          <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
-            <Plus className="size-3.5" />
-            <span>Register Brand</span>
-          </Button>
-        </Link>
+        <PermissionGate permission="brand:create">
+          <Link href="/brands/create">
+            <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+              <Plus className="size-3.5" />
+              <span>Register Brand</span>
+            </Button>
+          </Link>
+        </PermissionGate>
       </PageHeader>
 
       {/* 2. KPI Metrics Grid */}

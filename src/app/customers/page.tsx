@@ -161,6 +161,7 @@ export default function CustomersPage() {
         title="Customer Directory & Intelligence"
         badge="Omnichannel CRM"
         badgeVariant="brand"
+        module="user"
         description="Unified 360 customer profiles, non-cancelled spend tiers, automated fraud risk engine, and session management."
       >
         <Button

@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState, DataTablePagination, StatusBadge } from "@/components/common"
 import { CustomerTierBadge } from "./customer-tier-badge"
 import { CustomerRiskBadge } from "./customer-risk-badge"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { AdminCustomer } from "@/types/customer"
 
 export interface CustomerTableProps {
@@ -76,11 +77,7 @@ export function CustomerTable({
   }
 
   const formatCurrency = (val: number | string) => {
-    const num = typeof val === "number" ? val : parseFloat(String(val)) || 0
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(num)
+    return globalFormatCurrency(val)
   }
 
   const formatTimestamp = (dateStr?: string | null) => {

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { formatCurrency } from "@/lib/formatters"
 import type { DashboardOverviewPayload } from "@/types/dashboard-overview"
 import { cn } from "@/lib/utils"
 
@@ -93,10 +94,10 @@ function RevenueBreakdownDetail({ overview }: { overview: DashboardOverviewPaylo
           Total Net Revenue
         </div>
         <div className="mt-1 text-3xl font-extrabold text-foreground">
-          ${net.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatCurrency(net)}
         </div>
         <div className="mt-2 text-xs text-muted-foreground">
-          Average Order Value: <strong className="text-foreground">${aov.toFixed(2)}</strong>
+          Average Order Value: <strong className="text-foreground">{formatCurrency(aov)}</strong>
         </div>
       </div>
 
@@ -105,21 +106,21 @@ function RevenueBreakdownDetail({ overview }: { overview: DashboardOverviewPaylo
         <div className="rounded-lg border border-border/70 bg-card p-3 space-y-1">
           <span className="text-[11px] font-medium text-muted-foreground">Gross Revenue</span>
           <div className="text-lg font-bold text-foreground">
-            ${gross.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            {formatCurrency(gross)}
           </div>
           <span className="text-[10px] text-muted-foreground">Pre-discount volume</span>
         </div>
 
         <div className="rounded-lg border border-border/70 bg-card p-3 space-y-1">
           <span className="text-[11px] font-medium text-muted-foreground">Average Order (AOV)</span>
-          <div className="text-lg font-bold text-foreground">${aov.toFixed(2)}</div>
+          <div className="text-lg font-bold text-foreground">{formatCurrency(aov)}</div>
           <span className="text-[10px] text-muted-foreground">Per completed checkout</span>
         </div>
 
         <div className="rounded-lg border border-border/70 bg-card p-3 space-y-1">
           <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Discounts Granted</span>
           <div className="text-lg font-bold text-foreground">
-            ${discounts.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            {formatCurrency(discounts)}
           </div>
           <span className="text-[10px] text-muted-foreground">Coupons & promotion cuts</span>
         </div>
@@ -127,7 +128,7 @@ function RevenueBreakdownDetail({ overview }: { overview: DashboardOverviewPaylo
         <div className="rounded-lg border border-border/70 bg-card p-3 space-y-1">
           <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">Total Refunds</span>
           <div className="text-lg font-bold text-foreground">
-            ${refunds.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            {formatCurrency(refunds)}
           </div>
           <span className="text-[10px] text-muted-foreground">Returned customer transactions</span>
         </div>

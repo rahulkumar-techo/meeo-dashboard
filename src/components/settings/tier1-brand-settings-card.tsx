@@ -72,16 +72,17 @@ export function Tier1BrandSettingsCard({
                 <DollarSign className="size-3 text-emerald-500" /> Default Currency
               </label>
               <select
-                value={settings.defaultCurrency || "USD"}
+                value={settings.defaultCurrency || "INR"}
                 onChange={(e) =>
                   onChange({ defaultCurrency: e.target.value })
                 }
                 className="w-full h-8.5 px-2.5 rounded-md border border-border bg-background text-xs font-mono text-foreground focus:outline-hidden"
               >
+                <option value="INR">INR (₹ - Indian Rupee) [Default]</option>
                 <option value="USD">USD ($ - United States Dollar)</option>
                 <option value="EUR">EUR (€ - Euro)</option>
-                <option value="INR">INR (₹ - Indian Rupee)</option>
                 <option value="GBP">GBP (£ - British Pound)</option>
+                <option value="AED">AED (AED - UAE Dirham)</option>
               </select>
             </div>
 

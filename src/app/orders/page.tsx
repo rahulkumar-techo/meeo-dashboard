@@ -209,6 +209,7 @@ export default function OrdersPage() {
         title="Orders & Live Fulfillment"
         badge="Realtime Operations"
         badgeVariant="brand"
+        module="order"
         description="Omnichannel order triage, inventory hold commitments, courier tracking dispatch, and terminal delivery settlements."
       >
         <SocketStatusBadge variant="badge" label="Live Stream" className="h-8.5" />
@@ -234,7 +235,11 @@ export default function OrdersPage() {
 
 
       {/* 2. KPI Metrics Grid */}
-      <OrderMetrics metrics={metricsData} isLoading={isMetricsLoading} />
+      <OrderMetrics
+        metrics={metricsData}
+        items={items}
+        isLoading={isMetricsLoading && isOrdersLoading}
+      />
 
       {/* 3. Onboarding & Fulfillment State Machine Guide */}
       <OrderGuideCard />

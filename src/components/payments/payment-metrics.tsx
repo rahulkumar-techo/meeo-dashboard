@@ -8,6 +8,7 @@
 import * as React from "react"
 import { DollarSign, CheckCircle2, AlertTriangle, RotateCcw } from "lucide-react"
 import { MetricGrid } from "@/components/common"
+import { formatCurrency } from "@/lib/formatters"
 import type { PaymentListItem } from "@/types/payment"
 
 interface PaymentMetricsProps {
@@ -23,29 +24,41 @@ export function PaymentMetrics({ items, isLoading }: PaymentMetricsProps) {
     let failedCount = 0
     let processingCount = 0
 
+    const currency = items.find((item) => item.currency)?.currency || "INR"
+
     items.forEach((item) => {
       const amt = Number(item.amount) || 0
       const refAmt = Number(item.refundedAmount) || 0
       totalGross += amt
       totalRefunded += refAmt
 
-      if (item.status === "SUCCESS") successCount++
-      else if (item.status === "FAILED" || item.status === "CANCELLED") failedCount++
-      else if (item.status === "PROCESSING" || item.status === "REQUIRES_ACTION" || item.status === "PENDING") {
+      const status = (item.status || "").toUpperCase()
+      if (status === "SUCCESS") {
+        successCount++
+      } else if (status === "FAILED" || status === "CANCELLED") {
+        failedCount++
+      } else if (
+        status === "PROCESSING" ||
+        status === "REQUIRES_ACTION" ||
+        status === "PENDING"
+      ) {
         processingCount++
       }
     })
 
     const totalValid = items.length
-    const successRate = totalValid > 0 ? ((successCount / totalValid) * 100).toFixed(1) : "100.0"
+    const successRate =
+      totalValid > 0 ? ((successCount / totalValid) * 100).toFixed(1) : "0.0"
 
     return {
+      currency,
       totalGross,
       totalRefunded,
       successCount,
       failedCount,
       processingCount,
       successRate,
+      totalValid,
       netVolume: totalGross - totalRefunded,
     }
   }, [items])
@@ -55,36 +68,53 @@ export function PaymentMetrics({ items, isLoading }: PaymentMetricsProps) {
       columns={4}
       items={[
         {
-          title: "Gross Captured Volume",
-          value: `$${metrics.totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          title: "Gross Payment Volume",
+          value: isLoading
+            ? "..."
+            : formatCurrency(metrics.totalGross, {
+                currency: metrics.currency,
+              }),
           colorTheme: "emerald",
-          footnote: `${metrics.successCount} captured payments`,
+          footnote: isLoading
+            ? "Loading transactions..."
+            : `${metrics.successCount} captured · ${metrics.totalValid} total`,
         },
         {
           title: "Gateway Success Rate",
-          value: `${metrics.successRate}%`,
+          value: isLoading ? "..." : `${metrics.successRate}%`,
           colorTheme: "indigo",
           trend: {
-            value: Number(metrics.successRate) >= 95 ? "Optimal" : "Attention needed",
-            isPositive: Number(metrics.successRate) >= 95,
+            value:
+              Number(metrics.successRate) >= 80
+                ? "Optimal"
+                : metrics.processingCount > 0
+                ? "In Progress"
+                : "Attention needed",
+            isPositive: Number(metrics.successRate) >= 80,
           },
-          footnote: `${metrics.failedCount} failed / declined`,
+          footnote: isLoading
+            ? "Evaluating rate..."
+            : `${metrics.failedCount} failed · ${metrics.processingCount} pending`,
         },
         {
           title: "Total Refunded & Debited",
-          value: `$${metrics.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          value: isLoading
+            ? "..."
+            : formatCurrency(metrics.totalRefunded, {
+                currency: metrics.currency,
+              }),
           colorTheme: "amber",
           footnote: "Settled against ledger",
         },
         {
-          title: "In-Flight / Processing",
-          value: `${metrics.processingCount} Intents`,
+          title: "In-Flight / Pending",
+          value: isLoading ? "..." : `${metrics.processingCount} Intents`,
           colorTheme: "cyan",
           badge:
             metrics.processingCount > 0
               ? { text: "Active", variant: "brand" }
               : undefined,
-          footnote: "Self-healing reconciliation enabled",
+          footnote: "UPI, Cards & Netbanking",
         },
       ]}
     />

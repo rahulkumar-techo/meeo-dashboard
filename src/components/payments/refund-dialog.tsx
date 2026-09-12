@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useIssueRefundMutation } from "@/hooks/use-payment-query"
+import { formatCurrency } from "@/lib/formatters"
 import type { PaymentListItem, PaymentDetail } from "@/types/payment"
 
 interface RefundDialogProps {
@@ -44,6 +45,7 @@ export function RefundDialog({
   const totalAmount = Number(payment?.amount) || 0
   const alreadyRefunded = Number(payment?.refundedAmount) || 0
   const remainingRefundable = Math.max(0, totalAmount - alreadyRefunded)
+  const curr = payment?.currency || "INR"
 
   React.useEffect(() => {
     if (open && payment) {
@@ -110,8 +112,8 @@ export function RefundDialog({
             <div className="my-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                This payment has already been completely refunded ($
-                {alreadyRefunded.toFixed(2)} of ${totalAmount.toFixed(2)}).
+                This payment has already been completely refunded (
+                {formatCurrency(alreadyRefunded, { currency: curr })} of {formatCurrency(totalAmount, { currency: curr })}).
               </span>
             </div>
           ) : (
@@ -127,19 +129,19 @@ export function RefundDialog({
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Order Ref:</span>
                   <span className="font-mono font-medium text-foreground">
-                    {payment.orderId}
+                    {payment.order?.orderNumber || payment.orderId}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Total Original:</span>
                   <span className="font-semibold text-foreground">
-                    ${totalAmount.toFixed(2)} {payment.currency}
+                    {formatCurrency(totalAmount, { currency: curr })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Already Refunded:</span>
                   <span className="font-semibold text-orange-600 dark:text-orange-400">
-                    ${alreadyRefunded.toFixed(2)}
+                    {formatCurrency(alreadyRefunded, { currency: curr })}
                   </span>
                 </div>
                 <div className="border-t border-border/60 pt-1.5 flex justify-between items-center">
@@ -147,7 +149,7 @@ export function RefundDialog({
                     Available to Refund:
                   </span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                    ${remainingRefundable.toFixed(2)} {payment.currency}
+                    {formatCurrency(remainingRefundable, { currency: curr })}
                   </span>
                 </div>
               </div>
@@ -171,7 +173,7 @@ export function RefundDialog({
                     <div>
                       <div className="font-semibold">Full Refund</div>
                       <div className="text-[11px] text-muted-foreground">
-                        ${remainingRefundable.toFixed(2)}
+                        {formatCurrency(remainingRefundable, { currency: curr })}
                       </div>
                     </div>
                     {isFullRefund && <Check className="h-4 w-4 text-indigo-600" />}
@@ -204,10 +206,9 @@ export function RefundDialog({
               {!isFullRefund && (
                 <div className="space-y-1.5">
                   <label htmlFor="refund-amount" className="text-xs font-semibold">
-                    Refund Amount ($ USD)
+                    Refund Amount ({curr})
                   </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="refund-amount"
                       type="number"
@@ -217,14 +218,13 @@ export function RefundDialog({
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0.00"
-                      className="pl-8 text-xs font-mono"
+                      className="text-xs font-mono"
                       required
                     />
                   </div>
                   {!isAmountValid && (
                     <p className="text-[11px] text-rose-500">
-                      Amount must be between $0.01 and $
-                      {remainingRefundable.toFixed(2)}
+                      Amount must be between 0.01 and {formatCurrency(remainingRefundable, { currency: curr })}
                     </p>
                   )}
                 </div>
@@ -276,7 +276,7 @@ export function RefundDialog({
                 ) : (
                   <>
                     <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Refund ${parsedAmount.toFixed(2)}
+                    Refund {formatCurrency(parsedAmount, { currency: curr })}
                   </>
                 )}
               </Button>

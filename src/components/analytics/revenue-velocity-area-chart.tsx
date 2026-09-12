@@ -140,9 +140,7 @@ export function RevenueVelocityAreaChart({
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(val) =>
-                    val >= 1000
-                      ? `$${(val / 1000).toFixed(0)}k`
-                      : `$${val}`
+                    formatCurrency(val, { compact: true })
                   }
                 />
 

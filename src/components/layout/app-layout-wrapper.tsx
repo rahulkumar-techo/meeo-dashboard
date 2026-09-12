@@ -8,6 +8,9 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useUserStore } from "@/store/user.store"
 import { useCurrentUserQuery } from "@/hooks/use-auth-query"
 import { authService } from "@/services/auth.service"
+import { usePermissions } from "@/hooks/use-permissions"
+import { NoAccessView } from "@/components/auth/no-access-view"
+import { AccessDeniedView } from "@/components/auth/access-denied-view"
 import { Loader2 } from "lucide-react"
 
 const AUTH_ROUTES = [
@@ -27,6 +30,14 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const router = useRouter()
   const { isAuthenticated, hasHydrated } = useUserStore()
   const [mountedHydrated, setMountedHydrated] = React.useState(false)
+
+  // Permission & RBAC state
+  const {
+    isSuperAdmin,
+    hasNoPermissions,
+    canAccessRoute,
+    getRouteRequiredPermission,
+  } = usePermissions()
 
   React.useEffect(() => {
     if (useUserStore.persist.hasHydrated()) {
@@ -98,6 +109,15 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
     )
   }
 
+  // If user is authenticated but possesses ZERO permissions (and is not super admin)
+  if (hasNoPermissions) {
+    return <NoAccessView />
+  }
+
+  // Check if current route is allowed for this user
+  const isRouteAllowed = canAccessRoute(pathname || "/")
+  const requiredPerm = getRouteRequiredPermission(pathname || "/")
+
   // Authenticated Dashboard layout
   return (
     <SidebarProvider>
@@ -105,7 +125,14 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
       <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
         <DashboardHeader />
         <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
-          {children}
+          {isRouteAllowed ? (
+            children
+          ) : (
+            <AccessDeniedView
+              requiredPermission={requiredPerm}
+              pathname={pathname}
+            />
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader, MetricGrid } from "@/components/common"
+import { formatCurrency } from "@/lib/formatters"
 import { useProductQuery } from "@/hooks/use-product-query"
 import { useProductVariantsQuery } from "@/hooks/use-variant-query"
 import { VariantTable } from "@/components/variants/variant-table"
@@ -106,14 +107,12 @@ export default function ProductVariantsPage() {
   }, [items])
 
   const avgPrice = React.useMemo(() => {
-    if (items.length === 0) return "$0.00"
+    if (items.length === 0) return formatCurrency(0)
     const sum = items.reduce((acc, v) => {
       const p = typeof v.price === "number" ? v.price : parseFloat(String(v.price || 0))
       return acc + (isNaN(p) ? 0 : p)
     }, 0)
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-      sum / items.length
-    )
+    return formatCurrency(sum / items.length)
   }, [items])
 
   const handleEditClick = (variant: ProductVariant) => {

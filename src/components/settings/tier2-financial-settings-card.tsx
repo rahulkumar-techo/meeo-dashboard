@@ -79,7 +79,7 @@ export function Tier2FinancialSettingsCard({
 
             <div className="space-y-1">
               <label className="font-semibold text-foreground">
-                Min Payout Amount ($)
+                Min Payout Amount (₹)
               </label>
               <Input
                 type="number"
@@ -158,7 +158,7 @@ export function Tier2FinancialSettingsCard({
 
           <div className="space-y-1">
             <label className="font-semibold text-foreground">
-              Refund Dual-Approval Threshold ($)
+              Refund Dual-Approval Threshold (₹)
             </label>
             <div className="relative">
               <Input
@@ -174,11 +174,11 @@ export function Tier2FinancialSettingsCard({
                 className="h-8.5 text-xs font-mono pl-6"
               />
               <span className="absolute left-2.5 top-2 font-mono text-muted-foreground text-xs">
-                $
+                ₹
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Dollar amount threshold above which refunds require dual supervisor approval before gateway processing.
+              Amount threshold above which refunds require dual supervisor approval before gateway processing.
             </p>
           </div>
 

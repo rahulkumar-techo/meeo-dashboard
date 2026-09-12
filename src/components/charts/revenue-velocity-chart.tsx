@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { formatCurrency } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface RevenueVelocityChartProps {
@@ -35,9 +36,9 @@ export function RevenueVelocityChart({ className }: RevenueVelocityChartProps) {
             <div className="flex rounded-md border border-border/80 bg-muted/40 p-0.5 text-xs">
               {(
                 [
-                  { key: "revenue", label: "Revenue ($)" },
+                  { key: "revenue", label: "Revenue" },
                   { key: "orders", label: "Orders (#)" },
-                  { key: "aov", label: "AOV ($)" },
+                  { key: "aov", label: "AOV" },
                 ] as const
               ).map((tab) => (
                 <button
@@ -98,7 +99,7 @@ export function RevenueVelocityChart({ className }: RevenueVelocityChartProps) {
 
           <div className="absolute left-[65%] top-[10px] -translate-x-1/2 rounded-md bg-[#0f172a] p-2 text-white shadow-xl text-left border border-slate-700 min-w-36 pointer-events-none text-xs">
             <div className="text-[10px] font-medium text-slate-300">Oct 24 (Peak Sale)</div>
-            <div className="text-sm font-bold text-white mt-0.5">$54,200.00</div>
+            <div className="text-sm font-bold text-white mt-0.5">{formatCurrency(54200)}</div>
             <div className="text-[10px] font-semibold text-emerald-400 mt-0.5">↗ +34.2% vs baseline</div>
           </div>
 
@@ -114,15 +115,15 @@ export function RevenueVelocityChart({ className }: RevenueVelocityChartProps) {
         <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/70 bg-muted/30 p-3 sm:grid-cols-4">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">30D GROSS TOTAL</div>
-            <div className="text-sm font-bold text-foreground mt-0.5">$1,248,320.50</div>
+            <div className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(1248320.5)}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">DAILY AVERAGE</div>
-            <div className="text-sm font-bold text-foreground mt-0.5">$41,610.68</div>
+            <div className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(41610.68)}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">PEAK DAY RECORD</div>
-            <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">$54,200.00</div>
+            <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{formatCurrency(54200)}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CONVERSION VELOCITY</div>

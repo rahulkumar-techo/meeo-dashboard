@@ -31,6 +31,7 @@ import {
   DashboardOperationsFailures,
 } from "@/components/dashboard"
 import { RevenueVelocityChart } from "@/components/charts"
+import { formatCurrency } from "@/lib/formatters"
 import { useOverView } from "@/hooks/dashboard/use-overview.hook"
 import { useAdminOrdersQuery } from "@/hooks/use-order-query"
 import { cn } from "@/lib/utils"
@@ -75,6 +76,7 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         badge="GLOBAL REALTIME"
+        module="dashboard"
         description="Here is what is happening across your global stores today."
         cacheStatus="Live Feed"
       >
@@ -175,8 +177,8 @@ export default function DashboardPage() {
                           <td className="py-2.5">
                             <StatusBadge status={ord.status} showDot />
                           </td>
-                          <td className="py-2.5 text-right font-mono font-bold">
-                            ${grandTotalNum.toFixed(2)}
+                          <td className="py-2.5 text-right font-mono font-bold text-foreground">
+                            {formatCurrency(grandTotalNum, { currency: ord.currency })}
                           </td>
                           <td className="py-2.5 text-right text-[11px] text-muted-foreground font-mono">
                             {new Date(ord.createdAt).toLocaleDateString()}

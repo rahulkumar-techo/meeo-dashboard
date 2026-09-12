@@ -41,10 +41,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { usePaymentDetail } from "@/hooks/use-payment-query"
+import { formatCurrency } from "@/lib/formatters"
 import { PaymentStatusBadge } from "./payment-status-badge"
 import { RefundDialog } from "./refund-dialog"
 import { ReconcileDialog } from "./reconcile-dialog"
-import type { PaymentListItem, PaymentDetail } from "@/types/payment"
+import type {
+  PaymentListItem,
+  PaymentDetail,
+  PaymentTransaction,
+  PaymentAttempt,
+  PaymentRefund,
+} from "@/types/payment"
 
 interface PaymentDetailSheetProps {
   paymentId: string | null
@@ -82,6 +89,7 @@ export function PaymentDetailSheet({
   const refundedAmount = Number(payment?.refundedAmount) || 0
   const netRetained = totalAmount - refundedAmount
   const remainingRefundable = Math.max(0, netRetained)
+  const curr = payment?.currency || "INR"
 
   return (
     <>
@@ -158,7 +166,7 @@ export function PaymentDetailSheet({
                     Original Amount
                   </span>
                   <div className="text-base font-bold text-foreground font-mono">
-                    ${totalAmount.toFixed(2)}
+                    {formatCurrency(totalAmount, { currency: curr })}
                   </div>
                   <span className="text-[10px] text-muted-foreground">
                     {payment.currency}
@@ -170,11 +178,11 @@ export function PaymentDetailSheet({
                     Refunded
                   </span>
                   <div className="text-base font-bold text-orange-600 dark:text-orange-400 font-mono">
-                    ${refundedAmount.toFixed(2)}
+                    {formatCurrency(refundedAmount, { currency: curr })}
                   </div>
                   <span className="text-[10px] text-muted-foreground">
                     {refundedAmount > 0
-                      ? `${((refundedAmount / totalAmount) * 100).toFixed(0)}% refunded`
+                      ? `${((refundedAmount / (totalAmount || 1)) * 100).toFixed(0)}% refunded`
                       : "No refunds"}
                   </span>
                 </div>
@@ -184,7 +192,7 @@ export function PaymentDetailSheet({
                     Net Retained
                   </span>
                   <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                    ${netRetained.toFixed(2)}
+                    {formatCurrency(netRetained, { currency: curr })}
                   </div>
                   <span className="text-[10px] text-muted-foreground">
                     Settled to merchant
@@ -220,7 +228,7 @@ export function PaymentDetailSheet({
                       <span className="text-muted-foreground">Linked Order:</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium text-foreground">
-                          {payment.orderId}
+                          {payment.order?.orderNumber || payment.orderId}
                         </span>
                         <Link
                           href="/orders"
@@ -241,7 +249,7 @@ export function PaymentDetailSheet({
                     <div className="p-3 flex justify-between items-center">
                       <span className="text-muted-foreground">Payment Method:</span>
                       <span className="font-medium text-foreground capitalize">
-                        {payment.paymentMethod || "card_visa"}
+                        {payment.paymentMethod || "UPI"}
                       </span>
                     </div>
 
@@ -282,7 +290,7 @@ export function PaymentDetailSheet({
                       </TableHeader>
                       <TableBody>
                         {payment.transactions && payment.transactions.length > 0 ? (
-                          payment.transactions.map((txn) => (
+                          payment.transactions.map((txn: PaymentTransaction) => (
                             <TableRow key={txn.id}>
                               <TableCell>
                                 <span
@@ -303,7 +311,7 @@ export function PaymentDetailSheet({
                                 </span>
                               </TableCell>
                               <TableCell className="font-mono font-bold text-foreground">
-                                ${Number(txn.amount).toFixed(2)} {txn.currency}
+                                {formatCurrency(txn.amount, { currency: txn.currency })}
                               </TableCell>
                               <TableCell className="font-mono text-muted-foreground text-[11px]">
                                 {txn.gatewayTransactionId || "N/A"}
@@ -347,22 +355,29 @@ export function PaymentDetailSheet({
                       </TableHeader>
                       <TableBody>
                         {payment.attempts && payment.attempts.length > 0 ? (
-                          payment.attempts.map((att) => (
+                          payment.attempts.map((att: PaymentAttempt) => (
                             <TableRow key={att.id}>
-                              <TableCell className="font-mono font-semibold">
+                              <TableCell className="font-mono font-bold">
                                 #{att.attemptNumber}
                               </TableCell>
                               <TableCell>
-                                <PaymentStatusBadge status={att.status} />
+                                <PaymentStatusBadge
+                                  status={att.status as any}
+                                  showDot={false}
+                                />
                               </TableCell>
                               <TableCell className="font-mono text-muted-foreground text-[11px]">
                                 {att.gatewayTransactionId || "N/A"}
                               </TableCell>
-                              <TableCell className="font-mono text-foreground">
-                                {att.gatewayResponseCode || "200"}
+                              <TableCell className="font-mono text-[11px]">
+                                {att.gatewayResponseCode || "200_OK"}
                               </TableCell>
                               <TableCell className="text-right text-muted-foreground text-[11px]">
-                                {new Date(att.createdAt).toLocaleTimeString()}
+                                {new Date(att.createdAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}
                               </TableCell>
                             </TableRow>
                           ))
@@ -372,7 +387,7 @@ export function PaymentDetailSheet({
                               colSpan={5}
                               className="text-center py-6 text-muted-foreground"
                             >
-                              No attempt history found.
+                              No gateway attempts logged.
                             </TableCell>
                           </TableRow>
                         )}
@@ -381,7 +396,7 @@ export function PaymentDetailSheet({
                   </div>
                 </TabsContent>
 
-                {/* 4. Refunds Tab */}
+                {/* 4. Refunds Log */}
                 <TabsContent value="refunds" className="space-y-3 text-xs">
                   <div className="rounded-lg border border-border/70 bg-card overflow-hidden">
                     <Table>
@@ -390,19 +405,19 @@ export function PaymentDetailSheet({
                           <TableHead>REFUND ID</TableHead>
                           <TableHead>AMOUNT</TableHead>
                           <TableHead>STATUS</TableHead>
-                          <TableHead>REASON / NOTE</TableHead>
-                          <TableHead className="text-right">DATE</TableHead>
+                          <TableHead>REASON</TableHead>
+                          <TableHead className="text-right">ISSUED AT</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {payment.refunds && payment.refunds.length > 0 ? (
-                          payment.refunds.map((ref) => (
+                          payment.refunds.map((ref: PaymentRefund) => (
                             <TableRow key={ref.id}>
                               <TableCell className="font-mono font-medium text-foreground">
                                 {ref.id.slice(0, 8)}...
                               </TableCell>
                               <TableCell className="font-mono font-bold text-orange-600 dark:text-orange-400">
-                                ${Number(ref.amount).toFixed(2)} {ref.currency}
+                                {formatCurrency(ref.amount, { currency: ref.currency })}
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="text-[10px]">

@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { EmptyState, DataTablePagination } from "@/components/common"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import { OrderStatusBadge } from "./order-status-badge"
 import type { AdminOrder } from "@/types/order"
 
@@ -79,12 +80,8 @@ export function OrderTable({
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const formatCurrency = (val: number | string, curr: string = "USD") => {
-    const num = typeof val === "number" ? val : parseFloat(String(val)) || 0
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: curr || "USD",
-    }).format(num)
+  const formatCurrency = (val: number | string, curr: string = "INR") => {
+    return globalFormatCurrency(val, { currency: curr || "INR" })
   }
 
   const formatTimestamp = (dateStr: string) => {
@@ -148,11 +145,13 @@ export function OrderTable({
               </TableRow>
             ) : (
               items.map((order) => {
+                const customerObj = order.customer || order.user
+                const shippingAddr = order.shippingAddress || order.address
                 const customerName =
-                  order.user?.firstName || order.user?.lastName
-                    ? `${order.user.firstName || ""} ${order.user.lastName || ""}`.trim()
-                    : order.address?.recipientName || "Guest Customer"
-                const customerEmail = order.user?.email || "No email on record"
+                  customerObj?.firstName || customerObj?.lastName
+                    ? `${customerObj.firstName || ""} ${customerObj.lastName || ""}`.trim()
+                    : shippingAddr?.recipientName || "Guest Customer"
+                const customerEmail = customerObj?.email || "No email on record"
                 const initials = customerName
                   .split(" ")
                   .map((n) => n[0])

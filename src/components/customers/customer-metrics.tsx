@@ -8,6 +8,7 @@
 import * as React from "react"
 import { Users, Repeat, DollarSign, ShieldAlert, UserCheck } from "lucide-react"
 import { MetricGrid } from "@/components/common"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { CustomerMetrics } from "@/types/customer"
 
 export interface CustomerMetricsProps {
@@ -28,12 +29,7 @@ export function CustomerMetricsCards({
 
   const vipCount = (tierCounts.GOLD ?? 0) + (tierCounts.PLATINUM ?? 0)
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(val)
+  const formatCurrency = (val: number) => globalFormatCurrency(val)
 
   return (
     <MetricGrid

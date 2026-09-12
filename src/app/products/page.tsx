@@ -24,6 +24,7 @@ import { useBrandsQuery } from "@/hooks/use-brand-query"
 import { ProductTable } from "@/components/products/product-table"
 import { ProductInspector } from "@/components/products/product-inspector"
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog"
+import { PermissionGate } from "@/components/auth"
 import type { Product, ProductStatus, ProductSortBy, SortOrder } from "@/types/product"
 
 export default function ProductsPage() {
@@ -123,6 +124,7 @@ export default function ProductsPage() {
         title="Product Catalog & Inventory Items"
         badge={`${total} Products`}
         badgeVariant="brand"
+        module="product"
         description="Manage catalog products, multi-variant SKUs, media gallery assets, brand associations, and SEO metadata."
       >
         <Button
@@ -135,12 +137,14 @@ export default function ProductsPage() {
           <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : "text-muted-foreground"}`} />
           <span>Refresh</span>
         </Button>
-        <Link href="/products/create">
-          <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
-            <Plus className="size-3.5" />
-            <span>New Product</span>
-          </Button>
-        </Link>
+        <PermissionGate permission="product:create">
+          <Link href="/products/create">
+            <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+              <Plus className="size-3.5" />
+              <span>New Product</span>
+            </Button>
+          </Link>
+        </PermissionGate>
       </PageHeader>
 
       {/* 2. KPI Metrics */}

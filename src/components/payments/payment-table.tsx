@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatCurrency } from "@/lib/formatters"
 import { PaymentStatusBadge } from "./payment-status-badge"
 import type { PaymentListItem } from "@/types/payment"
 
@@ -84,6 +85,11 @@ export function PaymentTable({
             const isRefundable =
               (pay.status === "SUCCESS" || pay.status === "PARTIALLY_REFUNDED") &&
               amount - refunded > 0
+            const orderLabel =
+              pay.order?.orderNumber ||
+              (pay.orderId.length > 16
+                ? `${pay.orderId.slice(0, 10)}...`
+                : pay.orderId)
 
             return (
               <TableRow
@@ -120,9 +126,7 @@ export function PaymentTable({
                       href="/orders"
                       className="text-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
                     >
-                      {pay.orderId.length > 16
-                        ? `${pay.orderId.slice(0, 10)}...`
-                        : pay.orderId}
+                      {orderLabel}
                     </Link>
                   </div>
                 </TableCell>
@@ -139,25 +143,24 @@ export function PaymentTable({
 
                 {/* 4. Method */}
                 <TableCell className="capitalize text-muted-foreground">
-                  {pay.paymentMethod || "card_visa"}
+                  {pay.paymentMethod || "UPI"}
                 </TableCell>
 
                 {/* 5. Gross Amount */}
                 <TableCell className="text-right font-mono font-bold text-foreground">
-                  ${amount.toFixed(2)}{" "}
-                  <span className="text-[10px] font-normal text-muted-foreground">
-                    {pay.currency}
-                  </span>
+                  {formatCurrency(amount, { currency: pay.currency })}
                 </TableCell>
 
                 {/* 6. Refunded Amount */}
                 <TableCell className="text-right font-mono">
                   {refunded > 0 ? (
                     <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      -${refunded.toFixed(2)}
+                      -{formatCurrency(refunded, { currency: pay.currency })}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">$0.00</span>
+                    <span className="text-muted-foreground">
+                      {formatCurrency(0, { currency: pay.currency })}
+                    </span>
                   )}
                 </TableCell>
 

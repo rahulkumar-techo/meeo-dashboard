@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState, DataTablePagination } from "@/components/common"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { ProductVariant } from "@/types/variant"
 
 export interface VariantTableProps {
@@ -74,7 +75,7 @@ export function VariantTable({
     if (val === null || val === undefined || val === "") return "-"
     const num = typeof val === "number" ? val : parseFloat(String(val))
     if (isNaN(num)) return "-"
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(num)
+    return globalFormatCurrency(num)
   }
 
   return (

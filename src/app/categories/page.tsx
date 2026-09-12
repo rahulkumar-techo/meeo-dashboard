@@ -17,6 +17,7 @@ import { CategoryTable } from "@/components/categories/category-table"
 import { CategoryInspector } from "@/components/categories/category-inspector"
 import { EditCategoryDialog } from "@/components/categories/edit-category-dialog"
 import { DeleteCategoryDialog } from "@/components/categories/delete-category-dialog"
+import { PermissionGate } from "@/components/auth"
 import type {
   Category,
   CategoryStatus,
@@ -109,6 +110,7 @@ export default function CategoriesPage() {
         title="Category Taxonomy & Facets"
         badge={`${total} Categories`}
         badgeVariant="brand"
+        module="category"
         description="Organize hierarchical catalog trees, manage product taxonomy, URL slugs, and faceted navigation."
       >
         <Button
@@ -121,12 +123,14 @@ export default function CategoriesPage() {
           <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : "text-muted-foreground"}`} />
           <span>Refresh</span>
         </Button>
-        <Link href="/categories/create">
-          <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
-            <Plus className="size-3.5" />
-            <span>New Category</span>
-          </Button>
-        </Link>
+        <PermissionGate permission="category:create">
+          <Link href="/categories/create">
+            <Button size="sm" className="h-8.5 gap-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+              <Plus className="size-3.5" />
+              <span>New Category</span>
+            </Button>
+          </Link>
+        </PermissionGate>
       </PageHeader>
 
       {/* 2. KPI Metrics Grid */}

@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { OrderStatusBadge } from "./order-status-badge"
 import { useOrderByIdQuery } from "@/hooks/use-order-query"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { AdminOrder } from "@/types/order"
 
 export interface OrderDetailSheetProps {
@@ -58,13 +59,11 @@ export function OrderDetailSheet({
 
   if (!currentOrder) return null
 
-  const formatCurrency = (val?: number | string | null, curr: string = "USD") => {
-    if (val === null || val === undefined) return "$0.00"
-    const num = typeof val === "number" ? val : parseFloat(String(val)) || 0
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: curr || "USD",
-    }).format(num)
+  const formatCurrency = (val?: number | string | null, curr: string = "INR") => {
+    if (val === null || val === undefined) {
+      return globalFormatCurrency(0, { currency: curr || currentOrder.currency || "INR" })
+    }
+    return globalFormatCurrency(val, { currency: curr || currentOrder.currency || "INR" })
   }
 
   const formatTimestamp = (dateStr: string) => {
@@ -83,11 +82,13 @@ export function OrderDetailSheet({
   }
 
   const status = currentOrder.status
+  const customerObj = currentOrder.customer || currentOrder.user
+  const shippingAddr = currentOrder.shippingAddress || currentOrder.address
   const customerName =
-    currentOrder.user?.firstName || currentOrder.user?.lastName
-      ? `${currentOrder.user.firstName || ""} ${currentOrder.user.lastName || ""}`.trim()
-      : currentOrder.address?.recipientName || "Guest Customer"
-  const customerEmail = currentOrder.user?.email || "No email on record"
+    customerObj?.firstName || customerObj?.lastName
+      ? `${customerObj.firstName || ""} ${customerObj.lastName || ""}`.trim()
+      : shippingAddr?.recipientName || "Guest Customer"
+  const customerEmail = customerObj?.email || "No email on record"
 
   return (
     <DetailDrawer
@@ -191,8 +192,8 @@ export function OrderDetailSheet({
             <div className="space-y-1 text-xs">
               <p className="font-semibold text-foreground">{customerName}</p>
               <p className="text-muted-foreground font-mono">{customerEmail}</p>
-              {currentOrder.address?.phone && (
-                <p className="text-muted-foreground">{currentOrder.address.phone}</p>
+              {shippingAddr?.phone && (
+                <p className="text-muted-foreground">{shippingAddr.phone}</p>
               )}
             </div>
           </div>
@@ -203,21 +204,21 @@ export function OrderDetailSheet({
               <MapPin className="size-4 text-primary" />
               <span>Shipping Destination</span>
             </div>
-            {currentOrder.address ? (
+            {shippingAddr ? (
               <div className="space-y-0.5 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">
-                  {currentOrder.address.recipientName}
+                  {shippingAddr.recipientName}
                 </p>
-                <p>{currentOrder.address.addressLine1}</p>
-                {currentOrder.address.addressLine2 && (
-                  <p>{currentOrder.address.addressLine2}</p>
+                <p>{shippingAddr.addressLine1}</p>
+                {shippingAddr.addressLine2 && (
+                  <p>{shippingAddr.addressLine2}</p>
                 )}
                 <p>
-                  {currentOrder.address.city}, {currentOrder.address.state}{" "}
-                  {currentOrder.address.postalCode}
+                  {shippingAddr.city}, {shippingAddr.state}{" "}
+                  {shippingAddr.postalCode}
                 </p>
                 <p className="font-semibold text-foreground uppercase">
-                  {currentOrder.address.country}
+                  {shippingAddr.country}
                 </p>
               </div>
             ) : (
@@ -289,19 +290,37 @@ export function OrderDetailSheet({
                 {currentOrder.items.map((item) => (
                   <div
                     key={item.id || item.sku}
-                    className="p-3.5 flex items-center justify-between text-xs hover:bg-muted/30 transition-colors"
+                    className="p-3.5 flex items-center justify-between text-xs hover:bg-muted/30 transition-colors gap-3"
                   >
-                    <div className="space-y-0.5">
-                      <p className="font-semibold text-foreground">{item.productName}</p>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                        <span>SKU: {item.sku}</span>
-                        <span>•</span>
-                        <span>Unit: {formatCurrency(item.unitPrice, currentOrder.currency)}</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.productName}
+                          className="size-10 rounded-lg object-cover border border-border/80 shrink-0 bg-muted"
+                        />
+                      )}
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="font-semibold text-foreground truncate">{item.productName}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                          <span>SKU: {item.sku}</span>
+                          <span>•</span>
+                          <span>Unit: {formatCurrency(item.unitPrice, currentOrder.currency)}</span>
+                        </div>
+                        {item.variantSnapshot?.attributes && item.variantSnapshot.attributes.length > 0 && (
+                          <div className="flex items-center gap-1.5 pt-0.5">
+                            {item.variantSnapshot.attributes.map((attr, aIdx) => (
+                              <Badge key={aIdx} variant="outline" className="text-[9.5px] px-1 py-0 capitalize font-mono">
+                                {attr.attribute}: {attr.value}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right font-mono">
+                    <div className="text-right font-mono shrink-0">
                       <p className="font-bold text-foreground">
-                        {formatCurrency(item.totalPrice, currentOrder.currency)}
+                        {formatCurrency(item.totalPrice ?? item.total, currentOrder.currency)}
                       </p>
                       <p className="text-[11px] text-muted-foreground">Qty: {item.quantity}</p>
                     </div>

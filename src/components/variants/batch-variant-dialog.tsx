@@ -430,9 +430,9 @@ export function BatchVariantDialog({
                     <tr>
                       <th className="p-3 text-left min-w-[170px]">SKU Code *</th>
                       <th className="p-3 text-left min-w-[130px]">Attributes</th>
-                      <th className="p-3 text-left w-28">Price ($) *</th>
-                      <th className="p-3 text-left w-28">MRP / Compare ($)</th>
-                      <th className="p-3 text-left w-24">Cost ($)</th>
+                      <th className="p-3 text-left w-28">Price (₹) *</th>
+                      <th className="p-3 text-left w-28">MRP / Compare (₹)</th>
+                      <th className="p-3 text-left w-24">Cost (₹)</th>
                       <th className="p-3 text-left w-24">Initial Stock</th>
                       <th className="p-3 text-left w-24">Low Stock</th>
                       <th className="p-3 text-left min-w-[140px]">Barcode (UPC)</th>

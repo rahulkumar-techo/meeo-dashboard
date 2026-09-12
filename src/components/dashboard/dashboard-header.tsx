@@ -12,6 +12,7 @@ import { HeaderProfileMenu } from "./header-profile-menu"
 
 import { useSocket } from "@/context/socket-provider"
 import { SocketStatusBadge } from "@/components/common/socket-status-badge"
+import { CurrencySelector } from "@/components/common/currency-selector"
 
 
 /**
@@ -77,6 +78,9 @@ export function DashboardHeader() {
           <div className="flex sm:hidden items-center">
             <SocketStatusBadge variant="dot" />
           </div>
+
+          {/* Currency Preference Selector */}
+          <CurrencySelector className="h-8" />
 
           {/* Quick Create Dropdown Menu */}
           <HeaderQuickCreateMenu />

@@ -57,6 +57,7 @@ import {
   CustomerStatusDialog,
   EditCustomerDialog,
 } from "@/components/customers"
+import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { AdminCustomer } from "@/types/customer"
 
 export default function Customer360DetailPage() {
@@ -90,11 +91,7 @@ export default function Customer360DetailPage() {
   }
 
   const formatCurrency = (val: number | string) => {
-    const num = typeof val === "number" ? val : parseFloat(String(val)) || 0
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(num)
+    return globalFormatCurrency(val)
   }
 
   const formatTimestamp = (dateStr?: string | null) => {

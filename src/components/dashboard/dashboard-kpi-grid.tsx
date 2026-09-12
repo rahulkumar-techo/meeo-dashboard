@@ -9,6 +9,7 @@
 import * as React from "react"
 import { DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react"
 import { MetricGrid, type MetricCardProps } from "@/components/common"
+import { formatCurrency } from "@/lib/formatters"
 import { DashboardKpiDetailModal, type KpiMetricType } from "./dashboard-kpi-detail-modal"
 import type { DashboardOverviewPayload } from "@/types/dashboard-overview"
 
@@ -32,24 +33,19 @@ export function mapOverviewToKpiItems(
       title: "Net Revenue",
       value:
         overview?.revenue?.netRevenue !== undefined
-          ? `$${overview.revenue.netRevenue.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`
-          : "$0.00",
+          ? formatCurrency(overview.revenue.netRevenue)
+          : formatCurrency(0),
       trend: {
         value:
           overview?.revenue?.change !== undefined
             ? `${overview.revenue.change >= 0 ? "+" : ""}${overview.revenue.change}%`
-            : `AOV: $${(overview?.revenue?.averageOrderValue ?? 0).toFixed(2)}`,
+            : `AOV: ${formatCurrency(overview?.revenue?.averageOrderValue ?? 0)}`,
         isPositive: (overview?.revenue?.change ?? 0) >= 0,
         comparisonPeriod: overview?.revenue?.change !== undefined ? "prior period" : "avg order",
       },
       icon: DollarSign,
       colorTheme: "indigo",
-      footnote: `Gross: $${(overview?.revenue?.grossRevenue ?? 0).toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-      })} • Discounts: $${(overview?.revenue?.totalDiscountGranted ?? 0).toFixed(2)}`,
+      footnote: `Gross: ${formatCurrency(overview?.revenue?.grossRevenue ?? 0)} • Discounts: ${formatCurrency(overview?.revenue?.totalDiscountGranted ?? 0)}`,
       badge: { text: "View Details →", variant: "brand" },
       onClick: () => onSelectMetric?.("revenue"),
     },

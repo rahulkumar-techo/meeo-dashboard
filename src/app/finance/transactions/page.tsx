@@ -26,6 +26,7 @@ import {
   DataTablePagination,
   EmptyState,
 } from "@/components/common"
+import { formatCurrency } from "@/lib/formatters"
 import {
   PaymentStatusBadge,
   PaymentDetailSheet,
@@ -74,19 +75,27 @@ export default function TransactionsPage() {
     let capturedCount = 0
     let inFlightCount = 0
 
+    const currency = items.find((p) => p.currency)?.currency || "INR"
+
     items.forEach((p) => {
       const amt = Number(p.amount) || 0
       const ref = Number(p.refundedAmount) || 0
       grossSettled += amt
       totalRefundDebits += ref
 
-      if (p.status === "SUCCESS") capturedCount++
-      else if (p.status === "PROCESSING" || p.status === "REQUIRES_ACTION" || p.status === "PENDING") {
+      const status = (p.status || "").toUpperCase()
+      if (status === "SUCCESS") capturedCount++
+      else if (
+        status === "PROCESSING" ||
+        status === "REQUIRES_ACTION" ||
+        status === "PENDING"
+      ) {
         inFlightCount++
       }
     })
 
     return {
+      currency,
       grossSettled,
       totalRefundDebits,
       netSettled: grossSettled - totalRefundDebits,
@@ -196,25 +205,37 @@ export default function TransactionsPage() {
         items={[
           {
             title: "Total Gross Settled",
-            value: `$${metrics.grossSettled.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            value: isLoading
+              ? "..."
+              : formatCurrency(metrics.grossSettled, {
+                  currency: metrics.currency,
+                }),
             colorTheme: "emerald",
             footnote: `${metrics.capturedCount} captured payments`,
           },
           {
             title: "Net Settlement Volume",
-            value: `$${metrics.netSettled.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            value: isLoading
+              ? "..."
+              : formatCurrency(metrics.netSettled, {
+                  currency: metrics.currency,
+                }),
             colorTheme: "indigo",
             footnote: "After refund deductions",
           },
           {
             title: "Total Refund Debits",
-            value: `$${metrics.totalRefundDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            value: isLoading
+              ? "..."
+              : formatCurrency(metrics.totalRefundDebits, {
+                  currency: metrics.currency,
+                }),
             colorTheme: "amber",
             footnote: "Debited against ledger",
           },
           {
             title: "In-Flight Clearing",
-            value: `${metrics.inFlightCount} Intents`,
+            value: isLoading ? "..." : `${metrics.inFlightCount} Intents`,
             colorTheme: "cyan",
             badge:
               metrics.inFlightCount > 0
@@ -348,9 +369,10 @@ export default function TransactionsPage() {
                             href="/orders"
                             className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
                           >
-                            {pay.orderId.length > 16
-                              ? `${pay.orderId.slice(0, 10)}...`
-                              : pay.orderId}
+                            {pay.order?.orderNumber ||
+                              (pay.orderId.length > 16
+                                ? `${pay.orderId.slice(0, 10)}...`
+                                : pay.orderId)}
                           </Link>
                         </TableCell>
 
@@ -364,25 +386,27 @@ export default function TransactionsPage() {
                         </TableCell>
 
                         <TableCell className="capitalize text-muted-foreground">
-                          {pay.paymentMethod || "card_visa"}
+                          {pay.paymentMethod || "UPI"}
                         </TableCell>
 
                         <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                          +${gross.toFixed(2)}
+                          +{formatCurrency(gross, { currency: pay.currency })}
                         </TableCell>
 
                         <TableCell className="text-right font-mono">
                           {ref > 0 ? (
                             <span className="font-semibold text-orange-600 dark:text-orange-400">
-                              -${ref.toFixed(2)}
+                              -{formatCurrency(ref, { currency: pay.currency })}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">$0.00</span>
+                            <span className="text-muted-foreground">
+                              {formatCurrency(0, { currency: pay.currency })}
+                            </span>
                           )}
                         </TableCell>
 
                         <TableCell className="text-right font-mono font-bold text-foreground">
-                          ${net.toFixed(2)}
+                          {formatCurrency(net, { currency: pay.currency })}
                         </TableCell>
 
                         <TableCell>

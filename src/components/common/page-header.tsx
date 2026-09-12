@@ -10,6 +10,8 @@ import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
+import { PagePermissionBadge } from "@/components/auth/page-permission-badge"
+
 export interface PageHeaderAction {
   label: string
   icon?: React.ComponentType<{ className?: string }>
@@ -28,6 +30,10 @@ export interface PageHeaderProps {
   badgeVariant?: "brand" | "default" | "secondary" | "outline" | "success" | "warning"
   /** Subtitle description explaining page context */
   description?: string | React.ReactNode
+  /** Optional resource module name to display effective RBAC permissions (e.g. "product", "order", "category") */
+  module?: string
+  /** Explicit toggle to render page permission indicator */
+  showPermissionBadge?: boolean
   /** Right-hand side custom action elements or controls */
   children?: React.ReactNode
   /** Optional cache / last-synced timestamp text */
@@ -41,6 +47,8 @@ export function PageHeader({
   badge,
   badgeVariant = "brand",
   description,
+  module,
+  showPermissionBadge,
   children,
   cacheStatus,
   className,
@@ -75,6 +83,10 @@ export function PageHeader({
             </Badge>
           ) : (
             badge
+          )}
+
+          {(module || showPermissionBadge) && (
+            <PagePermissionBadge module={module} />
           )}
         </div>
 

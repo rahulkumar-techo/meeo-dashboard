@@ -36,7 +36,7 @@ export function FinancialKPIs({ financials, isLoading }: FinancialKPIsProps) {
   const aov = financials?.averageOrderValue ?? 0
   const discounts = financials?.totalDiscounts ?? 0
   const refunds = financials?.totalRefunds ?? 0
-  const currency = financials?.currency || "USD"
+  const currency = financials?.currency || "INR"
 
   const discountRate =
     grossRevenue > 0 ? ((discounts / grossRevenue) * 100).toFixed(1) : "0.0"

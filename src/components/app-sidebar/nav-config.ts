@@ -24,9 +24,12 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+import { SYSTEM_PERMISSIONS } from "@/lib/permissions"
+
 export interface NavSubItem {
   title: string
   url: string
+  permission?: string
   badge?: string | number
   badgeVariant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" | "brand"
 }
@@ -35,6 +38,7 @@ export interface NavItem {
   title: string
   url: string
   icon: LucideIcon
+  permission?: string
   badge?: string | number
   badgeVariant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" | "brand"
   items?: NavSubItem[]
@@ -86,6 +90,7 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Dashboard",
         url: "/",
         icon: LayoutDashboard,
+        permission: SYSTEM_PERMISSIONS.DASHBOARD_READ,
       },
     ],
   },
@@ -97,35 +102,37 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Orders",
         url: "/orders",
         icon: ShoppingCart,
-        badge: "12 new",
-        badgeVariant: "brand",
+        permission: SYSTEM_PERMISSIONS.ORDER_READ,
       },
       {
         title: "Products",
         url: "/products",
         icon: Package,
+        permission: SYSTEM_PERMISSIONS.PRODUCT_READ,
       },
       {
         title: "Categories",
         url: "/categories",
         icon: Layers,
+        permission: SYSTEM_PERMISSIONS.CATEGORY_READ,
       },
       {
         title: "Brands",
         url: "/brands",
         icon: Award,
+        permission: SYSTEM_PERMISSIONS.BRAND_READ,
       },
       {
         title: "Attributes",
         url: "/attributes",
         icon: Tag,
+        permission: SYSTEM_PERMISSIONS.ATTRIBUTE_READ,
       },
       {
         title: "Inventory",
         url: "/inventory",
         icon: Boxes,
-        badge: "3 low",
-        badgeVariant: "warning",
+        permission: SYSTEM_PERMISSIONS.INVENTORY_READ,
       },
     ],
   },
@@ -137,18 +144,19 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Customers",
         url: "/customers",
         icon: Users,
-        badge: "1.8k",
-        badgeVariant: "brand",
+        permission: SYSTEM_PERMISSIONS.USER_READ,
       },
       {
         title: "Customer 360",
         url: "/customers/360",
         icon: UserCheck,
+        permission: SYSTEM_PERMISSIONS.USER_READ,
       },
       {
         title: "Reviews",
         url: "/reviews",
         icon: Star,
+        permission: SYSTEM_PERMISSIONS.REVIEW_READ,
       },
     ],
   },
@@ -160,16 +168,19 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Payments",
         url: "/finance/payments",
         icon: CreditCard,
+        permission: SYSTEM_PERMISSIONS.PAYMENT_READ,
       },
       {
         title: "Refunds",
         url: "/finance/refunds",
         icon: RotateCcw,
+        permission: SYSTEM_PERMISSIONS.PAYMENT_REFUND,
       },
       {
         title: "Transactions",
         url: "/finance/transactions",
         icon: Receipt,
+        permission: SYSTEM_PERMISSIONS.PAYMENT_READ,
       },
     ],
   },
@@ -181,11 +192,13 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Coupons",
         url: "/marketing/coupons",
         icon: Ticket,
+        permission: SYSTEM_PERMISSIONS.COUPON_READ,
       },
       {
         title: "Promotions",
         url: "/marketing/promotions",
         icon: Megaphone,
+        permission: SYSTEM_PERMISSIONS.COUPON_READ,
       },
     ],
   },
@@ -197,18 +210,19 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Notifications",
         url: "/operations/notifications",
         icon: Bell,
+        permission: SYSTEM_PERMISSIONS.AUDIT_READ,
       },
       {
         title: "Background Jobs",
         url: "/operations/background-jobs",
         icon: Cpu,
+        permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
       },
       {
         title: "Outbox Events",
         url: "/operations/outbox-events",
         icon: Send,
-        badge: "1 failed",
-        badgeVariant: "destructive",
+        permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
       },
     ],
   },
@@ -220,11 +234,13 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Analytics",
         url: "/analytics",
         icon: BarChart3,
+        permission: SYSTEM_PERMISSIONS.DASHBOARD_READ,
       },
       {
         title: "Reports",
         url: "/analytics/reports",
         icon: FileText,
+        permission: SYSTEM_PERMISSIONS.DASHBOARD_READ,
       },
     ],
   },
@@ -236,16 +252,19 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         title: "Users & Roles",
         url: "/admin/users-roles",
         icon: UserCheck,
+        permission: SYSTEM_PERMISSIONS.ROLE_READ,
       },
       {
         title: "Audit Logs",
         url: "/admin/audit-logs",
         icon: ShieldAlert,
+        permission: SYSTEM_PERMISSIONS.AUDIT_READ,
       },
       {
         title: "Settings",
         url: "/admin/settings",
         icon: Settings,
+        permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
       },
     ],
   },

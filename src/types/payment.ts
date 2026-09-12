@@ -81,14 +81,28 @@ export interface PaymentListItem {
   id: string
   orderId: string
   status: PaymentStatus
-  amount: number
-  refundedAmount: number
+  amount: number | string
+  paidAmount?: number | string
+  refundedAmount: number | string
   currency: string
   provider: PaymentProvider | string
   paymentMethod?: string | null
   attemptsCount?: number
+  providerCustomerId?: string | null
+  metadata?: Record<string, any>
+  expiresAt?: string | null
+  paidAt?: string | null
+  failedAt?: string | null
   createdAt: string
   updatedAt: string
+  order?: {
+    id: string
+    orderNumber?: string
+    userId?: string
+    status?: string
+  } | null
+  attempts?: PaymentAttempt[]
+  refunds?: PaymentRefund[]
 }
 
 /**
@@ -166,7 +180,8 @@ export interface PaymentListResponseData {
  */
 export interface PaymentApiResponse<T> {
   success: boolean
-  message: string
+  message?: string
   data: T
+  meta?: PaymentPagination
   statusCode?: number
 }

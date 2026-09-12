@@ -306,7 +306,7 @@ export function EditVariantDialog({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className="font-medium text-foreground text-xs">
-                    Selling Price ($) <span className="text-rose-500">*</span>
+                    Selling Price (₹) <span className="text-rose-500">*</span>
                   </label>
                   <Input
                     type="number"
@@ -322,7 +322,7 @@ export function EditVariantDialog({
 
                 <div className="space-y-1.5">
                   <label className="font-medium text-muted-foreground text-xs">
-                    Compare At MRP ($)
+                    Compare At MRP (₹)
                   </label>
                   <Input
                     type="number"
@@ -339,7 +339,7 @@ export function EditVariantDialog({
 
                 <div className="space-y-1.5">
                   <label className="font-medium text-muted-foreground text-xs">
-                    Cost Per Item ($)
+                    Cost Per Item (₹)
                   </label>
                   <Input
                     type="number"

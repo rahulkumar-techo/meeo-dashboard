@@ -1,11 +1,8 @@
-/**
- * @file formatters.ts
- * @description Centralized data formatting utilities for currency, numbers, percentages, dates, and durations.
- * Follows Single Responsibility Principle (SRP) to eliminate formatting duplication across pages.
- */
+import { useCurrencyStore, SUPPORTED_CURRENCIES } from "@/store/currency.store"
 
 /**
- * Format a number as a currency string (e.g. $1,234.56 or $1.2M compact)
+ * Format a number as a currency string (e.g. ₹1,234.56 or ₹1.2M compact)
+ * Defaults to INR (Rupees).
  */
 export function formatCurrency(
   amount: number | string,
@@ -16,25 +13,56 @@ export function formatCurrency(
   }
 ): string {
   const num = typeof amount === "string" ? parseFloat(amount.replace(/[^0-9.-]+/g, "")) : amount
-  if (isNaN(num)) return "$0.00"
 
-  const { currency = "USD", compact = false, decimals = 2 } = options || {}
-
-  if (compact) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(num)
+  // Resolve active currency (Option currency > Store currency > "INR")
+  let activeCurrencyCode = options?.currency
+  if (!activeCurrencyCode && typeof window !== "undefined") {
+    try {
+      activeCurrencyCode = useCurrencyStore.getState().currency
+    } catch {
+      activeCurrencyCode = "INR"
+    }
+  }
+  if (!activeCurrencyCode) {
+    activeCurrencyCode = "INR"
   }
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(num)
+  const currencyConfig =
+    SUPPORTED_CURRENCIES.find(
+      (c) => c.code.toUpperCase() === activeCurrencyCode?.toUpperCase()
+    ) || {
+      code: activeCurrencyCode.toUpperCase(),
+      symbol: activeCurrencyCode.toUpperCase() === "INR" ? "₹" : "$",
+      locale: activeCurrencyCode.toUpperCase() === "INR" ? "en-IN" : "en-US",
+    }
+
+  const symbol = currencyConfig.symbol || "₹"
+  if (isNaN(num)) return `${symbol}0.00`
+
+  const { compact = false, decimals = 2 } = options || {}
+  const locale =
+    currencyConfig.locale ||
+    (activeCurrencyCode.toUpperCase() === "INR" ? "en-IN" : "en-US")
+
+  try {
+    if (compact) {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currencyConfig.code,
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(num)
+    }
+
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyConfig.code,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(num)
+  } catch {
+    return `${symbol}${num.toFixed(decimals)}`
+  }
 }
 
 /**
