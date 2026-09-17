@@ -10,7 +10,7 @@ import * as React from "react"
 import {
   Settings,
   Globe,
-  DollarSign,
+  IndianRupee,
   Shield,
   Key,
   Save,
@@ -310,7 +310,7 @@ export default function AdminSettingsPage() {
               value="tier2"
               className="text-xs py-1.5 font-medium gap-1.5"
             >
-              <DollarSign className="size-3.5" />
+              <IndianRupee className="size-3.5" />
               <span>Finance & Payouts</span>
             </TabsTrigger>
 

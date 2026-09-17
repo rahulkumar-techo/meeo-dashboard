@@ -10,8 +10,10 @@ import * as React from "react"
 import {
   HelpCircle,
   Calculator,
+  Percent,
+  IndianRupee,
+  Layers,
   Filter,
-  DollarSign,
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
@@ -99,7 +101,7 @@ export function AnalyticsGuideCard() {
             {/* 3. Payment Failure & Gateway Quality */}
             <div className="space-y-1.5 rounded-lg bg-muted/30 p-3 border border-border/50">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                <DollarSign className="size-3.5 text-amber-500" />
+                <IndianRupee className="size-3.5 text-amber-500" />
                 <span>Payment Health & Attribution</span>
               </div>
               <div className="text-[11px] text-muted-foreground leading-relaxed space-y-1">

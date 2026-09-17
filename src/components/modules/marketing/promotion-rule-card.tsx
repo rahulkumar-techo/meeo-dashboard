@@ -9,7 +9,7 @@
 import * as React from "react"
 import {
   Tag,
-  DollarSign,
+  IndianRupee,
   Calendar,
   Layers,
   Sparkles,

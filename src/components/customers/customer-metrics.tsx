@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, Repeat, DollarSign, ShieldAlert, UserCheck } from "lucide-react"
+import { Users, Repeat, IndianRupee, ShieldAlert, UserCheck } from "lucide-react"
 import { MetricGrid } from "@/components/common"
 import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { CustomerMetrics } from "@/types/customer"
@@ -54,7 +54,7 @@ export function CustomerMetricsCards({
           title: "Average Lifetime Value (LTV)",
           value: isLoading ? "..." : formatCurrency(avgLtv),
           colorTheme: "cyan",
-          icon: DollarSign,
+          icon: IndianRupee,
           footnote: `${vipCount} VIP members (Gold & Platinum)`,
         },
         {

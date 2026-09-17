@@ -7,7 +7,7 @@
 "use client"
 
 import * as React from "react"
-import { DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react"
+import { IndianRupee, ShoppingBag, TrendingUp, Users } from "lucide-react"
 import { MetricGrid, type MetricCardProps } from "@/components/common"
 import { formatCurrency } from "@/lib/formatters"
 import { DashboardKpiDetailModal, type KpiMetricType } from "./dashboard-kpi-detail-modal"
@@ -43,7 +43,7 @@ export function mapOverviewToKpiItems(
         isPositive: (overview?.revenue?.change ?? 0) >= 0,
         comparisonPeriod: overview?.revenue?.change !== undefined ? "prior period" : "avg order",
       },
-      icon: DollarSign,
+      icon: IndianRupee,
       colorTheme: "indigo",
       footnote: `Gross: ${formatCurrency(overview?.revenue?.grossRevenue ?? 0)} • Discounts: ${formatCurrency(overview?.revenue?.totalDiscountGranted ?? 0)}`,
       badge: { text: "View Details →", variant: "brand" },

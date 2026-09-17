@@ -189,8 +189,8 @@ export function EditCouponDialog({
                   className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
                 >
                   <option value="PERCENTAGE">Percentage (%)</option>
-                  <option value="FIXED_AMOUNT">Fixed Amount ($)</option>
-                  <option value="FREE_SHIPPING">Free Shipping ($0)</option>
+                  <option value="FIXED_AMOUNT">Fixed Amount (₹)</option>
+                  <option value="FREE_SHIPPING">Free Shipping (₹0)</option>
                 </select>
               </div>
             </div>
@@ -202,7 +202,7 @@ export function EditCouponDialog({
                   {isPercentage
                     ? "Discount Percentage (%)"
                     : isFixed
-                    ? "Discount Amount ($ USD)"
+                    ? "Discount Amount (₹ INR)"
                     : "Shipping Benefit"}
                 </label>
                 <Input
@@ -221,7 +221,7 @@ export function EditCouponDialog({
               {isPercentage && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold">
-                    Maximum Discount Cap ($)
+                    Maximum Discount Cap (₹)
                   </label>
                   <Input
                     type="number"
@@ -239,7 +239,7 @@ export function EditCouponDialog({
             {/* 3. Minimum Order & Limits */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold">Min Subtotal ($)</label>
+                <label className="text-xs font-semibold">Min Subtotal (₹)</label>
                 <Input
                   type="number"
                   step="0.01"

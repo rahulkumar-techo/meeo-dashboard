@@ -62,7 +62,7 @@ export function CouponGuideCard() {
             <p className="text-muted-foreground leading-relaxed">
               <strong>Percentage:</strong> <code className="text-[11px]">min(subtotal * %, maxCap)</code>.<br />
               <strong>Fixed Amount:</strong> <code className="text-[11px]">min(value, subtotal)</code> (prevents negative totals).<br />
-              <strong>Free Shipping:</strong> Sets shipping fee to $0.
+              <strong>Free Shipping:</strong> Sets shipping fee to ₹0.
             </p>
           </div>
 

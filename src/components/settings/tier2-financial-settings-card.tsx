@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { DollarSign, ShieldCheck, Calendar, Percent, Landmark } from "lucide-react"
+import { IndianRupee, ShieldCheck, Calendar, Percent, Landmark } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import type { SystemSettings, SettlementFrequency } from "@/types/settings"

@@ -7,7 +7,7 @@
 "use client"
 
 import * as React from "react"
-import { RotateCcw, AlertCircle, DollarSign, ShieldAlert, Check } from "lucide-react"
+import { RotateCcw, AlertCircle, IndianRupee, ShieldAlert, Check } from "lucide-react"
 import {
   Dialog,
   DialogContent,

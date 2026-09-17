@@ -3,13 +3,13 @@
  * @description Mock data and constants for the root Dashboard Page.
  */
 
-import { DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react"
+import { IndianRupee, ShoppingBag, TrendingUp, Users } from "lucide-react"
 
 export const DASHBOARD_TRIAGE_ITEMS = [
   { id: "low_stock", label: "Low Stock", count: "8 items", severity: "normal" as const },
   { id: "out_of_stock", label: "Out of Stock", count: "2 items", severity: "normal" as const },
   { id: "pending_fulfillment", label: "Pending Fulfillment", count: "142 orders", severity: "info" as const },
-  { id: "failed_payments", label: "Failed Payments", count: "5 ($412.00)", severity: "danger" as const },
+  { id: "failed_payments", label: "Failed Payments", count: "5 (₹412.00)", severity: "danger" as const },
   { id: "failed_outbox", label: "Failed Outbox", count: "1 event", severity: "warning" as const },
 ]
 
@@ -17,11 +17,11 @@ export const DASHBOARD_KPI_CARDS = [
   {
     id: "revenue",
     title: "Total Revenue",
-    value: "$1,248,320.50",
+    value: "₹1,248,320.50",
     trend: { value: "+18.4%", isPositive: true, comparisonPeriod: "prior 30d" },
-    icon: DollarSign,
+    icon: IndianRupee,
     colorTheme: "indigo" as const,
-    footnote: "vs $1,054,120.00 baseline",
+    footnote: "vs ₹1,054,120.00 baseline",
   },
   {
     id: "orders",
@@ -35,11 +35,11 @@ export const DASHBOARD_KPI_CARDS = [
   {
     id: "aov",
     title: "Average Order Value",
-    value: "$87.35",
+    value: "₹87.35",
     trend: { value: "+5.6%", isPositive: true, comparisonPeriod: "prior 30d" },
     icon: TrendingUp,
     colorTheme: "amber" as const,
-    footnote: "vs $82.70 prior 30d",
+    footnote: "vs ₹82.70 prior 30d",
   },
   {
     id: "customers",
@@ -59,7 +59,7 @@ export const DASHBOARD_LIVE_ORDERS = [
     itemsCount: 3,
     payment: { status: "Paid: Stripe", tone: "success" as const },
     fulfillment: { status: "Confirmed", tone: "info" as const },
-    total: "$249.00",
+    total: "₹249.00",
     timeAgo: "4m ago",
   },
   {
@@ -68,7 +68,7 @@ export const DASHBOARD_LIVE_ORDERS = [
     itemsCount: 1,
     payment: { status: "Paid: PayPal", tone: "success" as const },
     fulfillment: { status: "Processing", tone: "brand" as const },
-    total: "$1,199.00",
+    total: "₹1,199.00",
     timeAgo: "18m ago",
   },
   {
@@ -77,7 +77,7 @@ export const DASHBOARD_LIVE_ORDERS = [
     itemsCount: 5,
     payment: { status: "Failed", tone: "destructive" as const },
     fulfillment: { status: "Cancelled", tone: "secondary" as const },
-    total: "$342.50",
+    total: "₹342.50",
     timeAgo: "42m ago",
     isError: true,
   },
@@ -87,7 +87,7 @@ export const DASHBOARD_LIVE_ORDERS = [
     itemsCount: 2,
     payment: { status: "Paid: Stripe", tone: "success" as const },
     fulfillment: { status: "Shipped", tone: "brand" as const },
-    total: "$89.00",
+    total: "₹89.00",
     timeAgo: "1h ago",
   },
   {
@@ -96,7 +96,7 @@ export const DASHBOARD_LIVE_ORDERS = [
     itemsCount: 4,
     payment: { status: "Paid: Apple Pay", tone: "success" as const },
     fulfillment: { status: "Delivered", tone: "success" as const },
-    total: "$450.00",
+    total: "₹450.00",
     timeAgo: "2h ago",
   },
 ]

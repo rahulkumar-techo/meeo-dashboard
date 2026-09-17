@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   Calendar,
   Percent,
-  DollarSign,
+  IndianRupee,
   Truck,
   Users,
   ExternalLink,
@@ -137,12 +137,12 @@ export function CouponDetailSheet({
                     {coupon.type === "PERCENTAGE"
                       ? `${coupon.value}% Off Subtotal`
                       : coupon.type === "FIXED_AMOUNT"
-                      ? `$${Number(coupon.value).toFixed(2)} Off Order`
-                      : "Free Shipping ($0)"}
+                      ? `₹${Number(coupon.value).toFixed(2)} Off Order`
+                      : "Free Shipping (₹0)"}
                   </div>
                   {coupon.maximumDiscountAmount && (
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Capped at ${Number(coupon.maximumDiscountAmount).toFixed(2)} max
+                      Capped at ₹${Number(coupon.maximumDiscountAmount).toFixed(2)} max
                     </div>
                   )}
                 </div>
@@ -162,8 +162,8 @@ export function CouponDetailSheet({
                   <span className="text-muted-foreground">Minimum Cart Subtotal:</span>
                   <span className="font-semibold text-foreground">
                     {coupon.minimumOrderAmount
-                      ? `$${Number(coupon.minimumOrderAmount).toFixed(2)}`
-                      : "None ($0)"}
+                      ? `₹${Number(coupon.minimumOrderAmount).toFixed(2)}`
+                      : "None (₹0)"}
                   </span>
                 </div>
 

@@ -86,7 +86,7 @@ export const ADMIN_AUDIT_LOGS: AuditLogEntry[] = [
     actor: "Marcus Vance",
     actorEmail: "marcus.v@apexcommerce.io",
     resource: "OrderRefund",
-    resourceId: "ref_89201A ($189.00)",
+    resourceId: "ref_89201A (₹189.00)",
     ipAddress: "203.0.113.88",
     timestamp: "14:10:02 EST",
     status: "success",

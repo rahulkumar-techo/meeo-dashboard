@@ -127,15 +127,15 @@ export function CouponTable({
                       <span className="font-bold">{coupon.value}%</span>
                       {coupon.maximumDiscountAmount && (
                         <span className="text-[10px] text-muted-foreground ml-1">
-                          (Cap ${Number(coupon.maximumDiscountAmount).toFixed(0)})
+                          (Cap ₹${Number(coupon.maximumDiscountAmount).toFixed(0)})
                         </span>
                       )}
                     </div>
                   ) : coupon.type === "FIXED_AMOUNT" ? (
-                    <span className="font-bold">${Number(coupon.value).toFixed(2)} Off</span>
+                    <span className="font-bold">₹{Number(coupon.value).toFixed(2)} Off</span>
                   ) : (
                     <span className="font-semibold text-cyan-600 dark:text-cyan-400">
-                      $0 Shipping
+                      ₹0 Shipping
                     </span>
                   )}
                 </TableCell>
@@ -143,8 +143,8 @@ export function CouponTable({
                 {/* 4. Min Cart */}
                 <TableCell className="text-muted-foreground font-mono">
                   {coupon.minimumOrderAmount
-                    ? `$${Number(coupon.minimumOrderAmount).toFixed(2)}`
-                    : "None ($0)"}
+                    ? `₹${Number(coupon.minimumOrderAmount).toFixed(2)}`
+                    : "None (₹0)"}
                 </TableCell>
 
                 {/* 5. Usage Count / Limit */}

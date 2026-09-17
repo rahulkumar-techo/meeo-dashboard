@@ -36,13 +36,13 @@ export const CUSTOMER_360_PROFILE: CustomerProfileData = {
   avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
   tier: "VIP Gold Tier",
   memberSince: "Nov 2022 (2y active)",
-  lifetimeValue: "$3,420.50",
+  lifetimeValue: "₹3,420.50",
   totalOrders: 14,
-  avgOrderValue: "$244.32",
+  avgOrderValue: "₹244.32",
   returnRate: "0.0%",
   fraudScore: "0.02 (Optimal)",
   riskLevel: "Low",
-  creditBalance: "$45.00",
+  creditBalance: "₹45.00",
   loyaltyPoints: 3420,
   shippingAddress: {
     line1: "458 Atlantic Ave, Apt 3B",
@@ -68,7 +68,7 @@ export const CUSTOMER_ORDER_HISTORY: CustomerOrderHistory[] = [
     status: "Confirmed",
     itemsCount: 3,
     itemsSummary: "Apex Pro Wireless Mouse, Coiled Aviator Cable, Desk Pad",
-    totalAmount: "$249.00",
+    totalAmount: "₹249.00",
     paymentMethod: "Visa •••• 1092",
   },
   {
@@ -77,7 +77,7 @@ export const CUSTOMER_ORDER_HISTORY: CustomerOrderHistory[] = [
     status: "Delivered",
     itemsCount: 1,
     itemsSummary: "Studio Display Monitor Stand (Dual)",
-    totalAmount: "$1,199.00",
+    totalAmount: "₹1,199.00",
     paymentMethod: "Stripe Apple Pay",
   },
   {
@@ -86,7 +86,7 @@ export const CUSTOMER_ORDER_HISTORY: CustomerOrderHistory[] = [
     status: "Delivered",
     itemsCount: 2,
     itemsSummary: "Titanium Studio ANC Headphones",
-    totalAmount: "$450.00",
+    totalAmount: "₹450.00",
     paymentMethod: "Visa •••• 1092",
   },
 ]

@@ -269,7 +269,7 @@ export function OrderDetailSheet({
           <span>Tax</span>
           <span>{order.payment.tax}</span>
         </div>
-        {order.payment.discount && order.payment.discount !== "$0.00" && (
+        {order.payment.discount && order.payment.discount !== "₹0.00" && (
           <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
             <span>Discount</span>
             <span>-{order.payment.discount}</span>

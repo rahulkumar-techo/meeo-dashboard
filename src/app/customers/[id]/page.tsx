@@ -18,7 +18,7 @@ import {
   ShieldAlert,
   CreditCard,
   ShoppingBag,
-  DollarSign,
+  IndianRupee,
   Crown,
   History,
   Star,
@@ -298,7 +298,7 @@ export default function Customer360DetailPage() {
             title: "Lifetime Non-Cancelled Spend",
             value: formatCurrency(summary.totalSpend),
             colorTheme: "indigo",
-            icon: DollarSign,
+            icon: IndianRupee,
             footnote: `${summary.tier} VIP loyalty tier`,
           },
           {

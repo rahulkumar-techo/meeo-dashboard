@@ -1,8 +1,13 @@
+/**
+ * @file formatters.ts
+ * @description Standard formatting utilities for numbers, currencies (INR ₹), dates, and percentages.
+ */
+
 import { useCurrencyStore, SUPPORTED_CURRENCIES } from "@/store/currency.store"
 
 /**
- * Format a number as a currency string (e.g. ₹1,234.56 or ₹1.2M compact)
- * Defaults to INR (Rupees).
+ * Format a number as Indian Rupee currency string (e.g. ₹1,234.56 or ₹1.2L compact)
+ * Single currency standard: INR (₹).
  */
 export function formatCurrency(
   amount: number | string,
@@ -13,42 +18,18 @@ export function formatCurrency(
   }
 ): string {
   const num = typeof amount === "string" ? parseFloat(amount.replace(/[^0-9.-]+/g, "")) : amount
-
-  // Resolve active currency (Option currency > Store currency > "INR")
-  let activeCurrencyCode = options?.currency
-  if (!activeCurrencyCode && typeof window !== "undefined") {
-    try {
-      activeCurrencyCode = useCurrencyStore.getState().currency
-    } catch {
-      activeCurrencyCode = "INR"
-    }
-  }
-  if (!activeCurrencyCode) {
-    activeCurrencyCode = "INR"
-  }
-
-  const currencyConfig =
-    SUPPORTED_CURRENCIES.find(
-      (c) => c.code.toUpperCase() === activeCurrencyCode?.toUpperCase()
-    ) || {
-      code: activeCurrencyCode.toUpperCase(),
-      symbol: activeCurrencyCode.toUpperCase() === "INR" ? "₹" : "$",
-      locale: activeCurrencyCode.toUpperCase() === "INR" ? "en-IN" : "en-US",
-    }
-
-  const symbol = currencyConfig.symbol || "₹"
-  if (isNaN(num)) return `${symbol}0.00`
+  if (isNaN(num)) return "₹0.00"
 
   const { compact = false, decimals = 2 } = options || {}
-  const locale =
-    currencyConfig.locale ||
-    (activeCurrencyCode.toUpperCase() === "INR" ? "en-IN" : "en-US")
+  const currencyConfig = SUPPORTED_CURRENCIES[0]
+  const symbol = "₹"
+  const locale = "en-IN"
 
   try {
     if (compact) {
       return new Intl.NumberFormat(locale, {
         style: "currency",
-        currency: currencyConfig.code,
+        currency: "INR",
         notation: "compact",
         maximumFractionDigits: 1,
       }).format(num)
@@ -56,7 +37,7 @@ export function formatCurrency(
 
     return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currencyConfig.code,
+      currency: "INR",
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(num)
@@ -81,13 +62,13 @@ export function formatNumber(
   const { compact = false, decimals = 0 } = options || {}
 
   if (compact) {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-IN", {
       notation: "compact",
       maximumFractionDigits: 1,
     }).format(num)
   }
 
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(num)
@@ -134,31 +115,31 @@ export function formatDate(
 
     switch (formatStyle) {
       case "short":
-        return new Intl.DateTimeFormat("en-US", {
+        return new Intl.DateTimeFormat("en-IN", {
           month: "short",
           day: "numeric",
         }).format(date)
       case "medium":
-        return new Intl.DateTimeFormat("en-US", {
+        return new Intl.DateTimeFormat("en-IN", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }).format(date)
       case "long":
-        return new Intl.DateTimeFormat("en-US", {
+        return new Intl.DateTimeFormat("en-IN", {
           month: "long",
           day: "numeric",
           year: "numeric",
         }).format(date)
       case "time":
-        return new Intl.DateTimeFormat("en-US", {
+        return new Intl.DateTimeFormat("en-IN", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: false,
         }).format(date)
       case "datetime":
-        return new Intl.DateTimeFormat("en-US", {
+        return new Intl.DateTimeFormat("en-IN", {
           month: "short",
           day: "numeric",
           year: "numeric",

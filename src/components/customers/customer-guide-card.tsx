@@ -32,7 +32,7 @@ export function CustomerGuideCard() {
               Customer Intelligence, Loyalty Tiers & Risk Engine
             </h4>
             <p className="text-[11.5px] text-muted-foreground">
-              Guide to automated VIP spend tiers ($0–$5,000+) and dynamic fraud risk scores (0–100).
+              Guide to automated VIP spend tiers (₹0–₹50,000+) and dynamic fraud risk scores (0–100).
             </p>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function CustomerGuideCard() {
               <span>VIP Loyalty Tiers</span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Auto-calculated from non-cancelled lifetime spend: <b>Bronze</b> ($0–$199), <b>Silver</b> ($200–$999), <b>Gold</b> ($1k–$4.9k), and <b>Platinum</b> ($5k+).
+              Auto-calculated from non-cancelled lifetime spend: <b>Bronze</b> (₹0–₹1,999), <b>Silver</b> (₹2,000–₹9,999), <b>Gold</b> (₹10k–₹49.9k), and <b>Platinum</b> (₹50k+).
             </p>
           </div>
 

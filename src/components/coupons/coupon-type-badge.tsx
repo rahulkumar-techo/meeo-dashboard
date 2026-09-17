@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Percent, DollarSign, Truck } from "lucide-react"
+import { Percent, IndianRupee, Truck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CouponType } from "@/types/coupon"
 
@@ -40,7 +40,7 @@ export function CouponTypeBadge({ type, className }: CouponTypeBadgeProps) {
       bg: "bg-emerald-500/10 dark:bg-emerald-500/20",
       text: "text-emerald-700 dark:text-emerald-300",
       border: "border-emerald-500/30",
-      icon: DollarSign,
+      icon: IndianRupee,
     },
     FREE_SHIPPING: {
       label: "Free Shipping",
@@ -56,7 +56,7 @@ export function CouponTypeBadge({ type, className }: CouponTypeBadgeProps) {
     bg: "bg-muted",
     text: "text-muted-foreground",
     border: "border-border",
-    icon: DollarSign,
+    icon: IndianRupee,
   }
 
   const IconComponent = current.icon

@@ -7,7 +7,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { History, ExternalLink, Calendar, DollarSign, Receipt } from "lucide-react"
+import { History, ExternalLink, Calendar, IndianRupee, Receipt } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -123,12 +123,12 @@ export function CouponUsagesDialog({
                       </TableCell>
 
                       <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        -${Number(usage.discountAmount).toFixed(2)}
+                        -₹{Number(usage.discountAmount).toFixed(2)}
                       </TableCell>
 
                       <TableCell className="text-right font-mono text-muted-foreground">
                         {usage.order?.grandTotal
-                          ? `$${Number(usage.order.grandTotal).toFixed(2)}`
+                          ? `₹${Number(usage.order.grandTotal).toFixed(2)}`
                           : "N/A"}
                       </TableCell>
 

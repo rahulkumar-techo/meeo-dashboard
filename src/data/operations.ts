@@ -62,7 +62,7 @@ export const OPERATIONS_OUTBOX_EVENTS: OutboxEventData[] = [
       event_name: "payment.webhook_dispatched",
       payment_id: "pay_99214",
       amount: 450.0,
-      currency: "USD",
+      currency: "INR",
       gateway: "stripe",
       endpoint: "https://partner-erp.acme.com/webhooks",
     },

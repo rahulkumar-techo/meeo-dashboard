@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { DollarSign, ShoppingBag, Truck, TrendingUp, Package } from "lucide-react"
+import { IndianRupee, ShoppingBag, Truck, TrendingUp, Package } from "lucide-react"
 import { MetricGrid } from "@/components/common"
 import { formatCurrency } from "@/lib/formatters"
 import type { AdminOrder, AdminOrderMetrics } from "@/types/order"
@@ -107,7 +107,7 @@ export function OrderMetrics({ metrics, items = [], isLoading }: OrderMetricsPro
                 currency: calculatedMetrics.currency,
               }),
           colorTheme: "indigo",
-          icon: DollarSign,
+          icon: IndianRupee,
           footnote: `Lifetime Gross Volume (${calculatedMetrics.currency})`,
         },
         {

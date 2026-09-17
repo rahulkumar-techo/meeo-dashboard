@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Tag, Percent, DollarSign, Truck, Calendar, ShieldCheck, AlertCircle } from "lucide-react"
+import { Plus, Tag, Percent, IndianRupee, Truck, Calendar, ShieldCheck, AlertCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -184,8 +184,8 @@ export function CreateCouponDialog({
                   className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
                 >
                   <option value="PERCENTAGE">Percentage (%)</option>
-                  <option value="FIXED_AMOUNT">Fixed Amount ($)</option>
-                  <option value="FREE_SHIPPING">Free Shipping ($0)</option>
+                  <option value="FIXED_AMOUNT">Fixed Amount (₹)</option>
+                  <option value="FREE_SHIPPING">Free Shipping (₹0)</option>
                 </select>
               </div>
             </div>
@@ -197,7 +197,7 @@ export function CreateCouponDialog({
                   {isPercentage
                     ? "Discount Percentage (%)"
                     : isFixed
-                    ? "Discount Amount ($ USD)"
+                    ? "Discount Amount (₹ INR)"
                     : "Shipping Benefit"}
                   <span className="text-rose-500">*</span>
                 </label>
@@ -218,7 +218,7 @@ export function CreateCouponDialog({
               {isPercentage && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold">
-                    Maximum Discount Cap ($)
+                    Maximum Discount Cap (₹)
                   </label>
                   <Input
                     type="number"
@@ -226,11 +226,11 @@ export function CreateCouponDialog({
                     min="0"
                     value={maximumDiscountAmount}
                     onChange={(e) => setMaximumDiscountAmount(e.target.value)}
-                    placeholder="e.g. 50.00 (Optional)"
+                    placeholder="e.g. 500.00 (Optional)"
                     className="font-mono text-xs"
                   />
                   <span className="text-[10px] text-muted-foreground">
-                    Caps % savings to max dollar amount
+                    Caps % savings to max rupee amount
                   </span>
                 </div>
               )}
@@ -248,7 +248,7 @@ export function CreateCouponDialog({
             {/* 3. Minimum Order & Limits */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold">Min Subtotal ($)</label>
+                <label className="text-xs font-semibold">Min Subtotal (₹)</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -324,27 +324,27 @@ export function CreateCouponDialog({
             <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1.5 text-[11px]">
               <div className="font-semibold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                <span>Checkout Rules Simulation ($100 Cart Example)</span>
+                <span>Checkout Rules Simulation (₹1,000 Cart Example)</span>
               </div>
               <div className="text-muted-foreground">
                 {isPercentage ? (
                   <>
-                    A $100 cart yields{" "}
+                    A ₹1,000 cart yields{" "}
                     <strong>
-                      $
+                      ₹
                       {maximumDiscountAmount
-                        ? Math.min(100 * (parsedValue / 100), parseFloat(maximumDiscountAmount)).toFixed(2)
-                        : (100 * (parsedValue / 100)).toFixed(2)}
+                        ? Math.min(1000 * (parsedValue / 100), parseFloat(maximumDiscountAmount)).toFixed(2)
+                        : (1000 * (parsedValue / 100)).toFixed(2)}
                     </strong>{" "}
                     savings ({parsedValue}%
-                    {maximumDiscountAmount ? ` capped at $${maximumDiscountAmount}` : ""}).
+                    {maximumDiscountAmount ? ` capped at ₹${maximumDiscountAmount}` : ""}).
                   </>
                 ) : isFixed ? (
                   <>
-                    A $100 cart yields <strong>${Math.min(100, parsedValue).toFixed(2)}</strong> direct reduction.
+                    A ₹1,000 cart yields <strong>₹{Math.min(1000, parsedValue).toFixed(2)}</strong> direct reduction.
                   </>
                 ) : (
-                  <>Shipping charge ($0.00) waived upon checkout validation.</>
+                  <>Shipping charge (₹0.00) waived upon checkout validation.</>
                 )}
               </div>
             </div>

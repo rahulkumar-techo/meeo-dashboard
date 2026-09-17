@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Globe, Mail, Shield, Clock, DollarSign } from "lucide-react"
+import { Globe, Mail, Shield, Clock, IndianRupee } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import type { SystemSettings } from "@/types/settings"
@@ -69,20 +69,14 @@ export function Tier1BrandSettingsCard({
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="space-y-1">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
-                <DollarSign className="size-3 text-emerald-500" /> Default Currency
+                <IndianRupee className="size-3 text-emerald-500" /> Default Currency
               </label>
               <select
-                value={settings.defaultCurrency || "INR"}
-                onChange={(e) =>
-                  onChange({ defaultCurrency: e.target.value })
-                }
-                className="w-full h-8.5 px-2.5 rounded-md border border-border bg-background text-xs font-mono text-foreground focus:outline-hidden"
+                value="INR"
+                disabled
+                className="w-full h-8.5 px-2.5 rounded-md border border-border bg-muted/40 text-xs font-mono text-foreground focus:outline-hidden cursor-not-allowed opacity-90"
               >
-                <option value="INR">INR (₹ - Indian Rupee) [Default]</option>
-                <option value="USD">USD ($ - United States Dollar)</option>
-                <option value="EUR">EUR (€ - Euro)</option>
-                <option value="GBP">GBP (£ - British Pound)</option>
-                <option value="AED">AED (AED - UAE Dirham)</option>
+                <option value="INR">INR (₹ - Indian Rupee) [Platform Standard]</option>
               </select>
             </div>
 

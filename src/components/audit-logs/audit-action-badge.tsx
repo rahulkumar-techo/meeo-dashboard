@@ -11,7 +11,7 @@ import {
   UserCheck,
   RefreshCw,
   Sliders,
-  DollarSign,
+  IndianRupee,
   Layers,
   Tag,
   Key,
@@ -49,7 +49,7 @@ export function AuditActionBadge({
   ) {
     colorClasses =
       "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-300"
-    Icon = DollarSign
+    Icon = IndianRupee
   } else if (
     normalized.includes("SUSPEND") ||
     normalized.includes("BLOCK") ||

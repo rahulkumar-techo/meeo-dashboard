@@ -7,7 +7,7 @@
 "use client"
 
 import * as React from "react"
-import { CreditCard, DollarSign, ShieldCheck, CheckCircle2, RotateCcw, AlertTriangle } from "lucide-react"
+import { CreditCard, IndianRupee, ShieldCheck, CheckCircle2, RotateCcw, AlertTriangle } from "lucide-react"
 import { DetailDrawer } from "@/components/common/detail-drawer"
 import { StatusBadge } from "@/components/common/status-badge"
 import { Button } from "@/components/ui/button"
@@ -81,7 +81,7 @@ export function TransactionDetailModal({
       {/* Financial Settlement Breakdown */}
       <div className="rounded-lg border border-border/70 bg-card/60 p-4 text-xs space-y-2">
         <h4 className="font-semibold text-foreground flex items-center gap-1.5 mb-2">
-          <DollarSign className="size-3.5 text-muted-foreground" />
+          <IndianRupee className="size-3.5 text-muted-foreground" />
           <span>Settlement Breakdown</span>
         </h4>
         <div className="flex justify-between text-muted-foreground">
@@ -89,7 +89,7 @@ export function TransactionDetailModal({
           <span className="font-semibold text-foreground">{formatCurrency(transaction.amount)}</span>
         </div>
         <div className="flex justify-between text-muted-foreground">
-          <span>Gateway Processing Fee (2.9% + 30¢)</span>
+          <span>Gateway Processing Fee (2.0%)</span>
           <span>-{formatCurrency(transaction.fee || 3.42)}</span>
         </div>
         <Separator className="my-1.5" />

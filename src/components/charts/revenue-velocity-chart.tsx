@@ -25,7 +25,7 @@ import { formatCurrency } from "@/lib/formatters"
 import { useSalesChartQuery } from "@/hooks/dashboard/use-analytics-query"
 import { cn } from "@/lib/utils"
 import type { AnalyticsPeriod } from "@/types/analytics"
-import { TrendingUp, ShoppingCart, DollarSign, Calendar, Activity } from "lucide-react"
+import { TrendingUp, ShoppingCart, IndianRupee, Calendar, Activity } from "lucide-react"
 
 interface RevenueVelocityChartProps {
   className?: string

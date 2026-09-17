@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { DollarSign, CheckCircle2, AlertTriangle, RotateCcw } from "lucide-react"
+import { IndianRupee, CheckCircle2, AlertTriangle, RotateCcw } from "lucide-react"
 import { MetricGrid } from "@/components/common"
 import { formatCurrency } from "@/lib/formatters"
 import type { PaymentListItem } from "@/types/payment"

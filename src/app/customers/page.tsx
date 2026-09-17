@@ -256,10 +256,10 @@ export default function CustomersPage() {
                   className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
                 >
                   <option value="all">All Loyalty Tiers</option>
-                  <option value="PLATINUM">Platinum VIP ($5k+)</option>
-                  <option value="GOLD">Gold VIP ($1k–$4.9k)</option>
-                  <option value="SILVER">Silver ($200–$999)</option>
-                  <option value="BRONZE">Bronze ($0–$199)</option>
+                  <option value="PLATINUM">Platinum VIP (₹50k+)</option>
+                  <option value="GOLD">Gold VIP (₹10k–₹49.9k)</option>
+                  <option value="SILVER">Silver (₹2,000–₹9,999)</option>
+                  <option value="BRONZE">Bronze (₹0–₹1,999)</option>
                 </select>
 
                 {/* Sort Filter */}

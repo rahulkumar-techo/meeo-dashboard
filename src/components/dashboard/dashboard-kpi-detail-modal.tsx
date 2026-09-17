@@ -7,7 +7,7 @@
 
 import * as React from "react"
 import {
-  DollarSign,
+  IndianRupee,
   ShoppingBag,
   Users,
   TrendingUp,
@@ -77,7 +77,7 @@ function RevenueBreakdownDetail({ overview }: { overview: DashboardOverviewPaylo
       <DialogHeader>
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-            <DollarSign className="size-4" />
+            <IndianRupee className="size-4" />
           </div>
           <div>
             <DialogTitle className="text-base font-bold">Revenue Analytics & Breakdown</DialogTitle>
