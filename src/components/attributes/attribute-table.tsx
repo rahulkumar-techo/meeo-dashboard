@@ -1,12 +1,12 @@
 /**
  * @file attribute-table.tsx
- * @description Data table displaying master product attributes, value badges, and actions.
+ * @description Data table displaying master product attributes, governance status badges, and admin approval actions.
  */
 
 "use client"
 
 import * as React from "react"
-import { Tag, Edit2, Trash2, Plus } from "lucide-react"
+import { Tag, Edit2, Trash2, Plus, ShieldCheck, Clock, CheckCircle2, XCircle } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState, DataTablePagination } from "@/components/common"
+import { usePermissions } from "@/hooks/use-permissions"
 import type { Attribute } from "@/types/attribute"
 
 export interface AttributeTableProps {
@@ -31,6 +32,8 @@ export interface AttributeTableProps {
   onCreateClick: () => void
   onEditAttribute: (attr: Attribute) => void
   onDeleteAttribute: (attr: Attribute) => void
+  onApproveAttribute?: (attr: Attribute) => void
+  onRejectAttribute?: (attr: Attribute) => void
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
 }
@@ -46,9 +49,13 @@ export function AttributeTable({
   onCreateClick,
   onEditAttribute,
   onDeleteAttribute,
+  onApproveAttribute,
+  onRejectAttribute,
   onPageChange,
   onPageSizeChange,
 }: AttributeTableProps) {
+  const { isSuperAdmin } = usePermissions()
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "-"
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -64,6 +71,7 @@ export function AttributeTable({
         <TableHeader className="bg-muted/40 text-xs">
           <TableRow className="hover:bg-transparent">
             <TableHead className="pl-4 font-semibold text-foreground">Attribute Name</TableHead>
+            <TableHead className="font-semibold text-foreground">Governance & Scope</TableHead>
             <TableHead className="font-semibold text-foreground">Configured Values</TableHead>
             <TableHead className="text-center font-semibold text-foreground">Values Count</TableHead>
             <TableHead className="font-semibold text-foreground">Created Date</TableHead>
@@ -76,6 +84,7 @@ export function AttributeTable({
             Array.from({ length: 5 }).map((_, idx) => (
               <TableRow key={idx} className="animate-pulse">
                 <TableCell className="pl-4 py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                <TableCell><div className="h-4 w-24 bg-muted rounded" /></TableCell>
                 <TableCell><div className="h-4 w-48 bg-muted rounded" /></TableCell>
                 <TableCell className="text-center"><div className="h-4 w-12 bg-muted rounded mx-auto" /></TableCell>
                 <TableCell><div className="h-4 w-20 bg-muted rounded" /></TableCell>
@@ -84,12 +93,12 @@ export function AttributeTable({
             ))
           ) : items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="py-12 text-center">
+              <TableCell colSpan={6} className="py-12 text-center">
                 <EmptyState
                   title={hasActiveFilters ? "No attributes match search" : "No Master Attributes Created"}
                   description={
                     hasActiveFilters
-                      ? "Try searching for a different attribute name."
+                      ? "Try searching for a different attribute name or clearing filters."
                       : "Define reusable attributes like Color, Size, Material, or Storage Capacity to generate SKU variant options."
                   }
                 >
@@ -108,6 +117,12 @@ export function AttributeTable({
             items.map((attr) => {
               const values = attr.values ?? []
               const count = attr._count?.values ?? values.length
+              const isGlobal =
+                attr.isGlobal === true ||
+                attr.status === "APPROVED" ||
+                (!attr.status && !attr.vendorId)
+              const isPending = attr.status === "PENDING_APPROVAL"
+              const isRejected = attr.status === "REJECTED"
 
               return (
                 <TableRow key={attr.id} className="hover:bg-muted/30 transition-colors">
@@ -117,8 +132,50 @@ export function AttributeTable({
                       <div className="flex size-7 items-center justify-center rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
                         <Tag className="size-3.5" />
                       </div>
-                      <span className="font-semibold text-xs text-foreground">{attr.name}</span>
+                      <div>
+                        <span className="font-semibold text-xs text-foreground block">
+                          {attr.name}
+                        </span>
+                        {attr.proposedBy && typeof attr.proposedBy === "object" && (
+                          <span className="text-[10px] text-muted-foreground block">
+                            Proposed by: {attr.proposedBy.name || attr.proposedBy.email}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  </TableCell>
+
+                  {/* Governance / Status */}
+                  <TableCell>
+                    {isGlobal ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10.5px] font-medium px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-300 gap-1"
+                      >
+                        <ShieldCheck className="size-3 text-indigo-600 dark:text-indigo-400" />
+                        <span>Global Approved</span>
+                      </Badge>
+                    ) : isPending ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10.5px] font-medium px-2 py-0.5 bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-300 gap-1"
+                      >
+                        <Clock className="size-3 text-amber-600 dark:text-amber-400" />
+                        <span>Pending Approval</span>
+                      </Badge>
+                    ) : isRejected ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10.5px] font-medium px-2 py-0.5 bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:border-rose-800 dark:text-rose-300 gap-1"
+                      >
+                        <XCircle className="size-3 text-rose-600" />
+                        <span>Rejected</span>
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10.5px] font-medium px-2 py-0.5">
+                        <span>Vendor Custom</span>
+                      </Badge>
+                    )}
                   </TableCell>
 
                   {/* Values preview */}
@@ -162,6 +219,20 @@ export function AttributeTable({
                   {/* Actions */}
                   <TableCell className="text-right pr-4">
                     <div className="flex items-center justify-end gap-1">
+                      {/* Admin Quick Approve */}
+                      {isSuperAdmin && !isGlobal && onApproveAttribute && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onApproveAttribute(attr)}
+                          className="h-7 px-2 text-xs gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50 rounded-md font-medium"
+                          title="Approve as Global Master Attribute"
+                        >
+                          <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>Approve</span>
+                        </Button>
+                      )}
+
                       <Button
                         variant="ghost"
                         size="sm"

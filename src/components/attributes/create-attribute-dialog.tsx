@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Tag, Plus, X, Loader2, Sparkles, AlertCircle } from "lucide-react"
+import { Tag, Plus, X, Loader2, Sparkles, AlertCircle, ShieldCheck, Info } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useCreateAttributeMutation } from "@/hooks/use-attribute-query"
+import { usePermissions } from "@/hooks/use-permissions"
 import type { CreateAttributePayload } from "@/types/attribute"
 
 export interface CreateAttributeDialogProps {
@@ -32,9 +33,11 @@ export function CreateAttributeDialog({
   onOpenChange,
   onSuccess,
 }: CreateAttributeDialogProps) {
+  const { isSuperAdmin } = usePermissions()
   const [name, setName] = React.useState("")
   const [tagInput, setTagInput] = React.useState("")
   const [values, setValues] = React.useState<string[]>([])
+  const [isGlobal, setIsGlobal] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   const createMutation = useCreateAttributeMutation()
@@ -44,9 +47,10 @@ export function CreateAttributeDialog({
       setName("")
       setTagInput("")
       setValues([])
+      setIsGlobal(isSuperAdmin)
       setError(null)
     }
-  }, [open])
+  }, [open, isSuperAdmin])
 
   const handleAddTag = () => {
     const raw = tagInput.trim()
@@ -54,7 +58,7 @@ export function CreateAttributeDialog({
 
     // Support comma-separated strings
     const split = raw
-      .split(",")
+      .split(/[\n,]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0 && !values.includes(s))
 
@@ -87,6 +91,8 @@ export function CreateAttributeDialog({
     const payload: CreateAttributePayload = {
       name: name.trim(),
       values: values.length > 0 ? values : undefined,
+      isGlobal: isSuperAdmin ? isGlobal : false,
+      status: isSuperAdmin && isGlobal ? "APPROVED" : "PENDING_APPROVAL",
     }
 
     createMutation.mutate(payload, {
@@ -129,6 +135,36 @@ export function CreateAttributeDialog({
               <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-2.5 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-2">
                 <AlertCircle className="size-3.5 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {/* Governance Scope */}
+            {isSuperAdmin ? (
+              <div className="p-3 rounded-xl border border-indigo-200/80 bg-indigo-50/40 dark:border-indigo-900/50 dark:bg-indigo-950/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-indigo-600 dark:text-indigo-400" />
+                  <div>
+                    <span className="font-semibold text-xs text-foreground block">
+                      Global Master Attribute
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Available across all vendor products and matrix generators.
+                    </span>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isGlobal}
+                  onChange={(e) => setIsGlobal(e.target.checked)}
+                  className="size-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                />
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20 flex items-center gap-2">
+                <Info className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-[11px] text-amber-900 dark:text-amber-200">
+                  Vendor Mode: This attribute will be submitted for Admin approval and available immediately for your products.
+                </span>
               </div>
             )}
 

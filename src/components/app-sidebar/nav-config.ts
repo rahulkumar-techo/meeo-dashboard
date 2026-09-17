@@ -21,6 +21,7 @@ import {
   UserCheck,
   ShieldAlert,
   Settings,
+  Activity,
   type LucideIcon,
 } from "lucide-react"
 
@@ -69,7 +70,7 @@ export interface SystemStatus {
 export const CURRENT_SYSTEM_STATUS: SystemStatus = {
   status: "operational",
   label: "All Systems Operational",
-  href: "/system-health",
+  href: "/system/metrics",
   metrics: "99.98%",
 }
 
@@ -223,6 +224,14 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         url: "/operations/outbox-events",
         icon: Send,
         permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
+      },
+      {
+        title: "Server Status",
+        url: "/system/metrics",
+        icon: Activity,
+        permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
+        badge: "Live",
+        badgeVariant: "success",
       },
     ],
   },

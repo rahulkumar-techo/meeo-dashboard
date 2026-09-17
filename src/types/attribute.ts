@@ -11,17 +11,34 @@ export interface AttributeValue {
   updatedAt?: string
 }
 
+export type AttributeStatus = "APPROVED" | "PENDING_APPROVAL" | "REJECTED" | "DRAFT"
+
 export interface Attribute {
   id: string
   name: string
   values?: AttributeValue[]
   _count?: { values: number }
+  isGlobal?: boolean
+  status?: AttributeStatus | string
+  vendorId?: string | null
+  proposedBy?:
+    | string
+    | {
+        id?: string
+        name?: string
+        email?: string
+      }
+    | null
+  rejectionReason?: string | null
   createdAt?: string
   updatedAt?: string
 }
 
 export interface AttributeQueryParams {
   search?: string
+  status?: AttributeStatus | string
+  isGlobal?: boolean
+  vendorId?: string
   page?: number
   limit?: number
   sortBy?: "name" | "createdAt" | "updatedAt"
@@ -31,11 +48,17 @@ export interface AttributeQueryParams {
 export interface CreateAttributePayload {
   name: string
   values?: string[]
+  isGlobal?: boolean
+  status?: AttributeStatus | string
+  vendorId?: string
 }
 
 export interface UpdateAttributePayload {
   name?: string
   values?: string[]
+  isGlobal?: boolean
+  status?: AttributeStatus | string
+  rejectionReason?: string | null
 }
 
 export interface AttributePagination {

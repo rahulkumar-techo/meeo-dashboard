@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Loader2, Sparkles, AlertCircle, Package, Tag, Check } from "lucide-react"
+import { Edit2, Loader2, Sparkles, AlertCircle, Package } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useUpdateVariantMutation } from "@/hooks/use-variant-query"
-import { useAttributesQuery } from "@/hooks/use-attribute-query"
+import { InlineAttributeManager } from "./inline-attribute-manager"
 import type { ProductVariant, UpdateVariantPayload, VariantStatus } from "@/types/variant"
 
 export interface EditVariantDialogProps {
@@ -38,36 +38,31 @@ export function EditVariantDialog({
   onSuccess,
 }: EditVariantDialogProps) {
   const [sku, setSku] = React.useState("")
-  const [price, setPrice] = React.useState<number | "">("")
-  const [compareAtPrice, setCompareAtPrice] = React.useState<number | "">("")
-  const [costPrice, setCostPrice] = React.useState<number | "">("")
+  const [price, setPrice] = React.useState("")
+  const [compareAtPrice, setCompareAtPrice] = React.useState("")
+  const [costPrice, setCostPrice] = React.useState("")
   const [barcode, setBarcode] = React.useState("")
   const [status, setStatus] = React.useState<VariantStatus>("ACTIVE")
   const [selectedAttributeValueIds, setSelectedAttributeValueIds] = React.useState<string[]>([])
   const [error, setError] = React.useState<string | null>(null)
 
   const updateMutation = useUpdateVariantMutation(productId)
-  const { data: attributesData } = useAttributesQuery({ limit: 100 })
-  const masterAttributes = attributesData?.items ?? []
-
-  // Helper to parse numbers from strings/numbers
-  const parseNum = (val: any): number | null => {
-    if (val === null || val === undefined || val === "") return null
-    const n = typeof val === "number" ? val : parseFloat(String(val))
-    return isNaN(n) ? null : n
-  }
 
   // Sync state whenever the variant prop or open dialog changes
   React.useEffect(() => {
     if (variant && open) {
-      const p = parseNum(variant.price)
-      const cmp = parseNum(variant.compareAtPrice)
-      const cst = parseNum(variant.costPrice)
-
       setSku(variant.sku || "")
-      setPrice(p !== null ? p : "")
-      setCompareAtPrice(cmp !== null && cmp > 0 ? cmp : "")
-      setCostPrice(cst !== null && cst > 0 ? cst : "")
+      setPrice(variant.price !== undefined && variant.price !== null ? String(variant.price) : "")
+      setCompareAtPrice(
+        variant.compareAtPrice !== undefined && variant.compareAtPrice !== null && Number(variant.compareAtPrice) > 0
+          ? String(variant.compareAtPrice)
+          : ""
+      )
+      setCostPrice(
+        variant.costPrice !== undefined && variant.costPrice !== null && Number(variant.costPrice) > 0
+          ? String(variant.costPrice)
+          : ""
+      )
       setBarcode(variant.barcode || "")
       setStatus((variant.status as VariantStatus) || "ACTIVE")
 
@@ -82,14 +77,8 @@ export function EditVariantDialog({
 
   if (!variant) return null
 
-  const handleToggleValue = (valId: string) => {
-    setSelectedAttributeValueIds((prev) =>
-      prev.includes(valId) ? prev.filter((id) => id !== valId) : [...prev, valId]
-    )
-  }
-
-  const numPrice = typeof price === "number" ? price : 0
-  const numCost = typeof costPrice === "number" ? costPrice : 0
+  const numPrice = parseFloat(price) || 0
+  const numCost = parseFloat(costPrice) || 0
   const profitMargin =
     numPrice > 0 && numCost > 0 ? Math.round(((numPrice - numCost) / numPrice) * 100) : null
 
@@ -109,31 +98,31 @@ export function EditVariantDialog({
     e.preventDefault()
     setError(null)
 
-    if (!sku.trim()) {
+    const cleanSku = sku.trim().toUpperCase()
+    if (!cleanSku) {
       setError("SKU code is required.")
       return
     }
 
-    if (typeof price !== "number" || price <= 0) {
-      setError("Selling price must be greater than 0.")
+    const parsedPrice = parseFloat(price)
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      setError("Selling price must be a valid number greater than 0.")
       return
     }
 
-    if (
-      typeof compareAtPrice === "number" &&
-      compareAtPrice > 0 &&
-      compareAtPrice < price
-    ) {
+    const parsedCompare = compareAtPrice ? parseFloat(compareAtPrice) : null
+    if (parsedCompare !== null && !isNaN(parsedCompare) && parsedCompare > 0 && parsedCompare < parsedPrice) {
       setError("Compare-at price (MRP) must be greater than or equal to selling price.")
       return
     }
 
+    const parsedCost = costPrice ? parseFloat(costPrice) : null
+
     const payload: UpdateVariantPayload = {
-      sku: sku.trim().toUpperCase(),
-      price: Number(price),
-      compareAtPrice:
-        typeof compareAtPrice === "number" && compareAtPrice > 0 ? Number(compareAtPrice) : null,
-      costPrice: typeof costPrice === "number" && costPrice > 0 ? Number(costPrice) : null,
+      sku: cleanSku,
+      price: parsedPrice,
+      compareAtPrice: parsedCompare && parsedCompare > 0 ? parsedCompare : null,
+      costPrice: parsedCost && parsedCost > 0 ? parsedCost : null,
       barcode: barcode.trim() || null,
       status,
       attributeValueIds: selectedAttributeValueIds,
@@ -163,21 +152,18 @@ export function EditVariantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-          <div className="p-5 pb-3 border-b border-border/70">
+          <div className="p-5 pb-3 border-b border-border/70 bg-muted/10">
             <DialogHeader>
               <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                   <Edit2 className="size-4" />
                 </div>
                 <div>
-                  <DialogTitle className="text-base font-bold flex items-center gap-2">
-                    <span>Edit SKU Variant</span>
-                    <Badge variant="outline" className="font-mono text-xs uppercase px-2 py-0">
-                      {variant.sku}
-                    </Badge>
+                  <DialogTitle className="text-base font-bold">
+                    Edit Variant: <span className="font-mono text-indigo-600 dark:text-indigo-400">{variant.sku}</span>
                   </DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                    Update variant pricing, attributes, barcode, and status.
+                    Update variant manual pricing, attributes, barcode, and status.
                   </DialogDescription>
                 </div>
               </div>
@@ -240,61 +226,20 @@ export function EditVariantDialog({
               </div>
             </div>
 
-            {/* Master Attributes Selection */}
-            {masterAttributes.length > 0 && (
-              <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-foreground text-xs flex items-center gap-1.5">
-                    <Tag className="size-3.5 text-indigo-600" />
-                    <span>Variant Attributes</span>
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">
-                    {selectedAttributeValueIds.length} selected
-                  </span>
-                </div>
+            {/* Inline Variant Attributes & Values Manager */}
+            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
+              <InlineAttributeManager
+                mode="single"
+                selectedSingleValueIds={selectedAttributeValueIds}
+                onSingleSelectionChange={setSelectedAttributeValueIds}
+              />
+            </div>
 
-                <div className="space-y-2">
-                  {masterAttributes.map((attr) => {
-                    const values = attr.values ?? []
-                    if (values.length === 0) return null
-
-                    return (
-                      <div key={attr.id} className="space-y-1">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          {attr.name}
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {values.map((v) => {
-                            const isSelected = selectedAttributeValueIds.includes(v.id)
-                            return (
-                              <button
-                                key={v.id}
-                                type="button"
-                                onClick={() => handleToggleValue(v.id)}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all flex items-center gap-1 ${
-                                  isSelected
-                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                    : "bg-background text-foreground border-border/70 hover:border-indigo-500/50"
-                                }`}
-                              >
-                                {isSelected && <Check className="size-3" />}
-                                <span>{v.value}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Pricing Details */}
+            {/* Manual Pricing Details (No sliders/steppers) */}
             <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground text-xs uppercase tracking-wider">
-                  Pricing & Profit Margins
+                  Pricing (Manual Input)
                 </span>
                 {profitMargin !== null && (
                   <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
@@ -309,13 +254,17 @@ export function EditVariantDialog({
                     Selling Price (₹) <span className="text-rose-500">*</span>
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={price}
-                    onChange={(e) => setPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                        setPrice(val)
+                      }
+                    }}
                     placeholder="149.99"
-                    className="h-8.5 text-xs font-mono"
+                    className="h-8.5 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     required
                   />
                 </div>
@@ -325,15 +274,17 @@ export function EditVariantDialog({
                     Compare At MRP (₹)
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={compareAtPrice}
-                    onChange={(e) =>
-                      setCompareAtPrice(e.target.value === "" ? "" : Number(e.target.value))
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                        setCompareAtPrice(val)
+                      }
+                    }}
                     placeholder="179.99"
-                    className="h-8.5 text-xs font-mono"
+                    className="h-8.5 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
 
@@ -342,15 +293,17 @@ export function EditVariantDialog({
                     Cost Per Item (₹)
                   </label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={costPrice}
-                    onChange={(e) =>
-                      setCostPrice(e.target.value === "" ? "" : Number(e.target.value))
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                        setCostPrice(val)
+                      }
+                    }}
                     placeholder="65.00"
-                    className="h-8.5 text-xs font-mono"
+                    className="h-8.5 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>

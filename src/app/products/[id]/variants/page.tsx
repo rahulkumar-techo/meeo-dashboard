@@ -150,15 +150,16 @@ export default function ProductVariantsPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsBatchOpen(true)}
-            className="h-8.5 gap-1.5 text-xs border-indigo-200 text-indigo-600 dark:border-indigo-900/60 dark:text-indigo-400 hover:bg-indigo-500/10 font-medium"
-          >
-            <Grid className="size-3.5" />
-            <span>Matrix Generator</span>
-          </Button>
+          <Link href={`/products/${productId}/variants/batch`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8.5 gap-1.5 text-xs border-indigo-200 text-indigo-600 dark:border-indigo-900/60 dark:text-indigo-400 hover:bg-indigo-500/10 font-semibold"
+            >
+              <Layers className="size-3.5" />
+              <span>Batch Create Variants</span>
+            </Button>
+          </Link>
           <Button
             size="sm"
             onClick={() => setIsCreateOpen(true)}
@@ -287,6 +288,7 @@ export default function ProductVariantsPage() {
       <CreateVariantDialog
         productId={productId}
         productName={product?.name}
+        productSlug={product?.slug}
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onSuccess={() => refetch()}
