@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { StatusBadge, EmptyState, DataTablePagination } from "@/components/common"
+import { StatusBadge, EmptyState, DataTablePagination, CopyableId } from "@/components/common"
 import type { Brand } from "@/types/brand"
 
 export interface BrandTableProps {
@@ -134,11 +134,14 @@ export function BrandTable({
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-0.5">
                         <p className="font-semibold text-foreground truncate">{b.name}</p>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                          /brands/{b.slug}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground font-mono truncate">
+                            /brands/{b.slug}
+                          </span>
+                          <CopyableId id={b.id} label="Brand ID" />
+                        </div>
                       </div>
                     </div>
                   </TableCell>

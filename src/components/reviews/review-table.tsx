@@ -176,9 +176,34 @@ export function ReviewTable({
                           {rev.content}
                         </p>
                         {rev.images && rev.images.length > 0 && (
-                          <div className="flex items-center gap-1 text-[10.5px] text-primary pt-0.5">
-                            <ImageIcon className="size-3" />
-                            <span>{rev.images.length} Attached Photo(s)</span>
+                          <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                            {rev.images.slice(0, 4).map((img, idx) => {
+                              const src = typeof img === "string" ? img : img.thumbnailUrl || img.url
+                              const fullUrl = typeof img === "string" ? img : img.url
+                              return (
+                                <a
+                                  key={idx}
+                                  href={fullUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="relative size-7 shrink-0 rounded overflow-hidden border border-border/60 hover:ring-2 hover:ring-primary transition-all bg-muted"
+                                  title="View full-size review photo"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={src}
+                                    alt={typeof img === "object" ? img.altText || "Review Photo" : "Review Photo"}
+                                    className="object-cover w-full h-full"
+                                    loading="lazy"
+                                  />
+                                </a>
+                              )
+                            })}
+                            {rev.images.length > 4 && (
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                +{rev.images.length - 4} more
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>

@@ -14,6 +14,7 @@ import type {
   ProductImage,
   UploadProductImagePayload,
   AttachProductImagePayload,
+  ImageKitAuthCredentials,
 } from "@/types/product"
 import type { Attribute } from "@/types/attribute"
 
@@ -125,11 +126,11 @@ export const productService = {
   },
 
   /**
-   * Get ImageKit client auth credentials.
+   * Get signed ImageKit client credentials for browser uploads.
    * Endpoint: GET /api/v1/products/images/auth
    */
-  async getImageKitAuth(): Promise<ProductApiResponse<{ token: string; expire: number; signature: string }>> {
-    const response = await apiClient.get<ProductApiResponse<{ token: string; expire: number; signature: string }>>(
+  async getImageKitAuth(): Promise<ProductApiResponse<ImageKitAuthCredentials>> {
+    const response = await apiClient.get<ProductApiResponse<ImageKitAuthCredentials>>(
       "/products/images/auth"
     )
     return response.data

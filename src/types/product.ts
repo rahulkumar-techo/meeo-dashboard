@@ -1,6 +1,6 @@
 /**
  * @file product.ts
- * @description Type definitions for product catalog entities, queries, payloads, and API responses.
+ * @description Unified Type definitions for product catalog entities, ImageKit media, queries, and API responses.
  */
 
 import type { Category } from "./category"
@@ -10,22 +10,49 @@ export type ProductStatus = "DRAFT" | "ACTIVE" | "ARCHIVED"
 export type ProductSortBy = "name" | "createdAt" | "updatedAt" | "status"
 export type SortOrder = "asc" | "desc"
 
+/**
+ * ImageKit Product Banner JSON asset structure
+ */
+export interface ProductBannerImage {
+  fileId?: string | null
+  url: string
+  thumbnailUrl?: string | null
+  altText?: string | null
+}
+
+/**
+ * Unified Image model matching backend Prisma Image entity
+ */
 export interface ProductImage {
   id: string
+  fileId?: string | null
   url: string
+  thumbnailUrl?: string | null
   altText?: string | null
   sortOrder?: number
-  fileId?: string | null
+  width?: number | null
+  height?: number | null
+  size?: number | null
+  productId?: string | null
+  productVariantId?: string | null
+  reviewId?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ProductVariant {
   id: string
+  productId?: string
   sku: string
-  title: string
-  price: number
-  compareAtPrice?: number | null
+  title?: string
+  price: number | string
+  compareAtPrice?: number | string | null
+  costPrice?: number | string | null
   inventoryQuantity?: number
+  images?: ProductImage[]
 }
+
+export type ProductSpecifications = Record<string, Record<string, string>>
 
 export interface Product {
   id: string
@@ -38,7 +65,9 @@ export interface Product {
   brandId?: string | null
   category?: Pick<Category, "id" | "name" | "slug"> | null
   brand?: Pick<Brand, "id" | "name" | "slug" | "logoUrl"> | null
+  bannerImage?: ProductBannerImage | null
   images?: ProductImage[]
+  specifications?: ProductSpecifications | null
   variants?: ProductVariant[]
   variantsCount?: number
   _count?: {
@@ -69,9 +98,10 @@ export interface ProductQueryParams {
 
 export interface CreateProductImageInput {
   url: string
-  altText?: string
+  fileId?: string | null
+  thumbnailUrl?: string | null
+  altText?: string | null
   sortOrder?: number
-  fileId?: string
 }
 
 export interface UploadProductImagePayload {
@@ -84,8 +114,17 @@ export interface UploadProductImagePayload {
 export interface AttachProductImagePayload {
   url: string
   fileId?: string | null
+  thumbnailUrl?: string | null
   altText?: string | null
   sortOrder?: number
+}
+
+export interface ImageKitAuthCredentials {
+  token: string
+  expire: number
+  signature: string
+  publicKey?: string
+  urlEndpoint?: string
 }
 
 export interface CreateProductPayload {
@@ -98,7 +137,9 @@ export interface CreateProductPayload {
   isFeatured?: boolean
   seoTitle?: string | null
   seoDescription?: string | null
+  bannerImage?: ProductBannerImage | null
   images?: CreateProductImageInput[]
+  specifications?: ProductSpecifications | null
 }
 
 export interface UpdateProductPayload {
@@ -111,6 +152,8 @@ export interface UpdateProductPayload {
   isFeatured?: boolean
   seoTitle?: string | null
   seoDescription?: string | null
+  bannerImage?: ProductBannerImage | null
+  specifications?: ProductSpecifications | null
 }
 
 export interface ProductPagination {

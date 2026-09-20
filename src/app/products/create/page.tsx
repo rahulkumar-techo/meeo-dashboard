@@ -44,6 +44,7 @@ export default function CreateProductPage() {
     isFeatured: boolean
     seoTitle: string
     seoDescription: string
+    bannerImageUrl: string
   }>({
     name: "",
     slug: "",
@@ -53,6 +54,7 @@ export default function CreateProductPage() {
     isFeatured: false,
     seoTitle: "",
     seoDescription: "",
+    bannerImageUrl: "",
   })
 
   // Callback when Step 1 creates product draft
@@ -142,7 +144,11 @@ export default function CreateProductPage() {
             isFeatured={createdProduct?.isFeatured ?? previewData.isFeatured}
             seoTitle={createdProduct?.seoTitle || previewData.seoTitle}
             seoDescription={createdProduct?.seoDescription || previewData.seoDescription}
-            imageUrl={liveImages.length > 0 ? liveImages[0].url : undefined}
+            imageUrl={
+              createdProduct?.bannerImage?.url ||
+              previewData.bannerImageUrl ||
+              (liveImages.length > 0 ? liveImages[0].url : undefined)
+            }
             categories={categories}
             brands={brands}
           />

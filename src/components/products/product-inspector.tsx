@@ -23,7 +23,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { StatusBadge } from "@/components/common"
+import { StatusBadge, CopyableId } from "@/components/common"
 import type { Product } from "@/types/product"
 
 export interface ProductInspectorProps {
@@ -81,6 +81,27 @@ export function ProductInspector({
       </CardHeader>
 
       <CardContent className="p-4 space-y-4">
+        {/* Campaign Banner Preview (if present) */}
+        {selectedProduct.bannerImage?.url && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold uppercase">
+              <span>Hero Campaign Banner</span>
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-indigo-200 text-indigo-600 dark:text-indigo-400">
+                ImageKit Banner
+              </Badge>
+            </div>
+            <div className="relative w-full h-24 rounded-lg overflow-hidden border border-indigo-500/20 bg-muted">
+              <Image
+                src={selectedProduct.bannerImage.url}
+                alt={selectedProduct.bannerImage.altText || "Product Banner"}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        )}
+
         {/* Cover / Hero Image */}
         {heroImage ? (
           <div className="relative w-full h-36 rounded-lg overflow-hidden border border-border/60 bg-muted">
@@ -93,29 +114,34 @@ export function ProductInspector({
             />
           </div>
         ) : (
-          <div className="flex h-28 w-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground text-xs gap-1">
-            <Package className="size-6 text-muted-foreground/50" />
-            <span>No image attached</span>
-          </div>
+          !selectedProduct.bannerImage?.url && (
+            <div className="flex h-28 w-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground text-xs gap-1">
+              <Package className="size-6 text-muted-foreground/50" />
+              <span>No image attached</span>
+            </div>
+          )
         )}
 
         {/* Gallery Thumbnails */}
         {images.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {images.slice(1, 5).map((img, idx) => (
+            {images.slice(1, 6).map((img, idx) => (
               <div key={idx} className="relative size-12 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
-                <Image src={img.url} alt={img.altText || "Gallery"} fill className="object-cover" unoptimized />
+                <Image src={img.thumbnailUrl || img.url} alt={img.altText || "Gallery"} fill className="object-cover" unoptimized />
               </div>
             ))}
           </div>
         )}
 
         {/* Primary Info */}
-        <div>
+        <div className="space-y-1">
           <h3 className="text-base font-bold text-foreground">{selectedProduct.name}</h3>
-          <p className="text-xs text-muted-foreground font-mono mt-0.5">
+          <p className="text-xs text-muted-foreground font-mono">
             /products/{selectedProduct.slug}
           </p>
+          <div className="pt-1">
+            <CopyableId id={selectedProduct.id} label="Product ID" />
+          </div>
         </div>
 
         {/* Description */}
@@ -130,21 +156,27 @@ export function ProductInspector({
 
         {/* Metadata Grid */}
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
-          <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+          <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">
               Category
             </span>
-            <span className="text-xs font-medium text-foreground truncate block mt-0.5">
+            <span className="text-xs font-medium text-foreground truncate block">
               {selectedProduct.category?.name || "Uncategorized"}
             </span>
+            {(selectedProduct.categoryId || selectedProduct.category?.id) && (
+              <CopyableId id={(selectedProduct.categoryId || selectedProduct.category?.id)!} label="Cat ID" />
+            )}
           </div>
-          <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+          <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">
               Brand
             </span>
-            <span className="text-xs font-medium text-foreground truncate block mt-0.5">
+            <span className="text-xs font-medium text-foreground truncate block">
               {selectedProduct.brand?.name || "Unbranded"}
             </span>
+            {(selectedProduct.brandId || selectedProduct.brand?.id) && (
+              <CopyableId id={(selectedProduct.brandId || selectedProduct.brand?.id)!} label="Brand ID" />
+            )}
           </div>
           <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">
@@ -163,6 +195,29 @@ export function ProductInspector({
             </span>
           </div>
         </div>
+
+        {/* Technical Specifications */}
+        {selectedProduct.specifications && Object.keys(selectedProduct.specifications).length > 0 && (
+          <div className="border-t border-border/60 pt-3 space-y-2">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+              Technical Specifications
+            </span>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {Object.entries(selectedProduct.specifications).map(([group, fields]) => (
+                <div key={group} className="p-2 rounded-lg bg-muted/20 border border-border/40 text-[11px] space-y-1">
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400 block">{group}</span>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-muted-foreground">
+                    {Object.entries(fields).map(([k, v]) => (
+                      <div key={k} className="truncate">
+                        <strong className="text-foreground font-normal">{k}:</strong> {v}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* SEO Metadata */}
         {(selectedProduct.seoTitle || selectedProduct.seoDescription) && (

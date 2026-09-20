@@ -1,21 +1,22 @@
 /**
  * @file variant-table.tsx
- * @description Data table for displaying and managing product variants, stock levels, and pricing.
+ * @description Data table for displaying and managing product variants, ImageKit media, stock levels, and pricing.
  */
 
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import {
   Edit2,
   Trash2,
   Barcode,
-  Layers,
   Copy,
   Check,
   Plus,
   Grid,
   AlertTriangle,
+  Image as ImageIcon,
 } from "lucide-react"
 import {
   Table,
@@ -83,7 +84,7 @@ export function VariantTable({
       <Table>
         <TableHeader className="bg-muted/40 text-xs">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="pl-4 font-semibold text-foreground">SKU / Barcode</TableHead>
+            <TableHead className="pl-4 font-semibold text-foreground">SKU / Media</TableHead>
             <TableHead className="font-semibold text-foreground">Attributes & Options</TableHead>
             <TableHead className="font-semibold text-foreground">Pricing & Margin</TableHead>
             <TableHead className="font-semibold text-foreground">Inventory Stock</TableHead>
@@ -112,7 +113,7 @@ export function VariantTable({
                   description={
                     hasActiveFilters
                       ? "Try searching for a different SKU, barcode, or status filter."
-                      : "Add individual SKU variants or use the Batch Matrix Generator to populate product options."
+                      : "Add individual SKU variants or use the Batch Matrix Generator to populate options."
                   }
                 >
                   <div className="flex items-center justify-center gap-2 pt-2">
@@ -151,59 +152,58 @@ export function VariantTable({
                   : null
               const isLowStock = reorder !== null && stock <= reorder
 
-              const numPrice =
-                typeof variant.price === "number" ? variant.price : parseFloat(String(variant.price || 0))
-              const numCompare =
-                variant.compareAtPrice !== null && variant.compareAtPrice !== undefined && variant.compareAtPrice !== ""
-                  ? typeof variant.compareAtPrice === "number"
-                    ? variant.compareAtPrice
-                    : parseFloat(String(variant.compareAtPrice))
-                  : null
-              const numCost =
-                variant.costPrice !== null && variant.costPrice !== undefined && variant.costPrice !== ""
-                  ? typeof variant.costPrice === "number"
-                    ? variant.costPrice
-                    : parseFloat(String(variant.costPrice))
-                  : null
-
-              // Calculate profit margin if costPrice exists
-              const margin =
-                numCost !== null && !isNaN(numCost) && numPrice > 0
-                  ? Math.round(((numPrice - numCost) / numPrice) * 100)
-                  : null
+              const numPrice = typeof variant.price === "number" ? variant.price : parseFloat(String(variant.price || 0))
+              const numCompare = variant.compareAtPrice ? Number(variant.compareAtPrice) : null
+              const numCost = variant.costPrice ? Number(variant.costPrice) : null
+              const margin = numCost && !isNaN(numCost) && numPrice > 0 ? Math.round(((numPrice - numCost) / numPrice) * 100) : null
 
               return (
-                <TableRow
-                  key={variant.id}
-                  className="hover:bg-muted/30 transition-colors"
-                >
-                  {/* SKU & Barcode */}
+                <TableRow key={variant.id} className="hover:bg-muted/30 transition-colors">
+                  {/* SKU & Barcode & Media */}
                   <TableCell className="pl-4 py-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-foreground text-xs">
-                          {variant.sku}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopySku(variant.sku, e)}
-                          className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                          title="Copy SKU"
-                        >
-                          {copiedSku === variant.sku ? (
-                            <Check className="size-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </button>
-                      </div>
-
-                      {variant.barcode && (
-                        <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground">
-                          <Barcode className="size-3 shrink-0" />
-                          <span>{variant.barcode}</span>
+                    <div className="flex items-center gap-2.5">
+                      {variant.images && variant.images.length > 0 ? (
+                        <div className="relative size-8 shrink-0 rounded-md overflow-hidden border border-border/70 bg-muted">
+                          <Image
+                            src={variant.images[0].thumbnailUrl || variant.images[0].url}
+                            alt={variant.images[0].altText || variant.sku}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="size-8 shrink-0 rounded-md border border-dashed border-border/60 bg-muted/30 flex items-center justify-center text-muted-foreground/40">
+                          <ImageIcon className="size-3.5" />
                         </div>
                       )}
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-foreground text-xs">
+                            {variant.sku}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopySku(variant.sku, e)}
+                            className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            title="Copy SKU"
+                          >
+                            {copiedSku === variant.sku ? (
+                              <Check className="size-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="size-3" />
+                            )}
+                          </button>
+                        </div>
+
+                        {variant.barcode && (
+                          <div className="flex items-center gap-1 text-[10.5px] font-mono text-muted-foreground">
+                            <Barcode className="size-3 shrink-0" />
+                            <span>{variant.barcode}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
 
@@ -215,11 +215,7 @@ export function VariantTable({
                           const attrName = av.attributeValue?.attribute?.name || av.attribute?.name
                           const valStr = av.attributeValue?.value || av.value || ""
                           return (
-                            <Badge
-                              key={idx}
-                              variant="secondary"
-                              className="text-[10px] font-medium px-2 py-0.5 bg-muted/60"
-                            >
+                            <Badge key={idx} variant="secondary" className="text-[10px] font-medium px-2 py-0.5 bg-muted/60">
                               {attrName ? `${attrName}: ` : ""}
                               {valStr}
                             </Badge>
@@ -227,9 +223,7 @@ export function VariantTable({
                         })}
                       </div>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground italic">
-                        Standard Variant
-                      </span>
+                      <span className="text-[11px] text-muted-foreground italic">Standard Variant</span>
                     )}
                   </TableCell>
 
@@ -237,9 +231,7 @@ export function VariantTable({
                   <TableCell>
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 font-mono">
-                        <span className="font-bold text-foreground">
-                          {formatCurrency(variant.price)}
-                        </span>
+                        <span className="font-bold text-foreground">{formatCurrency(variant.price)}</span>
                         {numCompare !== null && numCompare > numPrice && (
                           <span className="text-[11px] text-muted-foreground line-through">
                             {formatCurrency(numCompare)}
@@ -250,9 +242,7 @@ export function VariantTable({
                         <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5">
                           <span>Cost: {formatCurrency(variant.costPrice)}</span>
                           {margin !== null && (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                              ({margin}% margin)
-                            </span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">({margin}% margin)</span>
                           )}
                         </div>
                       )}
@@ -265,11 +255,7 @@ export function VariantTable({
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`font-mono font-bold ${
-                            stock <= 0
-                              ? "text-rose-600 dark:text-rose-400"
-                              : isLowStock
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-foreground"
+                            stock <= 0 ? "text-rose-600 dark:text-rose-400" : isLowStock ? "text-amber-600 dark:text-amber-400" : "text-foreground"
                           }`}
                         >
                           {stock} in stock
@@ -289,13 +275,7 @@ export function VariantTable({
                   {/* Status Badge */}
                   <TableCell>
                     <Badge
-                      variant={
-                        variant.status === "ACTIVE"
-                          ? "default"
-                          : variant.status === "DRAFT"
-                          ? "outline"
-                          : "secondary"
-                      }
+                      variant={variant.status === "ACTIVE" ? "default" : variant.status === "DRAFT" ? "outline" : "secondary"}
                       className="text-[10px] uppercase font-mono px-2 py-0"
                     >
                       {variant.status}
@@ -332,7 +312,6 @@ export function VariantTable({
         </TableBody>
       </Table>
 
-      {/* Pagination Footer */}
       <DataTablePagination
         currentPage={page}
         totalPages={totalPages}

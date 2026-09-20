@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ImageUploadDropzone } from "@/components/common"
 import { useUpdateCategoryMutation } from "@/hooks/use-category-query"
 import type { Category, CategoryStatus, UpdateCategoryPayload } from "@/types/category"
 
@@ -216,8 +217,8 @@ export function EditCategoryDialog({
             </div>
 
             {/* Sort Order & Image URL */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5 sm:col-span-1">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
                 <label className="font-semibold text-foreground">Sort Order</label>
                 <Input
                   type="number"
@@ -230,18 +231,16 @@ export function EditCategoryDialog({
                 />
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="font-semibold text-foreground">Cover Image URL</label>
-                <div className="relative">
-                  <Input
-                    value={formData.imageUrl || ""}
-                    onChange={(e) => setFormData((p) => ({ ...p, imageUrl: e.target.value }))}
-                    placeholder="https://images.unsplash.com/..."
-                    className="h-8.5 text-xs pl-7"
-                  />
-                  <ImageIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                </div>
-              </div>
+              {/* Cover Image Upload Dropzone */}
+              <ImageUploadDropzone
+                value={formData.imageUrl || ""}
+                onChange={(url) => setFormData((p) => ({ ...p, imageUrl: url }))}
+                folder="/categories"
+                label="Category Cover Image"
+                description="Upload updated category banner from device (PNG, JPG, SVG, WebP)"
+                aspectRatio="wide"
+                disabled={updateMutation.isPending}
+              />
             </div>
 
             {/* Description */}

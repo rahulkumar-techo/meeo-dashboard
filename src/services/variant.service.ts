@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from "@/config/client"
+import type { ProductImage } from "@/types/product"
 import type {
   ProductVariant,
   VariantQueryParams,
@@ -106,4 +107,72 @@ export const variantService = {
     )
     return response.data
   },
+
+  /**
+   * Upload & attach variant-specific image (FormData or JSON).
+   * Endpoint: POST /api/v1/variants/:id/images/upload
+   */
+  async uploadVariantImage(
+    id: string,
+    payload: FormData | { file: string | File; altText?: string | null; sortOrder?: number }
+  ): Promise<VariantApiResponse<ProductImage>> {
+    const isFormData = typeof FormData !== "undefined" && payload instanceof FormData
+    const response = await apiClient.post<VariantApiResponse<ProductImage>>(
+      `/variants/${id}/images/upload`,
+      payload,
+      isFormData
+        ? {
+            headers: {
+              "Content-Type": undefined,
+            },
+          }
+        : undefined
+    )
+    return response.data
+  },
+
+  /**
+   * Attach hosted image URL to variant.
+   * Endpoint: POST /api/v1/variants/:id/images
+   */
+  async attachVariantImage(
+    id: string,
+    payload: { url: string; fileId?: string | null; thumbnailUrl?: string | null; altText?: string | null; sortOrder?: number }
+  ): Promise<VariantApiResponse<ProductImage>> {
+    const response = await apiClient.post<VariantApiResponse<ProductImage>>(
+      `/variants/${id}/images`,
+      payload
+    )
+    return response.data
+  },
+
+  /**
+   * Delete variant image.
+   * Endpoint: DELETE /api/v1/variants/:id/images/:imageId
+   */
+  async deleteVariantImage(
+    id: string,
+    imageId: string
+  ): Promise<VariantApiResponse<{ deletedImageId: string }>> {
+    const response = await apiClient.delete<VariantApiResponse<{ deletedImageId: string }>>(
+      `/variants/${id}/images/${imageId}`
+    )
+    return response.data
+  },
+
+  /**
+   * Reorder variant image gallery.
+   * Endpoint: PUT /api/v1/variants/:id/images/reorder
+   */
+  async reorderVariantImages(
+    id: string,
+    images: Array<{ id: string; sortOrder: number }>
+  ): Promise<VariantApiResponse<ProductImage[]>> {
+    const response = await apiClient.put<VariantApiResponse<ProductImage[]>>(
+      `/variants/${id}/images/reorder`,
+      { images }
+    )
+    return response.data
+  },
 }
+

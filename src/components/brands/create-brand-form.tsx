@@ -11,6 +11,7 @@ import { Loader2, Sparkles, Image as ImageIcon, CheckCircle2 } from "lucide-reac
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ImageUploadDropzone } from "@/components/common"
 import { useCreateBrandMutation } from "@/hooks/use-brand-query"
 import type { BrandStatus, CreateBrandPayload } from "@/types/brand"
 
@@ -171,19 +172,16 @@ export function CreateBrandForm({ onFormChange }: CreateBrandFormProps) {
             </select>
           </div>
 
-          {/* Logo URL */}
-          <div className="space-y-1.5">
-            <label className="font-semibold text-foreground">Brand Logo URL</label>
-            <div className="relative">
-              <Input
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="h-9 text-xs pl-8"
-              />
-              <ImageIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            </div>
-          </div>
+          {/* Logo Upload Dropzone */}
+          <ImageUploadDropzone
+            value={logoUrl}
+            onChange={(url) => setLogoUrl(url)}
+            folder="/brands"
+            label="Brand Logo"
+            description="Select brand logo from your device (PNG, JPG, SVG, WebP)"
+            aspectRatio="square"
+            disabled={createMutation.isPending}
+          />
 
           {/* Description */}
           <div className="space-y-1.5">

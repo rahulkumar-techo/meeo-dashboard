@@ -162,3 +162,90 @@ export function useDeleteVariantMutation(productId?: string) {
     },
   })
 }
+
+/**
+ * Hook to upload an image to a variant (POST /api/v1/variants/:id/images/upload).
+ */
+export function useUploadVariantImageMutation(productId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: FormData | { file: string | File; altText?: string | null; sortOrder?: number } }) => {
+      return await variantService.uploadVariantImage(id, payload)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
+      if (productId) {
+        queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+  })
+}
+
+/**
+ * Hook to attach an existing hosted image URL to a variant (POST /api/v1/variants/:id/images).
+ */
+export function useAttachVariantImageMutation(productId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: { url: string; fileId?: string | null; thumbnailUrl?: string | null; altText?: string | null; sortOrder?: number }
+    }) => {
+      return await variantService.attachVariantImage(id, payload)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
+      if (productId) {
+        queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+  })
+}
+
+/**
+ * Hook to delete an image from a variant (DELETE /api/v1/variants/:id/images/:imageId).
+ */
+export function useDeleteVariantImageMutation(productId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, imageId }: { id: string; imageId: string }) => {
+      return await variantService.deleteVariantImage(id, imageId)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
+      if (productId) {
+        queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+  })
+}
+
+/**
+ * Hook to reorder variant images (PUT /api/v1/variants/:id/images/reorder).
+ */
+export function useReorderVariantImagesMutation(productId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, images }: { id: string; images: Array<{ id: string; sortOrder: number }> }) => {
+      return await variantService.reorderVariantImages(id, images)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
+      if (productId) {
+        queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+  })
+}
+

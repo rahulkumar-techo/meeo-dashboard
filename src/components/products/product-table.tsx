@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { StatusBadge, EmptyState, DataTablePagination } from "@/components/common"
+import { StatusBadge, EmptyState, DataTablePagination, CopyableId } from "@/components/common"
 import type { Product } from "@/types/product"
 
 export interface ProductTableProps {
@@ -116,7 +116,9 @@ export function ProductTable({
           ) : (
             items.map((prod) => {
               const isSelected = selectedProduct?.id === prod.id
-              const heroImage = prod.images && prod.images.length > 0 ? prod.images[0].url : null
+              const heroImage =
+                prod.bannerImage?.url ||
+                (prod.images && prod.images.length > 0 ? prod.images[0].url : null)
               const variantsCount =
                 prod._count?.variants ??
                 prod.variants?.length ??
@@ -148,7 +150,7 @@ export function ProductTable({
                           <Package className="size-4 text-muted-foreground/60" />
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-0.5">
                         <div className="flex items-center gap-1.5">
                           <p className="font-semibold text-foreground truncate">{prod.name}</p>
                           {prod.isFeatured && (
@@ -157,9 +159,12 @@ export function ProductTable({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                          /products/{prod.slug}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground font-mono truncate">
+                            /products/{prod.slug}
+                          </span>
+                          <CopyableId id={prod.id} label="Product ID" />
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -167,10 +172,15 @@ export function ProductTable({
                   {/* Category */}
                   <TableCell>
                     {prod.category ? (
-                      <Badge variant="outline" className="text-[10px] font-normal gap-1 py-0.5">
-                        <FolderTree className="size-2.5 text-indigo-500" />
-                        <span className="truncate max-w-[110px]">{prod.category.name}</span>
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] font-normal gap-1 py-0.5">
+                          <FolderTree className="size-2.5 text-indigo-500" />
+                          <span className="truncate max-w-[110px]">{prod.category.name}</span>
+                        </Badge>
+                        {prod.category.id && (
+                          <CopyableId id={prod.category.id} label="Category ID" className="text-[9.5px]" />
+                        )}
+                      </div>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">—</span>
                     )}
@@ -179,10 +189,15 @@ export function ProductTable({
                   {/* Brand */}
                   <TableCell>
                     {prod.brand ? (
-                      <Badge variant="outline" className="text-[10px] font-normal gap-1 py-0.5">
-                        <Building2 className="size-2.5 text-emerald-500" />
-                        <span className="truncate max-w-[110px]">{prod.brand.name}</span>
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] font-normal gap-1 py-0.5">
+                          <Building2 className="size-2.5 text-emerald-500" />
+                          <span className="truncate max-w-[110px]">{prod.brand.name}</span>
+                        </Badge>
+                        {prod.brand.id && (
+                          <CopyableId id={prod.brand.id} label="Brand ID" className="text-[9.5px]" />
+                        )}
+                      </div>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">—</span>
                     )}

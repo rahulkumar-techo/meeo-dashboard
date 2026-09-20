@@ -10,7 +10,7 @@ import Image from "next/image"
 import { Edit2, Trash2, Building2 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/common"
+import { StatusBadge, CopyableId } from "@/components/common"
 import type { Brand } from "@/types/brand"
 
 export interface BrandInspectorProps {
@@ -72,11 +72,14 @@ export function BrandInspector({
         )}
 
         {/* Primary Info */}
-        <div>
+        <div className="space-y-1">
           <h3 className="text-base font-bold text-foreground">{selectedBrand.name}</h3>
-          <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            /brands/{selectedBrand.slug}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-mono">
+              /brands/{selectedBrand.slug}
+            </span>
+            <CopyableId id={selectedBrand.id} label="Brand ID" />
+          </div>
         </div>
 
         {/* Description */}

@@ -16,6 +16,7 @@ import { cn } from "cn"
 import { usePermissions } from "@/hooks/use-permissions"
 import { useOverView } from "@/hooks/dashboard/use-overview.hook"
 import { useAdminOrderMetricsQuery } from "@/hooks/use-order-query"
+import { usePromotionsQuery } from "@/hooks/use-promotion-query"
 import type { NavGroup } from "./nav-config"
 
 interface NavMainProps {
@@ -26,11 +27,16 @@ export function NavMain({ groups }: NavMainProps) {
   const pathname = usePathname()
   const { hasPermission, isSuperAdmin } = usePermissions()
 
-  // Fetch live overview and order metrics for real-time sidebar badges
+  // Fetch live overview, order metrics, and promotions for real-time sidebar badges
   const { data: overviewData } = useOverView({ period: "30d" })
   const { data: orderMetrics } = useAdminOrderMetricsQuery()
+  const { data: promotionsData } = usePromotionsQuery({ status: "ACTIVE", limit: 1 })
 
   const overview = overviewData?.data
+  const activePromosCount =
+    promotionsData?.pagination?.total ??
+    promotionsData?.promotions?.length ??
+    0
 
   const isRouteActive = React.useCallback(
     (url: string) => {
@@ -92,11 +98,17 @@ export function NavMain({ groups }: NavMainProps) {
           }
           return null
         }
+        case "/marketing/promotions": {
+          if (activePromosCount > 0) {
+            return { badge: `${activePromosCount} active`, badgeVariant: "brand" as const }
+          }
+          return null
+        }
         default:
           return null
       }
     },
-    [overview, orderMetrics]
+    [overview, orderMetrics, activePromosCount]
   )
 
   // Filter groups and items based on user RBAC permissions and attach live badges

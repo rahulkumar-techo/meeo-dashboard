@@ -40,7 +40,7 @@ export function StepPublishReview({
   const selectedCategory = categories.find((c) => c.id === activeProduct.categoryId) || activeProduct.category
   const selectedBrand = brands.find((b) => b.id === activeProduct.brandId) || activeProduct.brand
   const images = activeProduct.images || []
-  const heroImage = images.length > 0 ? images[0].url : null
+  const heroImage = activeProduct.bannerImage?.url || (images.length > 0 ? images[0].url : null)
 
   const publishMutation = usePublishProductMutation()
 
@@ -142,6 +142,14 @@ export function StepPublishReview({
                 {images.length} Image(s) Attached
               </span>
             </div>
+            {activeProduct.specifications && Object.keys(activeProduct.specifications).length > 0 && (
+              <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Specifications</span>
+                <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 block mt-0.5">
+                  {Object.keys(activeProduct.specifications).length} Groups Defined
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Description */}

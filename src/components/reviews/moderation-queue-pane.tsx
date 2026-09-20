@@ -229,22 +229,28 @@ export function ModerationQueuePane({
 
                 {/* Images */}
                 {rev.images && rev.images.length > 0 && (
-                  <div className="flex items-center gap-2 pt-1">
-                    {rev.images.map((imgUrl, i) => (
-                      <a
-                        key={i}
-                        href={imgUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg border border-border/80 overflow-hidden hover:opacity-80 transition-opacity"
-                      >
-                        <img
-                          src={imgUrl}
-                          alt="Review attachment"
-                          className="size-14 object-cover"
-                        />
-                      </a>
-                    ))}
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    {rev.images.map((img, i) => {
+                      const fullUrl = typeof img === "string" ? img : img.url
+                      const thumbSrc = typeof img === "string" ? img : img.thumbnailUrl || img.url
+                      return (
+                        <a
+                          key={i}
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg border border-border/80 overflow-hidden hover:opacity-80 transition-opacity bg-muted"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={thumbSrc}
+                            alt="Review attachment"
+                            className="size-14 object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      )
+                    })}
                   </div>
                 )}
 

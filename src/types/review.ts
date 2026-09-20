@@ -34,6 +34,8 @@ export type ReportResolutionAction =
   | "DELETE_REVIEW"
   | "NO_ACTION"
 
+import type { ProductImage } from "./product"
+
 /**
  * Author profile attached to reviews
  */
@@ -54,6 +56,8 @@ export interface ReviewProduct {
   slug?: string
 }
 
+export type ReviewImage = ProductImage | { url: string; fileId?: string | null; thumbnailUrl?: string | null; altText?: string | null }
+
 /**
  * Main Admin Review model
  */
@@ -64,7 +68,7 @@ export interface AdminReview {
   rating: number
   title?: string | null
   content: string
-  images?: string[]
+  images?: Array<ProductImage | { url: string; fileId?: string | null; thumbnailUrl?: string | null; altText?: string | null } | string>
   isVerifiedPurchase: boolean
   status: ReviewStatus
   moderatedBy?: string | null

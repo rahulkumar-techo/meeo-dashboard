@@ -40,6 +40,7 @@ import {
   useProductQuery,
 } from "@/hooks/use-product-query"
 import { EditProductImages } from "@/components/products/edit-product-images"
+import { EditProductBanner } from "@/components/products/edit-product-banner"
 import type { Category } from "@/types/category"
 import type { Brand } from "@/types/brand"
 import type { Product, ProductStatus, UpdateProductPayload } from "@/types/product"
@@ -410,13 +411,22 @@ export function EditProductDialog({
 
           {/* TAB 2: Gallery & Media */}
           {activeTab === "media" && (
-            <EditProductImages
-              product={currentProduct}
-              onImageChange={() => {
-                refetchLiveProduct()
-                onSuccess?.()
-              }}
-            />
+            <div className="space-y-4">
+              <EditProductBanner
+                product={currentProduct}
+                onBannerChange={() => {
+                  refetchLiveProduct()
+                  onSuccess?.()
+                }}
+              />
+              <EditProductImages
+                product={currentProduct}
+                onImageChange={() => {
+                  refetchLiveProduct()
+                  onSuccess?.()
+                }}
+              />
+            </div>
           )}
 
           {/* TAB 3: SEO & Search Preview */}

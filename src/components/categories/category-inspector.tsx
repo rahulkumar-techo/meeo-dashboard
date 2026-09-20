@@ -10,7 +10,7 @@ import Image from "next/image"
 import { Edit2, Trash2, FolderTree } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/common"
+import { StatusBadge, CopyableId } from "@/components/common"
 import type { Category } from "@/types/category"
 
 export interface CategoryInspectorProps {
@@ -59,9 +59,12 @@ export function CategoryInspector({
         )}
 
         {/* Primary Info */}
-        <div>
+        <div className="space-y-1">
           <h3 className="text-base font-bold text-foreground">{selectedCat.name}</h3>
-          <p className="text-xs text-muted-foreground font-mono mt-0.5">/c/{selectedCat.slug}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-mono">/c/{selectedCat.slug}</span>
+            <CopyableId id={selectedCat.id} label="Category ID" />
+          </div>
         </div>
 
         {/* Description */}

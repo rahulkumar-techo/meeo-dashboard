@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ImageUploadDropzone } from "@/components/common"
 import { useCreateBrandMutation } from "@/hooks/use-brand-query"
 import type { BrandStatus, CreateBrandPayload } from "@/types/brand"
 
@@ -184,19 +185,16 @@ export function CreateBrandDialog({
               </select>
             </div>
 
-            {/* Logo Image URL */}
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground">Brand Logo URL</label>
-              <div className="relative">
-                <Input
-                  value={formData.logoUrl || ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, logoUrl: e.target.value }))}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="h-8.5 text-xs pl-7"
-                />
-                <ImageIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              </div>
-            </div>
+            {/* Logo Image Upload Dropzone */}
+            <ImageUploadDropzone
+              value={formData.logoUrl || ""}
+              onChange={(url) => setFormData((p) => ({ ...p, logoUrl: url }))}
+              folder="/brands"
+              label="Brand Logo"
+              description="Upload official brand logo from device (PNG, JPG, SVG, WebP)"
+              aspectRatio="square"
+              disabled={createMutation.isPending}
+            />
 
             {/* Description */}
             <div className="space-y-1.5">

@@ -1,7 +1,9 @@
 /**
  * @file variant.ts
- * @description Type definitions for product variants, SKU inventory tracking, attributes, and API contracts.
+ * @description Type definitions for product variants, SKU inventory tracking, attributes, and ImageKit variant media.
  */
+
+import type { ProductImage, CreateProductImageInput, UploadProductImagePayload, AttachProductImagePayload } from "./product"
 
 export type VariantStatus = "DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED"
 export type VariantSortBy = "sku" | "price" | "createdAt" | "updatedAt" | "status"
@@ -37,6 +39,7 @@ export interface ProductVariant {
   inventory?: VariantInventory | null
   inventoryQuantity?: number
   attributeValues?: AttributeValue[]
+  images?: ProductImage[]
   product?: {
     id: string
     name: string
@@ -65,6 +68,7 @@ export interface CreateVariantPayload {
   compareAtPrice?: number | null
   costPrice?: number | null
   reorderLevel?: number | null
+  images?: CreateProductImageInput[]
 }
 
 export interface BatchCreateVariantItem {
@@ -77,6 +81,7 @@ export interface BatchCreateVariantItem {
   compareAtPrice?: number | null
   costPrice?: number | null
   reorderLevel?: number | null
+  images?: CreateProductImageInput[]
 }
 
 export interface BatchCreateVariantsPayload {
@@ -91,6 +96,7 @@ export interface UpdateVariantPayload {
   barcode?: string | null
   status?: VariantStatus
   attributeValueIds?: string[]
+  images?: CreateProductImageInput[]
 }
 
 export interface VariantPagination {

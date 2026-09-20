@@ -65,6 +65,12 @@ export const SYSTEM_PERMISSIONS = {
   COUPON_UPDATE: "coupon:update",
   COUPON_DELETE: "coupon:delete",
 
+  // Promotions
+  PROMOTION_READ: "promotion:read",
+  PROMOTION_CREATE: "promotion:create",
+  PROMOTION_UPDATE: "promotion:update",
+  PROMOTION_DELETE: "promotion:delete",
+
   // Reviews
   REVIEW_READ: "review:read",
   REVIEW_MODERATE: "review:moderate",
@@ -285,9 +291,11 @@ export const ROUTE_PERMISSION_MAP: Record<string, string> = {
   "/finance/refunds": SYSTEM_PERMISSIONS.PAYMENT_REFUND,
   "/finance/transactions": SYSTEM_PERMISSIONS.PAYMENT_READ,
 
-  "/marketing": SYSTEM_PERMISSIONS.COUPON_READ,
+  "/marketing": SYSTEM_PERMISSIONS.PROMOTION_READ,
   "/marketing/coupons": SYSTEM_PERMISSIONS.COUPON_READ,
-  "/marketing/promotions": SYSTEM_PERMISSIONS.COUPON_READ,
+  "/marketing/promotions": SYSTEM_PERMISSIONS.PROMOTION_READ,
+  "/marketing/promotions/create": SYSTEM_PERMISSIONS.PROMOTION_CREATE,
+  "/marketing/promotions/edit": SYSTEM_PERMISSIONS.PROMOTION_UPDATE,
 
   "/operations": SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
   "/operations/notifications": SYSTEM_PERMISSIONS.AUDIT_READ,

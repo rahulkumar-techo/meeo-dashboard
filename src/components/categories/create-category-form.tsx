@@ -11,6 +11,7 @@ import { Loader2, Sparkles, CheckCircle2, Image as ImageIcon } from "lucide-reac
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ImageUploadDropzone } from "@/components/common"
 import { useCreateCategoryMutation } from "@/hooks/use-category-query"
 import type { Category, CategoryStatus, CreateCategoryPayload } from "@/types/category"
 
@@ -198,32 +199,28 @@ export function CreateCategoryForm({ existingCategories, onFormChange }: CreateC
             </div>
           </div>
 
-          {/* Sort Order & Cover Image URL */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5 sm:col-span-1">
-              <label className="font-semibold text-foreground">Sort Order</label>
-              <Input
-                type="number"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
-                placeholder="0"
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="font-semibold text-foreground">Cover Image URL</label>
-              <div className="relative">
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="h-9 text-xs pl-8"
-                />
-                <ImageIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              </div>
-            </div>
+          {/* Sort Order */}
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground">Sort Order</label>
+            <Input
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
+              placeholder="0"
+              className="h-9 text-xs"
+            />
           </div>
+
+          {/* Cover Image Upload Dropzone */}
+          <ImageUploadDropzone
+            value={imageUrl}
+            onChange={(url) => setImageUrl(url)}
+            folder="/categories"
+            label="Category Cover Image"
+            description="Upload category display banner from device (PNG, JPG, SVG, WebP)"
+            aspectRatio="wide"
+            disabled={createMutation.isPending}
+          />
 
           {/* Description */}
           <div className="space-y-1.5">

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { StatusBadge, EmptyState, DataTablePagination } from "@/components/common"
+import { StatusBadge, EmptyState, DataTablePagination, CopyableId } from "@/components/common"
 import type { Category } from "@/types/category"
 
 export interface CategoryTableProps {
@@ -126,11 +126,14 @@ export function CategoryTable({
                           <FolderTree className="size-4 text-muted-foreground/70" />
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-0.5">
                         <p className="font-semibold text-foreground truncate">{cat.name}</p>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                          /c/{cat.slug}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground font-mono truncate">
+                            /c/{cat.slug}
+                          </span>
+                          <CopyableId id={cat.id} label="Category ID" />
+                        </div>
                       </div>
                     </div>
                   </TableCell>
