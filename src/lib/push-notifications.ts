@@ -140,8 +140,14 @@ export async function requestWebPushToken(forceRefresh = false): Promise<string 
   let swRegistration: ServiceWorkerRegistration | undefined
   if ("serviceWorker" in navigator) {
     try {
+      const swUrl = new URL("/firebase-messaging-sw.js", window.location.origin)
+      if (firebaseConfig.apiKey) swUrl.searchParams.set("apiKey", firebaseConfig.apiKey)
+      if (firebaseConfig.projectId) swUrl.searchParams.set("projectId", firebaseConfig.projectId)
+      if (firebaseConfig.messagingSenderId) swUrl.searchParams.set("messagingSenderId", firebaseConfig.messagingSenderId)
+      if (firebaseConfig.appId) swUrl.searchParams.set("appId", firebaseConfig.appId)
+
       swRegistration = await navigator.serviceWorker.register(
-        "/firebase-messaging-sw.js"
+        `${swUrl.pathname}${swUrl.search}`
       )
     } catch (swErr) {
       console.warn("Service worker registration skipped or failed:", swErr)

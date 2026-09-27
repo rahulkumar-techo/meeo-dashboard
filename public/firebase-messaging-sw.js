@@ -3,14 +3,21 @@ importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
 
 try {
-  firebase.initializeApp({
-    apiKey: "AIzaSyDi1jB4q1u5mevwwTegRLDtJGJW_hv75lk",
-    projectId: "meeo-1242a",
-    messagingSenderId: "405020230998",
-    appId: "1:405020230998:web:12fc0b9ce97f2d1b1fc2f7",
-  });
+  const urlParams = new URLSearchParams(location.search);
+  const apiKey = urlParams.get("apiKey");
+  const projectId = urlParams.get("projectId");
+  const messagingSenderId = urlParams.get("messagingSenderId");
+  const appId = urlParams.get("appId");
 
-  const messaging = firebase.messaging();
+  if (apiKey && projectId && messagingSenderId && appId) {
+    firebase.initializeApp({
+      apiKey,
+      projectId,
+      messagingSenderId,
+      appId,
+    });
+
+    const messaging = firebase.messaging();
 
   // Background Push Notification handler (when tab/browser is minimized)
   messaging.onBackgroundMessage((payload) => {
@@ -36,6 +43,7 @@ try {
       vibrate: [100, 50, 100],
     });
   });
+  }
 } catch (e) {
   // Fallback native push listener
 }

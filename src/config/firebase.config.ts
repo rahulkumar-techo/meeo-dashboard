@@ -10,7 +10,10 @@ const firebaseConfig = {
   appId:
     process.env.NEXT_PUBLIC_FIREBASE_APP_ID || process.env.FIREBASE_APP_ID,
   measurementId:
-    process.env.NEXT_PUBLIC_MESUREMENT_ID || process.env.MESUREMENT_ID,
+    process.env.NEXT_PUBLIC_MEASUREMENT_ID ||
+    process.env.NEXT_PUBLIC_MESUREMENT_ID ||
+    process.env.MEASUREMENT_ID ||
+    process.env.MESUREMENT_ID,
 }
 
 export const FIREBASE_VAPID_KEY =
