@@ -7,6 +7,7 @@ import { AppLayoutWrapper } from "@/components/layout/app-layout-wrapper";
 
 import { SocketProvider } from "@/context/socket-provider";
 import { Toaster } from "sonner";
+import { NotificationPermissionPrompt } from "@/components/notifications";
 
 const poppins = Poppins({
   variable: "--font-sans",
@@ -65,6 +66,7 @@ export default function RootLayout({
           <ThemeProvider defaultTheme="system">
             <SocketProvider>
               <AppLayoutWrapper>{children}</AppLayoutWrapper>
+              <NotificationPermissionPrompt />
               <Toaster richColors position="top-right" />
             </SocketProvider>
           </ThemeProvider>
@@ -73,5 +75,6 @@ export default function RootLayout({
     </html>
   );
 }
+
 
 

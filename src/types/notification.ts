@@ -111,3 +111,212 @@ export interface NotificationApiResponse<T> {
   data: T
   statusCode?: number
 }
+
+/**
+ * Supported FCM client platforms
+ */
+export type DevicePlatform = "web" | "android" | "ios"
+
+/**
+ * Payload for POST /api/v1/notifications/devices
+ */
+export interface RegisterDevicePayload {
+  token: string
+  platform: DevicePlatform
+  userAgent?: string
+}
+
+/**
+ * Payload for DELETE /api/v1/notifications/devices
+ */
+export interface UnregisterDevicePayload {
+  token: string
+}
+
+/**
+ * Single registered device record
+ */
+export interface RegisteredDeviceItem {
+  id: string
+  userId?: string
+  token?: string
+  platform: DevicePlatform
+  userAgent?: string | null
+  isActive?: boolean
+  lastUsedAt?: string | null
+  createdAt?: string
+}
+
+/**
+ * Response for GET /api/v1/notifications/devices
+ */
+export interface ListDevicesResponseData {
+  devices: RegisteredDeviceItem[]
+}
+
+/**
+ * User notification channel & category preferences (GET /api/v1/notifications/preferences)
+ */
+export interface NotificationPreferences {
+  id: string
+  userId: string
+  emailEnabled: boolean
+  pushEnabled: boolean
+  inAppEnabled: boolean
+  orderUpdates: boolean
+  promotions: boolean
+  securityAlerts: boolean
+  lowStockAlerts: boolean
+}
+
+/**
+ * Admin Notification Overview KPI Summary (GET /api/v1/notifications/admin/overview)
+ */
+export interface AdminNotificationOverview {
+  totalNotifications: number
+  todayNotifications: number
+  successfulDeliveries: number
+  failedDeliveries: number
+  pendingDeliveries: number
+  successRate: number
+}
+
+export interface AdminNotificationRecentFailure {
+  id: string
+  channel: NotificationChannel
+  type: string
+  title: string
+  lastError: string | null
+  createdAt: string
+  user?: {
+    id: string
+    firstName?: string
+    lastName?: string
+    email?: string
+  } | null
+}
+
+export interface AdminNotificationOverviewData {
+  overview: AdminNotificationOverview
+  channelBreakdown: {
+    EMAIL: number
+    PUSH: number
+    IN_APP: number
+  }
+  statusBreakdown: {
+    SENT: number
+    READ?: number
+    FAILED: number
+    PENDING: number
+  }
+  devices: {
+    totalRegistered: number
+    activeDevices: number
+    platforms: {
+      web: number
+      android: number
+      ios: number
+    }
+  }
+  recentFailures: AdminNotificationRecentFailure[]
+}
+
+/**
+ * Filters for administrative notification queries (GET /api/v1/notifications/admin)
+ */
+export interface AdminNotificationFilters {
+  channel?: NotificationChannel | "all"
+  status?: NotificationStatus | "READ" | "all"
+  type?: string
+  userId?: string
+  search?: string
+  startDate?: string
+  endDate?: string
+  page?: number
+  limit?: number
+}
+
+/**
+ * Single platform notification item returned from administrative query
+ */
+export interface AdminNotificationItem {
+  id: string
+  userId?: string | null
+  recipientEmail?: string | null
+  type: NotificationEventType
+  title: string
+  body: string
+  channel: NotificationChannel
+  status: NotificationStatus | "READ"
+  attempts: number
+  lastError?: string | null
+  readAt?: string | null
+  sentAt?: string | null
+  createdAt: string
+  user?: {
+    id: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+  } | null
+}
+
+/**
+ * Response data for administrative notification query (GET /api/v1/notifications/admin)
+ */
+export interface AdminNotificationListData {
+  items: AdminNotificationItem[]
+  summary: {
+    total: number
+    channelCounts: {
+      EMAIL: number
+      PUSH: number
+      IN_APP: number
+    }
+    statusCounts: {
+      SENT: number
+      FAILED: number
+      PENDING: number
+      READ: number
+    }
+  }
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+/**
+ * User In-App Notification Item (GET /api/v1/notifications)
+ */
+export interface InAppNotificationItem {
+
+  id: string
+  type: string
+  title: string
+  body: string
+  channel: NotificationChannel
+  status: NotificationStatus | "READ"
+  readAt: string | null
+  createdAt: string
+  data?: Record<string, any>
+}
+
+export interface InAppNotificationListData {
+  items: InAppNotificationItem[]
+  unreadCount?: number
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export interface UnreadCountResponseData {
+  unreadCount: number
+}
+

@@ -69,7 +69,7 @@ export default function ErrorBoundary({ error, reset }: ErrorProps) {
           <span>Return to Dashboard</span>
         </Button>
         <Button
-          render={<Link href="/system-health" />}
+          render={<Link href="/system/metrics" />}
           variant="ghost"
           size="default"
           className="gap-2 font-medium text-muted-foreground hover:text-foreground"

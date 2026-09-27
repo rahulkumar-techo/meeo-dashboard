@@ -72,7 +72,7 @@ export default function NotFound() {
             <span>Product Catalog</span>
           </Link>
           <Link
-            href="/system-health"
+            href="/system/metrics"
             className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/80 p-2.5 text-xs font-medium text-foreground transition-colors hover:border-border hover:bg-muted"
           >
             <HelpCircle className="size-4 text-primary" />

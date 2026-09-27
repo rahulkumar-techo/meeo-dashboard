@@ -1,25 +1,23 @@
 /**
  * @file page.tsx
  * @description Central Notification & Communication Operations Console.
- * Directly integrates with Admin Notification API (POST /api/v1/notifications/send, POST /:id/retry) with multi-channel dispatch, delivery error tracking, and audio chime alerts.
+ * Directly integrates with Admin Notification API:
+ * - GET /api/v1/notifications/admin/overview (Aggregated KPIs & channel stats)
+ * - GET /api/v1/notifications/admin (Filtered notification log list)
+ * - POST /api/v1/notifications/send (Multi-channel dispatch)
+ * - POST /api/v1/notifications/:id/retry (Failed delivery retry)
  */
 
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import {
   Send,
   RotateCcw,
   Download,
-  Mail,
-  Smartphone,
-  Bell,
   RefreshCw,
-  AlertTriangle,
-  CheckCircle2,
-  Play,
-  Layers,
+  Clock,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,16 +42,18 @@ import {
   DispatchNotificationDialog,
   RetryNotificationDialog,
   NotificationTemplateCard,
+  NotificationPermissionCard,
 } from "@/components/notifications"
-import { notificationAudio } from "@/lib/notification-sound"
+import {
+  useAdminNotificationOverviewQuery,
+  useAdminNotificationsQuery,
+} from "@/hooks/use-notification-query"
 import type {
-  NotificationChannel,
-  NotificationStatus,
-  NotificationLogItem,
+  AdminNotificationItem,
+  AdminNotificationFilters,
 } from "@/types/notification"
 
 export default function NotificationsPage() {
-  const [logs, setLogs] = React.useState<NotificationLogItem[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [channelFilter, setChannelFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
@@ -62,101 +62,64 @@ export default function NotificationsPage() {
 
   // Modals state
   const [dispatchOpen, setDispatchOpen] = React.useState(false)
-  const [retryItem, setRetryItem] = React.useState<NotificationLogItem | null>(null)
+  const [retryItem, setRetryItem] = React.useState<AdminNotificationItem | null>(null)
   const [retryOpen, setRetryOpen] = React.useState(false)
 
-  // Filtered log records
-  const filteredLogs = React.useMemo(() => {
-    return logs.filter((l) => {
-      if (channelFilter !== "all" && l.channel !== channelFilter) return false
-      if (statusFilter !== "all" && l.status !== statusFilter) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        return (
-          l.id.toLowerCase().includes(q) ||
-          l.type.toLowerCase().includes(q) ||
-          l.title.toLowerCase().includes(q) ||
-          (l.recipientEmail && l.recipientEmail.toLowerCase().includes(q)) ||
-          (l.userId && l.userId.toLowerCase().includes(q))
-        )
-      }
-      return true
-    })
-  }, [logs, channelFilter, statusFilter, searchQuery])
-
-  // Real-time KPI summary
-  const metrics = React.useMemo(() => {
-    let sentCount = 0
-    let failedCount = 0
-    let emailCount = 0
-    let pushCount = 0
-    let inAppCount = 0
-
-    logs.forEach((l) => {
-      if (l.status === "SENT") sentCount++
-      else if (l.status === "FAILED") failedCount++
-
-      if (l.channel === "EMAIL") emailCount++
-      else if (l.channel === "PUSH") pushCount++
-      else if (l.channel === "IN_APP") inAppCount++
-    })
-
-    const total = logs.length
-    const successRate = total > 0 ? ((sentCount / total) * 100).toFixed(1) : "100.0"
-
-    return {
-      sentCount,
-      failedCount,
-      emailCount,
-      pushCount,
-      inAppCount,
-      successRate,
+  // Construct query filters
+  const filters: AdminNotificationFilters = React.useMemo(() => {
+    const f: AdminNotificationFilters = {
+      page,
+      limit: pageSize,
     }
-  }, [logs])
+    if (channelFilter !== "all") f.channel = channelFilter as any
+    if (statusFilter !== "all") f.status = statusFilter as any
+    if (searchQuery.trim()) f.search = searchQuery.trim()
+    return f
+  }, [page, pageSize, channelFilter, statusFilter, searchQuery])
 
-  const handleRetryPrompt = (item: NotificationLogItem) => {
+  // Backend Queries
+  const {
+    data: overviewData,
+    isLoading: isLoadingOverview,
+    isRefetching: isRefetchingOverview,
+    refetch: refetchOverview,
+  } = useAdminNotificationOverviewQuery()
+
+  const {
+    data: listData,
+    isLoading: isLoadingList,
+    isRefetching: isRefetchingList,
+    refetch: refetchList,
+  } = useAdminNotificationsQuery(filters)
+
+  const isRefreshing = isRefetchingOverview || isRefetchingList
+
+  const handleRefreshAll = () => {
+    refetchOverview()
+    refetchList()
+  }
+
+  const handleRetryPrompt = (item: AdminNotificationItem) => {
     setRetryItem(item)
     setRetryOpen(true)
   }
 
   const handleRetrySuccess = () => {
-    if (retryItem) {
-      setLogs((prev) =>
-        prev.map((l) =>
-          l.id === retryItem.id
-            ? {
-                ...l,
-                status: "SENT",
-                attempts: l.attempts + 1,
-                lastError: null,
-                sentAt: new Date().toISOString(),
-              }
-            : l
-        )
-      )
-    }
+    refetchOverview()
+    refetchList()
   }
 
-  const handleDispatchSuccess = (res: any) => {
-    // Append new records to top of live log
-    const newItems: NotificationLogItem[] = res.results.map((r: any) => ({
-      id: r.notificationId || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type: "CAMPAIGN",
-      title: "Dispatched Notification",
-      body: "Multi-channel message",
-      channel: r.channel,
-      status: r.success ? "SENT" : "FAILED",
-      attempts: 1,
-      lastError: r.error || null,
-      sentAt: r.success ? new Date().toISOString() : null,
-      createdAt: new Date().toISOString(),
-    }))
-
-    setLogs((prev) => [...newItems, ...prev])
+  const handleDispatchSuccess = () => {
+    refetchOverview()
+    refetchList()
   }
+
+  const items = listData?.items || []
+  const totalItems = listData?.pagination.total || 0
+  const totalPages = listData?.pagination.totalPages || 1
 
   const handleExportCSV = () => {
-    if (filteredLogs.length === 0) return
+    if (items.length === 0) return
     const headers = [
       "Notification ID",
       "Type",
@@ -167,17 +130,19 @@ export default function NotificationsPage() {
       "Attempts",
       "Last Error",
       "Sent At",
+      "Created At",
     ]
-    const rows = filteredLogs.map((l) => [
+    const rows = items.map((l) => [
       l.id,
       l.type,
       l.channel,
       l.title,
-      l.recipientEmail || l.userId || "Broadcast",
+      l.recipientEmail || (l.user?.email ? `${l.user.firstName || ""} ${l.user.lastName || ""} (${l.user.email})`.trim() : l.userId || "Broadcast"),
       l.status,
       l.attempts,
       l.lastError || "",
       l.sentAt || "",
+      l.createdAt || "",
     ])
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -190,6 +155,9 @@ export default function NotificationsPage() {
     link.click()
     document.body.removeChild(link)
   }
+
+  const overview = overviewData?.overview
+  const channelBreakdown = overviewData?.channelBreakdown
 
   return (
     <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto">
@@ -207,8 +175,19 @@ export default function NotificationsPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+            className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
+          >
+            <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExportCSV}
-            disabled={filteredLogs.length === 0}
+            disabled={items.length === 0}
             className="h-8.5 gap-1.5 text-xs font-medium border-border/80"
           >
             <Download className="size-3.5 text-muted-foreground" />
@@ -232,46 +211,52 @@ export default function NotificationsPage() {
         items={[
           {
             title: "Delivery Success Rate",
-            value: `${metrics.successRate}%`,
+            value: `${overview ? overview.successRate : 100}%`,
             colorTheme: "emerald",
             trend: {
-              value: Number(metrics.successRate) >= 98 ? "Optimal" : "Attention",
-              isPositive: Number(metrics.successRate) >= 98,
+              value: (overview?.successRate ?? 100) >= 98 ? "Optimal" : "Attention",
+              isPositive: (overview?.successRate ?? 100) >= 98,
             },
-            footnote: `${metrics.sentCount} delivered successfully`,
+            footnote: `${overview?.successfulDeliveries ?? 0} delivered successfully`,
           },
           {
             title: "Failed Delivery Queue",
-            value: `${metrics.failedCount} Messages`,
+            value: `${overview?.failedDeliveries ?? 0} Messages`,
             colorTheme: "rose",
             badge:
-              metrics.failedCount > 0
+              (overview?.failedDeliveries ?? 0) > 0
                 ? { text: "Retry Ready", variant: "destructive" }
                 : undefined,
-            footnote: "Self-healing retry enabled",
+            footnote: `${overview?.pendingDeliveries ?? 0} pending / queued`,
           },
           {
             title: "Email Dispatch (SMTP)",
-            value: `${metrics.emailCount} Sent`,
+            value: `${channelBreakdown?.EMAIL ?? 0} Sent`,
             colorTheme: "indigo",
-            footnote: "Resend / SMTP driver active",
+            footnote: "Transactional & SMTP active",
           },
           {
             title: "Push & In-App Alerts",
-            value: `${metrics.pushCount + metrics.inAppCount} Delivered`,
+            value: `${(channelBreakdown?.PUSH ?? 0) + (channelBreakdown?.IN_APP ?? 0)} Delivered`,
             colorTheme: "cyan",
-            footnote: `${metrics.pushCount} push, ${metrics.inAppCount} in-app`,
+            footnote: `${channelBreakdown?.PUSH ?? 0} push, ${channelBreakdown?.IN_APP ?? 0} in-app`,
           },
         ]}
       />
 
-      {/* 3. Notification Templates Reference */}
+      {/* 3. Push Notification & Device Permission Authorization */}
+      <NotificationPermissionCard />
+
+      {/* 4. Notification Templates Reference */}
       <NotificationTemplateCard />
 
-      {/* 4. Filter Toolbar */}
+      {/* 5. Filter Toolbar */}
       <DataTableToolbar
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val)
+          setPage(1)
+        }}
         searchPlaceholder="Search message ID, event type, recipient..."
         filters={
           <div className="flex items-center gap-2">
@@ -299,6 +284,7 @@ export default function NotificationsPage() {
             >
               <option value="all">All Delivery Statuses</option>
               <option value="SENT">Delivered (Sent)</option>
+              <option value="READ">Read (In-App)</option>
               <option value="FAILED">Failed (Delivery Error)</option>
               <option value="PENDING">Queued / Pending</option>
             </select>
@@ -315,9 +301,14 @@ export default function NotificationsPage() {
         }}
       />
 
-      {/* 5. Logs Table */}
+      {/* 6. Logs Table */}
       <div className="rounded-lg border border-border/70 bg-card overflow-hidden shadow-2xs">
-        {filteredLogs.length === 0 ? (
+        {isLoadingList ? (
+          <div className="p-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+            <RefreshCw className="size-4 animate-spin text-indigo-500" />
+            <span>Loading platform notification records...</span>
+          </div>
+        ) : items.length === 0 ? (
           <EmptyState
             title="No Notification Logs Found"
             description="No dispatched messages matched your active query filters."
@@ -326,6 +317,7 @@ export default function NotificationsPage() {
               setChannelFilter("all")
               setStatusFilter("all")
               setSearchQuery("")
+              setPage(1)
             }}
           />
         ) : (
@@ -345,7 +337,7 @@ export default function NotificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="text-xs font-normal">
-                {filteredLogs.map((item) => (
+                {items.map((item) => (
                   <TableRow
                     key={item.id}
                     className="hover:bg-muted/40 transition-colors group"
@@ -366,15 +358,23 @@ export default function NotificationsPage() {
                       <NotificationChannelBadge channel={item.channel} />
                     </TableCell>
 
-                    <TableCell className="font-medium text-foreground max-w-[220px] truncate">
+                    <TableCell className="font-medium text-foreground max-w-[220px] truncate" title={item.title}>
                       {item.title}
                     </TableCell>
 
                     <TableCell className="font-mono text-[11px] text-muted-foreground">
-                      {item.recipientEmail ||
-                        (item.userId
-                          ? `${item.userId.slice(0, 10)}...`
-                          : "Broadcast")}
+                      {item.user ? (
+                        <div className="flex items-center gap-1">
+                          <User className="size-3 text-muted-foreground" />
+                          <span>{item.user.firstName || item.user.email || item.user.id.slice(0, 8)}</span>
+                        </div>
+                      ) : item.recipientEmail ? (
+                        item.recipientEmail
+                      ) : item.userId ? (
+                        `${item.userId.slice(0, 10)}...`
+                      ) : (
+                        "Broadcast"
+                      )}
                     </TableCell>
 
                     <TableCell>
@@ -388,6 +388,11 @@ export default function NotificationsPage() {
                     <TableCell className="text-muted-foreground text-[11px]">
                       {item.sentAt
                         ? new Date(item.sentAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : item.createdAt
+                        ? new Date(item.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })
@@ -416,15 +421,18 @@ export default function NotificationsPage() {
 
         <DataTablePagination
           currentPage={page}
-          totalPages={Math.ceil(filteredLogs.length / pageSize) || 1}
+          totalPages={totalPages}
           pageSize={pageSize}
-          totalItems={filteredLogs.length}
+          totalItems={totalItems}
           onPageChange={setPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setPage(1)
+          }}
         />
       </div>
 
-      {/* 6. Modals */}
+      {/* 7. Modals */}
       <DispatchNotificationDialog
         open={dispatchOpen}
         onOpenChange={setDispatchOpen}

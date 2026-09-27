@@ -9,3 +9,7 @@ export * from "./notification-sound-toggle"
 export * from "./dispatch-notification-dialog"
 export * from "./retry-notification-dialog"
 export * from "./notification-template-card"
+export * from "./notification-permission-card"
+export * from "./notification-permission-prompt"
+
+

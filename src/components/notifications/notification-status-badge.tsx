@@ -38,6 +38,13 @@ export function NotificationStatusBadge({
       border: "border-emerald-500/30",
       icon: CheckCircle2,
     },
+    READ: {
+      label: "Read",
+      bg: "bg-sky-500/10 dark:bg-sky-500/20",
+      text: "text-sky-700 dark:text-sky-300",
+      border: "border-sky-500/30",
+      icon: CheckCircle2,
+    },
     FAILED: {
       label: "Failed",
       bg: "bg-rose-500/10 dark:bg-rose-500/20",
@@ -52,7 +59,17 @@ export function NotificationStatusBadge({
       border: "border-amber-500/30",
       icon: Clock,
     },
-  }
+  } as Record<
+    string,
+    {
+      label: string
+      bg: string
+      text: string
+      border: string
+      icon: React.ComponentType<{ className?: string }>
+    }
+  >
+
 
   const current = config[normalized] || {
     label: normalized || "Unknown",

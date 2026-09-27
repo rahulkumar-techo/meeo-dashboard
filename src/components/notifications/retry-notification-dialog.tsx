@@ -19,14 +19,18 @@ import { Button } from "@/components/ui/button"
 import { useRetryNotificationMutation } from "@/hooks/use-notification-query"
 import { NotificationChannelBadge } from "./notification-channel-badge"
 import { NotificationStatusBadge } from "./notification-status-badge"
-import type { NotificationLogItem } from "@/types/notification"
+import type {
+  NotificationLogItem,
+  AdminNotificationItem,
+} from "@/types/notification"
 
 interface RetryNotificationDialogProps {
-  item: NotificationLogItem | null
+  item: AdminNotificationItem | NotificationLogItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
+
 
 export function RetryNotificationDialog({
   item,

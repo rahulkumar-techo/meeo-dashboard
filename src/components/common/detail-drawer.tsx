@@ -64,12 +64,12 @@ export function DetailDrawer({
       >
         <SheetHeader className="border-b border-border/60 p-5 bg-card/60">
           <div className="flex items-center justify-between gap-3">
-            <SheetTitle className="text-base font-bold text-foreground">
+            <SheetTitle className="text-base font-bold text-foreground" render={<div />}>
               {title}
             </SheetTitle>
           </div>
           {description && (
-            <SheetDescription className="text-xs text-muted-foreground mt-1">
+            <SheetDescription className="text-xs text-muted-foreground mt-1" render={<div />}>
               {description}
             </SheetDescription>
           )}
