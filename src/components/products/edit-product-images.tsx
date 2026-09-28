@@ -7,7 +7,16 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { UploadCloud, Loader2, Trash2, Plus, Link2, ImageIcon } from "lucide-react"
+import {
+  UploadCloud,
+  Loader2,
+  Trash2,
+  Plus,
+  Link2,
+  ImageIcon,
+  GripVertical,
+  Star,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -32,28 +41,45 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
   const [isUrlMode, setIsUrlMode] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [uploadingCount, setUploadingCount] = React.useState(0)
+  const [isDraggingFile, setIsDraggingFile] = React.useState(false)
+
+  // Drag and drop state for gallery assets reordering
+  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null)
 
   const { data: liveProduct, refetch } = useProductQuery(product.id)
-  const images: ProductImage[] = liveProduct?.images ?? product.images ?? []
+  const serverImages: ProductImage[] = liveProduct?.images ?? product.images ?? []
+  const [galleryItems, setGalleryItems] = React.useState<ProductImage[]>(serverImages)
 
   const uploadMutation = useUploadProductImageMutation()
   const attachMutation = useAttachProductImageMutation()
   const deleteMutation = useDeleteProductImageMutation()
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
+  React.useEffect(() => {
+    setGalleryItems(serverImages)
+  }, [serverImages])
+
+  const uploadFiles = async (rawFiles: File[]) => {
+    const validFiles = rawFiles.filter((f) => f.type.startsWith("image/"))
+    if (validFiles.length === 0) {
+      setError("Please select or drop valid image files (PNG, JPEG, WebP).")
+      return
+    }
 
     setError(null)
-    setUploadingCount(files.length)
+    setUploadingCount(validFiles.length)
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i]
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`"${file.name}" exceeds the 10MB limit. Skipped.`)
+        continue
+      }
       try {
         const formData = new FormData()
         formData.append("file", file)
-        formData.append("altText", altText.trim() || `${product.name} image ${images.length + i + 1}`)
-        formData.append("sortOrder", String(images.length + i))
+        formData.append("altText", altText.trim() || `${product.name} image ${galleryItems.length + i + 1}`)
+        formData.append("sortOrder", String(galleryItems.length + i))
 
         await uploadMutation.mutateAsync({ id: product.id, payload: formData })
       } catch (err: any) {
@@ -65,6 +91,91 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
     setAltText("")
     if (fileInputRef.current) fileInputRef.current.value = ""
     await refetch()
+    onImageChange?.()
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      uploadFiles(files)
+    }
+  }
+
+  const handleDropzoneDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isDraggingFile) setIsDraggingFile(true)
+  }
+
+  const handleDropzoneDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    setIsDraggingFile(false)
+  }
+
+  const handleDropzoneDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFile(false)
+    const files = Array.from(e.dataTransfer.files || [])
+    if (files.length > 0) {
+      uploadFiles(files)
+    }
+  }
+
+  // Gallery items reordering handlers
+  const handleItemDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(index))
+  }
+
+  const handleItemDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "move"
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleItemDragLeave = (index: number) => {
+    if (dragOverIndex === index) {
+      setDragOverIndex(null)
+    }
+  }
+
+  const handleItemDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const reordered = [...galleryItems]
+    const [moved] = reordered.splice(draggedIndex, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    setGalleryItems(reordered)
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    onImageChange?.()
+  }
+
+  const handleItemDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleSetAsCover = (index: number) => {
+    if (index === 0) return
+    const reordered = [...galleryItems]
+    const [moved] = reordered.splice(index, 1)
+    reordered.unshift(moved)
+    setGalleryItems(reordered)
     onImageChange?.()
   }
 
@@ -80,7 +191,7 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
           url: imageUrlInput.trim(),
           fileId: fileIdInput.trim() || undefined,
           altText: urlAltInput.trim() || product.name,
-          sortOrder: images.length,
+          sortOrder: galleryItems.length,
           thumbnailUrl: imageUrlInput.trim().includes("imagekit.io") ? `${imageUrlInput.trim()}?tr=w-200` : undefined,
         },
       })
@@ -116,7 +227,7 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-xs font-bold text-foreground">Product Gallery Images (ImageKit)</h4>
-          <p className="text-[11px] text-muted-foreground">Upload gallery photos or attach hosted URLs.</p>
+          <p className="text-[11px] text-muted-foreground">Upload gallery photos via drag & drop or attach hosted URLs.</p>
         </div>
         <Button
           type="button"
@@ -131,32 +242,69 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
       </div>
 
       {!isUrlMode ? (
-        <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-4 text-center space-y-2">
+        <div
+          onDragOver={handleDropzoneDragOver}
+          onDragLeave={handleDropzoneDragLeave}
+          onDrop={handleDropzoneDrop}
+          onClick={() => uploadingCount === 0 && fileInputRef.current?.click()}
+          className={`group relative rounded-xl border-2 border-dashed p-5 text-center transition-all cursor-pointer select-none space-y-2.5 ${
+            isDraggingFile
+              ? "border-indigo-500 bg-indigo-500/10 dark:bg-indigo-950/40 scale-[1.01]"
+              : "border-border/80 bg-muted/20 hover:border-indigo-500/60 hover:bg-muted/40"
+          }`}
+        >
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileSelect}
+            onChange={handleFileInputChange}
             multiple
             accept="image/png, image/jpeg, image/webp"
             className="hidden"
           />
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingCount > 0}
-              className="h-8 gap-1.5 px-4 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+          <div className="flex flex-col items-center justify-center gap-1.5">
+            <div
+              className={`flex size-10 items-center justify-center rounded-xl transition-all ${
+                isDraggingFile
+                  ? "bg-indigo-600 text-white scale-110 shadow-md"
+                  : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-105"
+              }`}
             >
-              {uploadingCount > 0 ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
-              <span>{uploadingCount > 0 ? `Uploading (${uploadingCount})...` : "Upload Gallery Photos"}</span>
-            </Button>
+              {uploadingCount > 0 ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <UploadCloud className="size-4" />
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-foreground">
+                {uploadingCount > 0
+                  ? `Uploading ${uploadingCount} image${uploadingCount > 1 ? "s" : ""}...`
+                  : isDraggingFile
+                  ? "Drop images here to upload"
+                  : "Drag & drop photos here, or click to browse"}
+              </p>
+              <p className="text-[10.5px] text-muted-foreground mt-0.5">
+                PNG, JPEG, WebP up to 10MB
+              </p>
+            </div>
+
+            {uploadingCount === 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  fileInputRef.current?.click()
+                }}
+                className="h-7.5 gap-1.5 px-3 text-xs font-medium border-border/80 hover:border-indigo-500 hover:text-indigo-600 pointer-events-auto mt-1"
+              >
+                <Plus className="size-3" />
+                <span>Select Photos</span>
+              </Button>
+            )}
           </div>
-          <Input
-            value={altText}
-            onChange={(e) => setAltText(e.target.value)}
-            placeholder="Optional alt caption for uploaded batch"
-            className="h-7.5 text-xs max-w-sm mx-auto"
-          />
         </div>
       ) : (
         <form onSubmit={handleAttachUrl} className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-2.5">
@@ -180,37 +328,100 @@ export function EditProductImages({ product, onImageChange }: EditProductImagesP
         </form>
       )}
 
-      {/* Gallery Grid */}
+      {/* Gallery Grid & Drag-to-reorder Assets */}
       <div className="border-t border-border/60 pt-3 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-foreground">Current Photos ({images.length})</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-foreground">Current Photos ({galleryItems.length})</span>
+            {galleryItems.length > 1 && (
+              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                Drag cards to reorder
+              </span>
+            )}
+          </div>
           <span className="text-[10.5px] text-muted-foreground">Primary image serves as catalog cover</span>
         </div>
 
-        {images.length === 0 ? (
+        {galleryItems.length === 0 ? (
           <div className="py-6 text-center border border-dashed rounded-lg border-border/60 bg-muted/10 text-xs text-muted-foreground flex flex-col items-center justify-center gap-1">
             <ImageIcon className="size-5 text-muted-foreground/50" />
             <span>No gallery photos attached to this product yet.</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1">
-            {images.map((img, idx) => (
-              <div key={img.id} className="group relative h-24 rounded-lg overflow-hidden border border-border/70 bg-muted/30">
-                <Image src={img.thumbnailUrl || img.url} alt={img.altText || `Image ${idx + 1}`} fill className="object-cover" unoptimized />
-                {idx === 0 && (
-                  <span className="absolute top-1 left-1 rounded bg-indigo-600/90 px-1 py-0.2 text-[8.5px] font-bold text-white uppercase">Cover</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteImage(img.id)}
-                  disabled={deleteMutation.isPending}
-                  className="absolute top-1 right-1 size-5 rounded bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete photo"
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto pr-1">
+            {galleryItems.map((img, idx) => {
+              const isItemDragged = draggedIndex === idx
+              const isItemDragOver = dragOverIndex === idx
+
+              return (
+                <div
+                  key={img.id || `${img.url}-${idx}`}
+                  draggable={uploadingCount === 0}
+                  onDragStart={(e) => handleItemDragStart(e, idx)}
+                  onDragOver={(e) => handleItemDragOver(e, idx)}
+                  onDragLeave={() => handleItemDragLeave(idx)}
+                  onDrop={(e) => handleItemDrop(e, idx)}
+                  onDragEnd={handleItemDragEnd}
+                  className={`group relative h-24 rounded-lg overflow-hidden border bg-muted/30 transition-all cursor-grab active:cursor-grabbing select-none ${
+                    isItemDragged
+                      ? "opacity-40 scale-95 border-indigo-500 ring-2 ring-indigo-500"
+                      : isItemDragOver
+                      ? "border-indigo-500 ring-2 ring-indigo-500/80 scale-[1.03]"
+                      : "border-border/70 hover:border-border hover:shadow-xs"
+                  }`}
                 >
-                  <Trash2 className="size-3" />
-                </button>
-              </div>
-            ))}
+                  <Image
+                    src={img.thumbnailUrl || img.url}
+                    alt={img.altText || `Image ${idx + 1}`}
+                    fill
+                    className="object-cover pointer-events-none"
+                    unoptimized
+                  />
+
+                  {/* Drag Handle Cue */}
+                  <div className="absolute top-1 left-1 flex items-center gap-1">
+                    <div className="size-5 rounded bg-black/60 text-white flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                      <GripVertical className="size-3" />
+                    </div>
+                    {idx === 0 && (
+                      <span className="rounded bg-indigo-600 px-1 py-0.2 text-[8.5px] font-bold text-white uppercase shadow-xs">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Quick Set as Cover */}
+                  {idx > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleSetAsCover(idx)
+                      }}
+                      className="absolute bottom-1 left-1 text-[9px] bg-black/70 hover:bg-indigo-600 text-white font-medium px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"
+                      title="Set as catalog cover image"
+                    >
+                      <Star className="size-2.5" />
+                      <span>Cover</span>
+                    </button>
+                  )}
+
+                  {/* Delete button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteImage(img.id)
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="absolute top-1 right-1 size-5 rounded bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-700"
+                    title="Delete photo"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

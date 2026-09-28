@@ -229,12 +229,53 @@ export function BatchVariantDialog({
     )
   }
 
+  // Sanitized handler for price decimal inputs
+  const handlePriceChange = (
+    id: string,
+    field: "price" | "compareAtPrice" | "costPrice",
+    inputValue: string
+  ) => {
+    if (inputValue === "") {
+      handleUpdateRow(id, field, "")
+      return
+    }
+    let sanitized = inputValue.replace(/,/g, ".").replace(/[^0-9.]/g, "")
+    const parts = sanitized.split(".")
+    if (parts.length > 2) {
+      sanitized = `${parts[0]}.${parts.slice(1).join("")}`
+    }
+    handleUpdateRow(id, field, sanitized)
+  }
+
+  // Sanitized handler for integer stock inputs
+  const handleIntegerChange = (
+    id: string,
+    field: "initialStock" | "reorderLevel",
+    inputValue: string
+  ) => {
+    if (inputValue === "") {
+      handleUpdateRow(id, field, "")
+      return
+    }
+    const sanitized = inputValue.replace(/[^0-9]/g, "")
+    handleUpdateRow(id, field, sanitized)
+  }
+
   // Sync Row 1 Price across all rows
   const handleApplyPriceToAll = () => {
     if (rows.length === 0) return
     const firstPrice = rows[0].price
+    const firstCompare = rows[0].compareAtPrice
+    const firstCost = rows[0].costPrice
     if (!firstPrice || parseFloat(firstPrice) <= 0) return
-    setRows((prev) => prev.map((r) => ({ ...r, price: firstPrice })))
+    setRows((prev) =>
+      prev.map((r) => ({
+        ...r,
+        price: firstPrice,
+        ...(firstCompare ? { compareAtPrice: firstCompare } : {}),
+        ...(firstCost ? { costPrice: firstCost } : {}),
+      }))
+    )
   }
 
   // Sync Row 1 Stock across all rows
@@ -492,43 +533,43 @@ export function BatchVariantDialog({
             </div>
 
             <div className="rounded-xl border border-border/70 overflow-x-auto shadow-2xs">
-              <table className="w-full min-w-[1020px] text-xs">
+              <table className="w-full min-w-[1180px] text-xs">
                 <thead className="bg-muted/40 text-[11px] font-semibold text-muted-foreground border-b border-border/60">
                   <tr>
-                    <th className="p-3 text-left w-10 text-center">#</th>
-                    <th className="p-3 text-left min-w-[160px]">SKU Code *</th>
-                    <th className="p-3 text-left min-w-[260px]">Attributes (2+ per variant)</th>
-                    <th className="p-3 text-left w-28">Price (₹) *</th>
-                    <th className="p-3 text-left w-28">MRP / Compare (₹)</th>
-                    <th className="p-3 text-left w-24">Cost (₹)</th>
-                    <th className="p-3 text-left w-24">Stock</th>
-                    <th className="p-3 text-left w-20">Low Stock</th>
-                    <th className="p-3 text-left min-w-[130px]">Barcode (UPC)</th>
-                    <th className="p-3 text-left w-28">Status</th>
-                    <th className="p-3 text-right w-20"></th>
+                    <th className="p-3 text-center w-10 min-w-[40px]">#</th>
+                    <th className="p-3 text-left min-w-[160px] w-44 whitespace-nowrap">SKU Code *</th>
+                    <th className="p-3 text-left min-w-[240px] whitespace-nowrap">Attributes (2+ per variant)</th>
+                    <th className="p-3 text-left min-w-[125px] w-32 whitespace-nowrap">Price (₹) *</th>
+                    <th className="p-3 text-left min-w-[135px] w-36 whitespace-nowrap">MRP / Compare (₹)</th>
+                    <th className="p-3 text-left min-w-[115px] w-30 whitespace-nowrap">Cost (₹)</th>
+                    <th className="p-3 text-left min-w-[95px] w-24 whitespace-nowrap">Stock</th>
+                    <th className="p-3 text-left min-w-[90px] w-22 whitespace-nowrap">Low Stock</th>
+                    <th className="p-3 text-left min-w-[130px] w-36 whitespace-nowrap">Barcode (UPC)</th>
+                    <th className="p-3 text-left min-w-[115px] w-28 whitespace-nowrap">Status</th>
+                    <th className="p-3 text-right min-w-[80px] w-20"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {rows.map((r, idx) => (
                     <tr key={r.id} className="hover:bg-muted/20 transition-colors">
                       {/* Row Index */}
-                      <td className="p-2.5 text-center text-muted-foreground font-mono text-[11px]">
+                      <td className="p-2.5 text-center text-muted-foreground font-mono text-[11px] w-10 min-w-[40px]">
                         {idx + 1}
                       </td>
 
                       {/* SKU */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[160px] w-44">
                         <Input
                           value={r.sku}
                           onChange={(e) => handleUpdateRow(r.id, "sku", e.target.value.toUpperCase())}
                           placeholder="e.g. NK-AIR-01"
-                          className="h-8 text-xs font-mono uppercase"
+                          className="h-8 text-xs font-mono uppercase w-full"
                           required
                         />
                       </td>
 
                       {/* Dedicated Per-Variant Attribute Selector */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[240px]">
                         <RowAttributePicker
                           selectedIds={r.attributeValueIds}
                           onChange={(ids, labels) => handleRowAttributesChange(r.id, ids, labels)}
@@ -537,103 +578,93 @@ export function BatchVariantDialog({
                       </td>
 
                       {/* Selling Price */}
-                      <td className="p-2.5">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={r.price}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                              handleUpdateRow(r.id, "price", val)
-                            }
-                          }}
-                          placeholder="149.99"
-                          className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          required
-                        />
+                      <td className="p-2.5 min-w-[125px] w-32">
+                        <div className="relative w-full">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">
+                            ₹
+                          </span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={r.price}
+                            onChange={(e) => handlePriceChange(r.id, "price", e.target.value)}
+                            placeholder="149.99"
+                            className="h-8 pl-6 pr-2 text-xs font-mono w-full min-w-0"
+                            required
+                          />
+                        </div>
                       </td>
 
                       {/* Compare At Price */}
-                      <td className="p-2.5">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={r.compareAtPrice}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                              handleUpdateRow(r.id, "compareAtPrice", val)
-                            }
-                          }}
-                          placeholder="199.99"
-                          className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
+                      <td className="p-2.5 min-w-[135px] w-36">
+                        <div className="relative w-full">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">
+                            ₹
+                          </span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={r.compareAtPrice}
+                            onChange={(e) => handlePriceChange(r.id, "compareAtPrice", e.target.value)}
+                            placeholder="199.99"
+                            className="h-8 pl-6 pr-2 text-xs font-mono w-full min-w-0"
+                          />
+                        </div>
                       </td>
 
                       {/* Cost Price */}
-                      <td className="p-2.5">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={r.costPrice}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                              handleUpdateRow(r.id, "costPrice", val)
-                            }
-                          }}
-                          placeholder="80.00"
-                          className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
+                      <td className="p-2.5 min-w-[115px] w-30">
+                        <div className="relative w-full">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">
+                            ₹
+                          </span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={r.costPrice}
+                            onChange={(e) => handlePriceChange(r.id, "costPrice", e.target.value)}
+                            placeholder="80.00"
+                            className="h-8 pl-6 pr-2 text-xs font-mono w-full min-w-0"
+                          />
+                        </div>
                       </td>
 
                       {/* Initial Stock */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[95px] w-24">
                         <Input
                           type="text"
                           inputMode="numeric"
                           value={r.initialStock}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === "" || /^\d+$/.test(val)) {
-                              handleUpdateRow(r.id, "initialStock", val)
-                            }
-                          }}
+                          onChange={(e) => handleIntegerChange(r.id, "initialStock", e.target.value)}
                           placeholder="10"
-                          className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="h-8 text-xs font-mono w-full min-w-0"
                         />
                       </td>
 
                       {/* Reorder Level */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[90px] w-22">
                         <Input
                           type="text"
                           inputMode="numeric"
                           value={r.reorderLevel}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val === "" || /^\d+$/.test(val)) {
-                              handleUpdateRow(r.id, "reorderLevel", val)
-                            }
-                          }}
+                          onChange={(e) => handleIntegerChange(r.id, "reorderLevel", e.target.value)}
                           placeholder="5"
-                          className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="h-8 text-xs font-mono w-full min-w-0"
                         />
                       </td>
 
                       {/* Barcode */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[130px] w-36">
                         <Input
                           value={r.barcode}
                           onChange={(e) => handleUpdateRow(r.id, "barcode", e.target.value)}
                           placeholder="012345678901"
-                          className="h-8 text-xs font-mono"
+                          className="h-8 text-xs font-mono w-full min-w-0"
                         />
                       </td>
 
                       {/* Status */}
-                      <td className="p-2.5">
+                      <td className="p-2.5 min-w-[115px] w-28">
                         <select
                           value={r.status}
                           onChange={(e) => handleUpdateRow(r.id, "status", e.target.value as VariantStatus)}
