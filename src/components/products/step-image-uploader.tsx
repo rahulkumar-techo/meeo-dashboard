@@ -19,8 +19,17 @@ import {
   Link2,
   GripVertical,
   Star,
+  AlertTriangle,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -53,6 +62,7 @@ export function StepImageUploader({
   const [error, setError] = React.useState<string | null>(null)
   const [uploadingFilesCount, setUploadingFilesCount] = React.useState(0)
   const [isDraggingFile, setIsDraggingFile] = React.useState(false)
+  const [imageToDelete, setImageToDelete] = React.useState<ProductImage | null>(null)
 
   // Drag and drop state for gallery assets reordering
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null)
@@ -95,10 +105,19 @@ export function StepImageUploader({
       try {
         const formData = new FormData()
         formData.append("file", file)
-        formData.append("altText", altText.trim() || `${product.name} image ${galleryItems.length + i + 1}`)
-        formData.append("sortOrder", String(galleryItems.length + i))
+        formData.append("altText", altText.trim() || `${product.name} image ${galleryItems.length + 1}`)
+        formData.append("sortOrder", String(galleryItems.length))
 
-        await uploadMutation.mutateAsync({ id: product.id, payload: formData })
+        const res = await uploadMutation.mutateAsync({ id: product.id, payload: formData })
+        // Instant reflection: immediately add newly uploaded image
+        if (res?.data) {
+          setGalleryItems((prev) => {
+            const exists = prev.some((it) => it.id === res.data.id)
+            const next = exists ? prev : [...prev, res.data]
+            onImagesUpdated?.(next)
+            return next
+          })
+        }
       } catch (err: any) {
         setError(err.response?.data?.errors?.[0]?.message || err.response?.data?.message || `Failed to upload ${file.name}`)
       }
@@ -202,7 +221,7 @@ export function StepImageUploader({
 
     setError(null)
     try {
-      await attachMutation.mutateAsync({
+      const res = await attachMutation.mutateAsync({
         id: product.id,
         payload: {
           url: imageUrlInput.trim(),
@@ -212,6 +231,15 @@ export function StepImageUploader({
           thumbnailUrl: imageUrlInput.trim().includes("imagekit.io") ? `${imageUrlInput.trim()}?tr=w-200` : undefined,
         },
       })
+      // Instant reflection: immediately add attached image
+      if (res?.data) {
+        setGalleryItems((prev) => {
+          const exists = prev.some((it) => it.id === res.data.id)
+          const next = exists ? prev : [...prev, res.data]
+          onImagesUpdated?.(next)
+          return next
+        })
+      }
       setImageUrlInput("")
       setFileIdInput("")
       setUrlAltInput("")
@@ -225,6 +253,12 @@ export function StepImageUploader({
     setError(null)
     try {
       await deleteMutation.mutateAsync({ id: product.id, imageId })
+      // Instant reflection: immediately remove deleted image
+      setGalleryItems((prev) => {
+        const next = prev.filter((img) => img.id !== imageId)
+        onImagesUpdated?.(next)
+        return next
+      })
       await refetch()
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete image.")
@@ -428,14 +462,14 @@ export function StepImageUploader({
                       </button>
                     )}
 
-                    {/* Delete button */}
+                    {/* Delete button: opens confirmation card first */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteImage(img.id)
+                        setImageToDelete(img)
                       }}
-                      className="absolute top-1 right-1 size-5 rounded bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-700"
+                      className="absolute top-1 right-1 size-5 rounded bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-700 cursor-pointer"
                       title="Delete image"
                     >
                       <Trash2 className="size-3" />
@@ -457,6 +491,90 @@ export function StepImageUploader({
             <ArrowRight className="size-3.5" />
           </Button>
         </div>
+
+        {/* Delete Photo Confirmation Card Modal */}
+        <Dialog open={Boolean(imageToDelete)} onOpenChange={(open) => !open && setImageToDelete(null)}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="size-4" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold">Delete Photo</DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                    Confirm photo deletion from {product.name}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {imageToDelete && (
+              <div className="space-y-3 py-2 text-xs">
+                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border/70 bg-muted/20">
+                  <div className="relative size-14 shrink-0 rounded-md overflow-hidden border border-border/80 bg-background">
+                    <Image
+                      src={imageToDelete.thumbnailUrl || imageToDelete.url}
+                      alt={imageToDelete.altText || "Product photo"}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-semibold text-foreground truncate">
+                      {imageToDelete.altText || `${product.name} photo`}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      Image ID: {imageToDelete.id.slice(0, 8)}...
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground leading-relaxed">
+                  Are you sure you want to remove this photo? This will permanently delete it from this product gallery.
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 flex-col-reverse sm:flex-row pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setImageToDelete(null)}
+                disabled={deleteMutation.isPending}
+                className="text-xs h-8.5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  if (!imageToDelete) return
+                  await handleDeleteImage(imageToDelete.id)
+                  setImageToDelete(null)
+                }}
+                disabled={deleteMutation.isPending}
+                className="text-xs h-8.5 gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" />
+                    <span>Delete Photo</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )

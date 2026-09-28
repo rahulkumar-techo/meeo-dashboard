@@ -7,8 +7,16 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { Sparkles, Trash2, CheckCircle2, Loader2, ImagePlus } from "lucide-react"
+import { Sparkles, Trash2, CheckCircle2, Loader2, ImagePlus, AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +39,7 @@ export function EditProductBanner({ product, onBannerChange }: EditProductBanner
   const [fileId, setFileId] = React.useState(currentBanner?.fileId || "")
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState(false)
+  const [isConfirmRemoveOpen, setIsConfirmRemoveOpen] = React.useState(false)
 
   const updateMutation = useUpdateProductMutation()
 
@@ -143,7 +152,7 @@ export function EditProductBanner({ product, onBannerChange }: EditProductBanner
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={handleRemoveBanner}
+                onClick={() => setIsConfirmRemoveOpen(true)}
                 disabled={updateMutation.isPending}
                 className="h-7 text-xs text-rose-600 hover:bg-rose-500/10 border-rose-200 gap-1"
               >
@@ -212,6 +221,89 @@ export function EditProductBanner({ product, onBannerChange }: EditProductBanner
             </Button>
           </div>
         </form>
+
+        {/* Delete Banner Confirmation Card Modal */}
+        <Dialog open={isConfirmRemoveOpen} onOpenChange={setIsConfirmRemoveOpen}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="size-4" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold">Remove Campaign Banner</DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                    Confirm banner removal from {product.name}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {currentBanner?.url && (
+              <div className="space-y-3 py-2 text-xs">
+                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border/70 bg-muted/20">
+                  <div className="relative w-24 h-14 shrink-0 rounded-md overflow-hidden border border-border/80 bg-background">
+                    <Image
+                      src={currentBanner.url}
+                      alt={currentBanner.altText || "Banner preview"}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-semibold text-foreground truncate">
+                      {currentBanner.altText || "Hero Campaign Banner"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Hero Banner Asset
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground leading-relaxed">
+                  Are you sure you want to remove this campaign banner? The product page will revert to standard display without a hero header.
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 flex-col-reverse sm:flex-row pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsConfirmRemoveOpen(false)}
+                disabled={updateMutation.isPending}
+                className="text-xs h-8.5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  await handleRemoveBanner()
+                  setIsConfirmRemoveOpen(false)
+                }}
+                disabled={updateMutation.isPending}
+                className="text-xs h-8.5 gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Removing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" />
+                    <span>Remove Banner</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )

@@ -6,8 +6,7 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
-import { Edit2, Loader2, Sparkles, AlertCircle, Package, Plus, Trash2, Image as ImageIcon, UploadCloud } from "lucide-react"
+import { Edit2, Loader2, Sparkles, AlertCircle, Package } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -19,13 +18,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import {
-  useUpdateVariantMutation,
-  useAttachVariantImageMutation,
-  useDeleteVariantImageMutation,
-} from "@/hooks/use-variant-query"
-import { uploadFileToImageKit } from "@/services/image-upload.service"
+import { useUpdateVariantMutation } from "@/hooks/use-variant-query"
 import { InlineAttributeManager } from "./inline-attribute-manager"
+import { VariantImageManager } from "./variant-image-manager"
 import type { ProductVariant, UpdateVariantPayload, VariantStatus } from "@/types/variant"
 
 export interface EditVariantDialogProps {
@@ -33,7 +28,7 @@ export interface EditVariantDialogProps {
   productId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: () => void
+  onSuccess?: (updatedVariant?: ProductVariant) => void
 }
 
 export function EditVariantDialog({
@@ -43,7 +38,6 @@ export function EditVariantDialog({
   onOpenChange,
   onSuccess,
 }: EditVariantDialogProps) {
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const [sku, setSku] = React.useState("")
   const [price, setPrice] = React.useState("")
   const [compareAtPrice, setCompareAtPrice] = React.useState("")
@@ -51,22 +45,35 @@ export function EditVariantDialog({
   const [barcode, setBarcode] = React.useState("")
   const [status, setStatus] = React.useState<VariantStatus>("ACTIVE")
   const [selectedAttributeValueIds, setSelectedAttributeValueIds] = React.useState<string[]>([])
-  const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const updateMutation = useUpdateVariantMutation(productId)
-  const attachImageMutation = useAttachVariantImageMutation(productId)
-  const deleteImageMutation = useDeleteVariantImageMutation(productId)
 
+  // Accurately populate numeric pricing from variant data
   React.useEffect(() => {
     if (variant && open) {
       setSku(variant.sku || "")
-      setPrice(variant.price !== undefined && variant.price !== null ? String(variant.price) : "")
-      setCompareAtPrice(variant.compareAtPrice && Number(variant.compareAtPrice) > 0 ? String(variant.compareAtPrice) : "")
-      setCostPrice(variant.costPrice && Number(variant.costPrice) > 0 ? String(variant.costPrice) : "")
+
+      const rawPrice = variant.price !== undefined && variant.price !== null ? Number(variant.price) : 0
+      setPrice(!isNaN(rawPrice) && rawPrice > 0 ? String(rawPrice) : "")
+
+      const rawCompare =
+        variant.compareAtPrice !== undefined && variant.compareAtPrice !== null
+          ? Number(variant.compareAtPrice)
+          : null
+      setCompareAtPrice(rawCompare !== null && !isNaN(rawCompare) && rawCompare > 0 ? String(rawCompare) : "")
+
+      const rawCost =
+        variant.costPrice !== undefined && variant.costPrice !== null
+          ? Number(variant.costPrice)
+          : null
+      setCostPrice(rawCost !== null && !isNaN(rawCost) && rawCost > 0 ? String(rawCost) : "")
+
       setBarcode(variant.barcode || "")
       setStatus((variant.status as VariantStatus) || "ACTIVE")
-      const existingIds = (variant.attributeValues ?? []).map((av: any) => av.attributeValue?.id || av.id).filter(Boolean)
+      const existingIds = (variant.attributeValues ?? [])
+        .map((av: any) => av.attributeValue?.id || av.id)
+        .filter(Boolean)
       setSelectedAttributeValueIds(existingIds)
       setError(null)
     }
@@ -74,61 +81,68 @@ export function EditVariantDialog({
 
   if (!variant) return null
 
+  // Sanitized handler for price decimal inputs, capping at 2 decimal places
+  const handleDecimalChange = (setter: (val: string) => void, inputValue: string) => {
+    if (inputValue === "") {
+      setter("")
+      return
+    }
+    let sanitized = inputValue.replace(/,/g, ".").replace(/[^0-9.]/g, "")
+    const parts = sanitized.split(".")
+    if (parts.length > 2) {
+      sanitized = `${parts[0]}.${parts.slice(1).join("")}`
+    }
+    if (parts[1] && parts[1].length > 2) {
+      sanitized = `${parts[0]}.${parts[1].slice(0, 2)}`
+    }
+    setter(sanitized)
+  }
+
   const numPrice = parseFloat(price) || 0
   const numCost = parseFloat(costPrice) || 0
-  const profitMargin = numPrice > 0 && numCost > 0 ? Math.round(((numPrice - numCost) / numPrice) * 100) : null
+  const profitMargin =
+    numPrice > 0 && numCost > 0 ? Math.round(((numPrice - numCost) / numPrice) * 100) : null
   const reserved = Number(variant.inventory?.reservedQuantity ?? 0)
   const available = Number(variant.inventory?.availableQuantity ?? 0)
-  const stock = variant.inventory?.quantity !== undefined && variant.inventory.quantity !== null ? Number(variant.inventory.quantity) : available + reserved
-
-  const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || !files[0]) return
-    const file = files[0]
-    setIsUploadingPhoto(true)
-    setError(null)
-    try {
-      const uploadRes = await uploadFileToImageKit(file, { folder: `/products/${productId}/variants` })
-      await attachImageMutation.mutateAsync({
-        id: variant.id,
-        payload: {
-          url: uploadRes.url,
-          fileId: uploadRes.fileId,
-          thumbnailUrl: uploadRes.thumbnailUrl,
-          altText: `${variant.sku} photo`,
-        },
-      })
-      onSuccess?.()
-    } catch (err: any) {
-      setError(err.message || "Failed to upload and attach photo.")
-    } finally {
-      setIsUploadingPhoto(false)
-      if (fileInputRef.current) fileInputRef.current.value = ""
-    }
-  }
-
-  const handleDeleteImage = async (imageId: string) => {
-    setError(null)
-    try {
-      await deleteImageMutation.mutateAsync({ id: variant.id, imageId })
-      onSuccess?.()
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to delete image.")
-    }
-  }
+  const stock =
+    variant.inventory?.quantity !== undefined && variant.inventory.quantity !== null
+      ? Number(variant.inventory.quantity)
+      : available + reserved
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sku.trim()) {
-      setError("SKU is required.")
+    setError(null)
+
+    const cleanSku = sku.trim().toUpperCase()
+    if (!cleanSku) {
+      setError("SKU code is required.")
       return
     }
-    setError(null)
+
+    const parsedPrice = parseFloat(price)
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      setError("Selling price must be a valid number greater than 0.")
+      return
+    }
+
+    const parsedCompare = compareAtPrice ? parseFloat(compareAtPrice) : null
+    if (
+      parsedCompare !== null &&
+      !isNaN(parsedCompare) &&
+      parsedCompare > 0 &&
+      parsedCompare < parsedPrice
+    ) {
+      setError("Compare-at price (MRP) must be greater than or equal to selling price.")
+      return
+    }
+
+    const parsedCost = costPrice ? parseFloat(costPrice) : null
+
     const payload: UpdateVariantPayload = {
-      sku: sku.trim(),
-      price: numPrice,
-      compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-      costPrice: costPrice ? parseFloat(costPrice) : null,
+      sku: cleanSku,
+      price: parsedPrice,
+      compareAtPrice: parsedCompare && parsedCompare > 0 ? parsedCompare : null,
+      costPrice: parsedCost && parsedCost > 0 ? parsedCost : null,
       barcode: barcode.trim() || null,
       status,
       attributeValueIds: selectedAttributeValueIds,
@@ -137,12 +151,18 @@ export function EditVariantDialog({
     updateMutation.mutate(
       { id: variant.id, payload },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           onOpenChange(false)
-          onSuccess?.()
+          onSuccess?.(res?.data)
         },
         onError: (err: any) => {
-          setError(err.response?.data?.errors?.[0]?.message || err.response?.data?.message || "Failed to update variant.")
+          const validationMsg = err.response?.data?.errors?.[0]?.message
+          const msg =
+            validationMsg ||
+            err.response?.data?.message ||
+            err.message ||
+            "Failed to update variant."
+          setError(msg)
         },
       }
     )
@@ -210,68 +230,71 @@ export function EditVariantDialog({
               <InlineAttributeManager mode="single" selectedSingleValueIds={selectedAttributeValueIds} onSingleSelectionChange={setSelectedAttributeValueIds} />
             </div>
 
-            {/* Variant Specific Images */}
-            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <ImageIcon className="size-3.5 text-indigo-500" />
-                  Variant Photos (ImageKit)
-                </span>
-                <span className="text-[11px] text-muted-foreground font-mono">{variant.images?.length || 0} attached</span>
-              </div>
-
-              {variant.images && variant.images.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {variant.images.map((img) => (
-                    <div key={img.id} className="relative size-14 shrink-0 rounded-md overflow-hidden border border-border/70 bg-muted group">
-                      <Image src={img.thumbnailUrl || img.url} alt={img.altText || "Variant Photo"} fill className="object-cover" unoptimized />
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteImage(img.id)}
-                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
-                        title="Delete photo"
-                      >
-                        <Trash2 className="size-3.5 text-rose-300" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Direct Device Upload Button */}
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleDeviceUpload} className="hidden" />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingPhoto || attachImageMutation.isPending}
-                className="w-full h-8 text-xs gap-1.5 border-dashed border-indigo-300 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-              >
-                {isUploadingPhoto ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
-                <span>{isUploadingPhoto ? "Uploading to ImageKit..." : "Upload Variant Photo from Device"}</span>
-              </Button>
+            {/* Variant Specific Images Manager with Drag and Drop */}
+            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
+              <VariantImageManager
+                productId={productId}
+                variantId={variant.id}
+                images={variant.images || []}
+                sku={variant.sku}
+              />
             </div>
 
             <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground text-xs uppercase tracking-wider">Pricing</span>
                 {profitMargin !== null && (
-                  <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">Est. Margin: {profitMargin}%</span>
+                  <span
+                    className={`text-xs font-mono font-semibold ${
+                      profitMargin < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    Est. Margin: {profitMargin}%
+                  </span>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className="font-medium text-foreground text-xs">Selling Price (₹) <span className="text-rose-500">*</span></label>
-                  <Input type="text" inputMode="decimal" value={price} onChange={(e) => /^\d*\.?\d*$/.test(e.target.value) && setPrice(e.target.value)} className="h-8.5 text-xs font-mono" required />
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={price}
+                      onChange={(e) => handleDecimalChange(setPrice, e.target.value)}
+                      className="h-8.5 pl-6 text-xs font-mono"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-medium text-muted-foreground text-xs">Compare At MRP (₹)</label>
-                  <Input type="text" inputMode="decimal" value={compareAtPrice} onChange={(e) => /^\d*\.?\d*$/.test(e.target.value) && setCompareAtPrice(e.target.value)} className="h-8.5 text-xs font-mono" />
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={compareAtPrice}
+                      onChange={(e) => handleDecimalChange(setCompareAtPrice, e.target.value)}
+                      className="h-8.5 pl-6 text-xs font-mono"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-medium text-muted-foreground text-xs">Cost Per Item (₹)</label>
-                  <Input type="text" inputMode="decimal" value={costPrice} onChange={(e) => /^\d*\.?\d*$/.test(e.target.value) && setCostPrice(e.target.value)} className="h-8.5 text-xs font-mono" />
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={costPrice}
+                      onChange={(e) => handleDecimalChange(setCostPrice, e.target.value)}
+                      className="h-8.5 pl-6 text-xs font-mono"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

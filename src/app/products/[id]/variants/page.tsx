@@ -120,6 +120,12 @@ export default function ProductVariantsPage() {
     setIsEditOpen(true)
   }
 
+  // Keep variantToEdit synced with fresh data from items whenever refetched
+  const activeVariantToEdit = React.useMemo(() => {
+    if (!variantToEdit) return null
+    return items.find((v) => v.id === variantToEdit.id) ?? variantToEdit
+  }, [items, variantToEdit])
+
   const handleDeleteClick = (variant: ProductVariant) => {
     setVariantToDelete(variant)
     setIsDeleteOpen(true)
@@ -304,11 +310,14 @@ export default function ProductVariantsPage() {
       />
 
       <EditVariantDialog
-        variant={variantToEdit}
+        variant={activeVariantToEdit}
         productId={productId}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
-        onSuccess={() => refetch()}
+        onSuccess={(updated) => {
+          if (updated) setVariantToEdit(updated)
+          refetch()
+        }}
       />
 
       <DeleteVariantDialog

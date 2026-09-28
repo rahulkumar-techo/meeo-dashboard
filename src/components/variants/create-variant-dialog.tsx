@@ -23,6 +23,8 @@ import {
   InlineAttributeManager,
   type SelectedAttributeDetail,
 } from "./inline-attribute-manager"
+import { VariantImageManager } from "./variant-image-manager"
+import type { CreateProductImageInput } from "@/types/product"
 import type { CreateVariantPayload, VariantStatus } from "@/types/variant"
 
 export interface CreateVariantDialogProps {
@@ -53,6 +55,7 @@ export function CreateVariantDialog({
   const [reorderLevel, setReorderLevel] = React.useState("")
   const [selectedAttributeValueIds, setSelectedAttributeValueIds] = React.useState<string[]>([])
   const [selectedDetails, setSelectedDetails] = React.useState<SelectedAttributeDetail[]>([])
+  const [images, setImages] = React.useState<CreateProductImageInput[]>([])
   const [error, setError] = React.useState<string | null>(null)
 
   const createMutation = useCreateVariantMutation(productId)
@@ -101,6 +104,7 @@ export function CreateVariantDialog({
       setReorderLevel("")
       setSelectedAttributeValueIds([])
       setSelectedDetails([])
+      setImages([])
       setError(null)
     }
   }, [open, baseSkuPrefix])
@@ -164,6 +168,7 @@ export function CreateVariantDialog({
       attributeValueIds: selectedAttributeValueIds,
       initialStock: !isNaN(parsedStock) && parsedStock >= 0 ? parsedStock : 0,
       reorderLevel: parsedReorder !== null && !isNaN(parsedReorder) && parsedReorder >= 0 ? parsedReorder : null,
+      images: images.length > 0 ? images : undefined,
     }
 
     createMutation.mutate(payload, {
@@ -313,58 +318,73 @@ export function CreateVariantDialog({
                   <label className="font-medium text-foreground text-[11px]">
                     Selling Price (₹) <span className="text-rose-500">*</span>
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={price}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold pointer-events-none select-none">
+                      ₹
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={price}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "")
+                        const parts = val.split(".")
+                        if (parts.length > 2) val = `${parts[0]}.${parts.slice(1).join("")}`
                         setPrice(val)
-                      }
-                    }}
-                    placeholder="149.99"
-                    className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    required
-                  />
+                      }}
+                      placeholder="149.99"
+                      className="h-8 pl-6 pr-2 text-xs font-mono"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-medium text-muted-foreground text-[11px]">
                     Compare At MRP (₹)
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={compareAtPrice}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold pointer-events-none select-none">
+                      ₹
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={compareAtPrice}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "")
+                        const parts = val.split(".")
+                        if (parts.length > 2) val = `${parts[0]}.${parts.slice(1).join("")}`
                         setCompareAtPrice(val)
-                      }
-                    }}
-                    placeholder="179.99"
-                    className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
+                      }}
+                      placeholder="179.99"
+                      className="h-8 pl-6 pr-2 text-xs font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-medium text-muted-foreground text-[11px]">
                     Cost Per Item (₹)
                   </label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={costPrice}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold pointer-events-none select-none">
+                      ₹
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={costPrice}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "")
+                        const parts = val.split(".")
+                        if (parts.length > 2) val = `${parts[0]}.${parts.slice(1).join("")}`
                         setCostPrice(val)
-                      }
-                    }}
-                    placeholder="65.00"
-                    className="h-8 text-xs font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
+                      }}
+                      placeholder="65.00"
+                      className="h-8 pl-6 pr-2 text-xs font-mono"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,6 +437,16 @@ export function CreateVariantDialog({
                   <option value="INACTIVE">INACTIVE</option>
                 </select>
               </div>
+            </div>
+
+            {/* Variant Media & Gallery with Drag & Drop */}
+            <div className="pt-1">
+              <VariantImageManager
+                productId={productId}
+                draftImages={images}
+                onDraftImagesChange={setImages}
+                sku={sku || "SKU"}
+              />
             </div>
           </div>
 

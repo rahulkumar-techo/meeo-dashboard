@@ -208,7 +208,15 @@ export function useUploadProductImageMutation() {
     }) => {
       return await productService.uploadProductImage(id, payload)
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      if (res?.data) {
+        queryClient.setQueryData([...PRODUCTS_QUERY_KEY, variables.id], (old: any) => {
+          if (!old) return old
+          const existing = old.images || []
+          const exists = existing.some((img: any) => img.id === res.data.id)
+          return { ...old, images: exists ? existing : [...existing, res.data] }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY })
     },
   })
@@ -230,7 +238,15 @@ export function useAttachProductImageMutation() {
     }) => {
       return await productService.attachProductImage(id, payload)
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      if (res?.data) {
+        queryClient.setQueryData([...PRODUCTS_QUERY_KEY, variables.id], (old: any) => {
+          if (!old) return old
+          const existing = old.images || []
+          const exists = existing.some((img: any) => img.id === res.data.id)
+          return { ...old, images: exists ? existing : [...existing, res.data] }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY })
     },
   })
@@ -246,7 +262,14 @@ export function useDeleteProductImageMutation() {
     mutationFn: async ({ id, imageId }: { id: string; imageId: string }) => {
       return await productService.deleteProductImage(id, imageId)
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData([...PRODUCTS_QUERY_KEY, variables.id], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          images: (old.images || []).filter((img: any) => img.id !== variables.imageId),
+        }
+      })
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY })
     },
   })

@@ -130,7 +130,22 @@ export function useUpdateVariantMutation(productId?: string) {
     mutationFn: async ({ id, payload }: { id: string; payload: UpdateVariantPayload }) => {
       return await variantService.updateVariant(id, payload)
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
+      if (res?.data) {
+        queryClient.setQueryData([...VARIANTS_QUERY_KEY, variables.id], res.data)
+        // Optimistically update list query cache for instant UI reflection
+        if (productId) {
+          queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+            if (!old?.items) return old
+            return {
+              ...old,
+              items: old.items.map((v: ProductVariant) =>
+                v.id === variables.id ? { ...v, ...res.data } : v
+              ),
+            }
+          })
+        }
+      }
       queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
       if (productId) {
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
@@ -152,8 +167,16 @@ export function useDeleteVariantMutation(productId?: string) {
     mutationFn: async (id: string) => {
       return await variantService.deleteVariant(id)
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
       if (productId) {
+        queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+          if (!old?.items) return old
+          return {
+            ...old,
+            items: old.items.filter((v: ProductVariant) => v.id !== deletedId),
+            total: Math.max(0, (old.total ?? old.items.length) - 1),
+          }
+        })
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
       } else {
         queryClient.invalidateQueries({ queryKey: VARIANTS_QUERY_KEY })
@@ -173,7 +196,21 @@ export function useUploadVariantImageMutation(productId?: string) {
     mutationFn: async ({ id, payload }: { id: string; payload: FormData | { file: string | File; altText?: string | null; sortOrder?: number } }) => {
       return await variantService.uploadVariantImage(id, payload)
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
+      if (productId && res?.data) {
+        queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+          if (!old?.items) return old
+          return {
+            ...old,
+            items: old.items.map((v: ProductVariant) => {
+              if (v.id !== variables.id) return v
+              const existing = v.images || []
+              const exists = existing.some((img) => img.id === res.data.id)
+              return { ...v, images: exists ? existing : [...existing, res.data] }
+            }),
+          }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
       if (productId) {
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
@@ -199,7 +236,21 @@ export function useAttachVariantImageMutation(productId?: string) {
     }) => {
       return await variantService.attachVariantImage(id, payload)
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
+      if (productId && res?.data) {
+        queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+          if (!old?.items) return old
+          return {
+            ...old,
+            items: old.items.map((v: ProductVariant) => {
+              if (v.id !== variables.id) return v
+              const existing = v.images || []
+              const exists = existing.some((img) => img.id === res.data.id)
+              return { ...v, images: exists ? existing : [...existing, res.data] }
+            }),
+          }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
       if (productId) {
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
@@ -220,6 +271,19 @@ export function useDeleteVariantImageMutation(productId?: string) {
       return await variantService.deleteVariantImage(id, imageId)
     },
     onSuccess: (_, variables) => {
+      if (productId) {
+        queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+          if (!old?.items) return old
+          return {
+            ...old,
+            items: old.items.map((v: ProductVariant) =>
+              v.id === variables.id
+                ? { ...v, images: (v.images || []).filter((img: any) => img.id !== variables.imageId) }
+                : v
+            ),
+          }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
       if (productId) {
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })
@@ -239,7 +303,18 @@ export function useReorderVariantImagesMutation(productId?: string) {
     mutationFn: async ({ id, images }: { id: string; images: Array<{ id: string; sortOrder: number }> }) => {
       return await variantService.reorderVariantImages(id, images)
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
+      if (productId && res?.data) {
+        queryClient.setQueriesData({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] }, (old: any) => {
+          if (!old?.items) return old
+          return {
+            ...old,
+            items: old.items.map((v: ProductVariant) =>
+              v.id === variables.id ? { ...v, images: res.data } : v
+            ),
+          }
+        })
+      }
       queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, variables.id] })
       if (productId) {
         queryClient.invalidateQueries({ queryKey: [...VARIANTS_QUERY_KEY, "product", productId] })

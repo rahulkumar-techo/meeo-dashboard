@@ -35,6 +35,8 @@ import { useBatchCreateVariantsMutation } from "@/hooks/use-variant-query"
 import { useCreateAttributeMutation, useAttributesQuery } from "@/hooks/use-attribute-query"
 import { usePermissions } from "@/hooks/use-permissions"
 import { RowAttributePicker } from "./row-attribute-picker"
+import { RowImagePicker } from "./row-image-picker"
+import type { CreateProductImageInput } from "@/types/product"
 import type { BatchCreateVariantItem, VariantStatus } from "@/types/variant"
 
 export interface BatchVariantDialogProps {
@@ -59,6 +61,7 @@ interface FormVariantRow {
   status: VariantStatus
   attributeValueIds: string[]
   attributeLabels?: string[]
+  images?: CreateProductImageInput[]
 }
 
 export function BatchVariantDialog({
@@ -91,6 +94,7 @@ export function BatchVariantDialog({
       status: "ACTIVE",
       attributeValueIds: [],
       attributeLabels: [],
+      images: [],
     },
     {
       id: "row-2",
@@ -105,6 +109,7 @@ export function BatchVariantDialog({
       status: "ACTIVE",
       attributeValueIds: [],
       attributeLabels: [],
+      images: [],
     },
   ])
 
@@ -188,6 +193,7 @@ export function BatchVariantDialog({
         status: "ACTIVE",
         attributeValueIds: [],
         attributeLabels: [],
+        images: [],
       },
     ])
   }
@@ -206,6 +212,7 @@ export function BatchVariantDialog({
         id: `row-${Date.now()}-${nextIndex}`,
         sku: `${baseSku || "SKU"}-${padded}`,
         isSkuCustomized: false,
+        images: target.images ? [...target.images] : [],
       },
     ])
   }
@@ -371,6 +378,7 @@ export function BatchVariantDialog({
         barcode: r.barcode.trim() || null,
         compareAtPrice: parsedCompare && parsedCompare > 0 ? parsedCompare : null,
         costPrice: parsedCost && parsedCost > 0 ? parsedCost : null,
+        images: r.images && r.images.length > 0 ? r.images : [],
       })
     }
 
@@ -538,6 +546,7 @@ export function BatchVariantDialog({
                   <tr>
                     <th className="p-3 text-center w-10 min-w-[40px]">#</th>
                     <th className="p-3 text-left min-w-[160px] w-44 whitespace-nowrap">SKU Code *</th>
+                    <th className="p-3 text-left min-w-[100px] w-28 whitespace-nowrap">Media</th>
                     <th className="p-3 text-left min-w-[240px] whitespace-nowrap">Attributes (2+ per variant)</th>
                     <th className="p-3 text-left min-w-[125px] w-32 whitespace-nowrap">Price (₹) *</th>
                     <th className="p-3 text-left min-w-[135px] w-36 whitespace-nowrap">MRP / Compare (₹)</th>
@@ -565,6 +574,18 @@ export function BatchVariantDialog({
                           placeholder="e.g. NK-AIR-01"
                           className="h-8 text-xs font-mono uppercase w-full"
                           required
+                        />
+                      </td>
+
+                      {/* Variant Media & Image Picker with Drag & Drop */}
+                      <td className="p-2.5 min-w-[100px] w-28">
+                        <RowImagePicker
+                          productId={productId}
+                          sku={r.sku}
+                          rowLabel={`Row #${idx + 1}`}
+                          images={r.images || []}
+                          onChange={(imgs) => handleUpdateRow(r.id, "images", imgs)}
+                          className="h-8 w-full"
                         />
                       </td>
 
