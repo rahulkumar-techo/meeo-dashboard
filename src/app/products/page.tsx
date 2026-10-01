@@ -9,7 +9,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Plus, RefreshCw, Search, ArrowUpDown } from "lucide-react"
+import { Plus, RefreshCw, Search, ArrowUpDown, PanelRightClose, PanelRightOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader, MetricGrid } from "@/components/common"
@@ -43,6 +43,7 @@ export default function ProductsPage() {
 
   // Selected product for inspector preview
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null)
+  const [isInspectorOpen, setIsInspectorOpen] = React.useState(true)
 
   // Dialog states
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(null)
@@ -233,6 +234,27 @@ export default function ProductsPage() {
             <span className="uppercase font-mono text-[10px]">{sortOrder}</span>
           </Button>
 
+          {/* Toggle Inspector (Full Table View) */}
+          <Button
+            variant={isInspectorOpen ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setIsInspectorOpen((prev) => !prev)}
+            className="h-8.5 gap-1.5 text-xs border-border/80 px-2.5"
+            title={isInspectorOpen ? "Minimize Inspector (View Full Table)" : "Show Product Inspector"}
+          >
+            {isInspectorOpen ? (
+              <>
+                <PanelRightClose className="size-3.5 text-muted-foreground" />
+                <span className="hidden sm:inline">Minimize Inspector</span>
+              </>
+            ) : (
+              <>
+                <PanelRightOpen className="size-3.5 text-muted-foreground" />
+                <span className="hidden sm:inline">Show Inspector</span>
+              </>
+            )}
+          </Button>
+
           {(search || statusFilter !== "ALL" || categoryFilter !== "ALL" || brandFilter !== "ALL") && (
             <Button
               variant="ghost"
@@ -248,7 +270,7 @@ export default function ProductsPage() {
 
       {/* 4. Split Layout: Table (Left) & Inspector (Right) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="space-y-3 lg:col-span-8">
+        <div className={`space-y-3 ${isInspectorOpen ? "lg:col-span-8" : "lg:col-span-12"}`}>
           <ProductTable
             items={items}
             total={total}
@@ -258,7 +280,10 @@ export default function ProductsPage() {
             isLoading={isLoading}
             selectedProduct={selectedProduct}
             hasActiveFilters={Boolean(debouncedSearch || statusFilter !== "ALL" || categoryFilter !== "ALL" || brandFilter !== "ALL")}
-            onSelectProduct={setSelectedProduct}
+            onSelectProduct={(prod) => {
+              setSelectedProduct(prod)
+              setIsInspectorOpen(true)
+            }}
             onEditProduct={handleOpenEdit}
             onDeleteProduct={handleOpenDelete}
             onPublishProduct={(p) => publishMutation.mutate(p.id)}
@@ -269,16 +294,19 @@ export default function ProductsPage() {
           />
         </div>
 
-        <div className="space-y-4 lg:col-span-4">
-          <ProductInspector
-            selectedProduct={selectedProduct}
-            onEdit={(p) => handleOpenEdit(p)}
-            onDelete={(p) => handleOpenDelete(p)}
-            onPublish={(p) => publishMutation.mutate(p.id)}
-            onDraft={(p) => draftMutation.mutate(p.id)}
-            onArchive={(p) => archiveMutation.mutate(p.id)}
-          />
-        </div>
+        {isInspectorOpen && (
+          <div className="space-y-4 lg:col-span-4">
+            <ProductInspector
+              selectedProduct={selectedProduct}
+              onClose={() => setIsInspectorOpen(false)}
+              onEdit={(p) => handleOpenEdit(p)}
+              onDelete={(p) => handleOpenDelete(p)}
+              onPublish={(p) => publishMutation.mutate(p.id)}
+              onDraft={(p) => draftMutation.mutate(p.id)}
+              onArchive={(p) => archiveMutation.mutate(p.id)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

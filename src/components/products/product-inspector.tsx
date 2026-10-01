@@ -19,6 +19,7 @@ import {
   Package,
   Star,
   Layers,
+  X,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,6 +34,7 @@ export interface ProductInspectorProps {
   onPublish: (product: Product) => void
   onDraft: (product: Product) => void
   onArchive: (product: Product) => void
+  onClose?: () => void
 }
 
 export function ProductInspector({
@@ -42,10 +44,22 @@ export function ProductInspector({
   onPublish,
   onDraft,
   onArchive,
+  onClose,
 }: ProductInspectorProps) {
   if (!selectedProduct) {
     return (
-      <Card className="border-border/70 bg-card/95 shadow-2xs text-xs p-6 text-center text-muted-foreground">
+      <Card className="border-border/70 bg-card/95 shadow-2xs text-xs p-6 text-center text-muted-foreground relative">
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute top-2 right-2 size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
+            title="Minimize Inspector"
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
         <Package className="size-8 mx-auto text-muted-foreground/40 mb-2" />
         <p className="font-medium text-foreground">No Product Selected</p>
         <p className="text-[11px] mt-1">
@@ -56,7 +70,15 @@ export function ProductInspector({
   }
 
   const images = selectedProduct.images ?? []
-  const heroImage = images.length > 0 ? images[0].url : null
+  const variantImage = selectedProduct.variants?.[0]?.images?.[0]?.url
+  const heroImage =
+    images[0]?.url ||
+    variantImage ||
+    selectedProduct.bannerImage?.url ||
+    null
+  const hasDistinctBanner =
+    Boolean(selectedProduct.bannerImage?.url) &&
+    (images.length > 0 || Boolean(variantImage))
   const variantsCount =
     selectedProduct._count?.variants ??
     selectedProduct.variants?.length ??
@@ -76,13 +98,26 @@ export function ProductInspector({
               </Badge>
             )}
           </div>
-          <StatusBadge status={selectedProduct.status} showDot />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={selectedProduct.status} showDot />
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
+                title="Minimize Inspector (View Full Table)"
+              >
+                <X className="size-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
       <CardContent className="p-4 space-y-4">
-        {/* Campaign Banner Preview (if present) */}
-        {selectedProduct.bannerImage?.url && (
+        {/* Campaign Banner Preview (if present and distinct from primary cover) */}
+        {hasDistinctBanner && selectedProduct.bannerImage?.url && (
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold uppercase">
               <span>Hero Campaign Banner</span>
@@ -114,12 +149,10 @@ export function ProductInspector({
             />
           </div>
         ) : (
-          !selectedProduct.bannerImage?.url && (
-            <div className="flex h-28 w-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground text-xs gap-1">
-              <Package className="size-6 text-muted-foreground/50" />
-              <span>No image attached</span>
-            </div>
-          )
+          <div className="flex h-28 w-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/30 text-muted-foreground text-xs gap-1">
+            <Package className="size-6 text-muted-foreground/50" />
+            <span>No image attached</span>
+          </div>
         )}
 
         {/* Gallery Thumbnails */}
