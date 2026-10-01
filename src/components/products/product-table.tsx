@@ -118,7 +118,9 @@ export function ProductTable({
               const isSelected = selectedProduct?.id === prod.id
               const heroImage =
                 prod.bannerImage?.url ||
-                (prod.images && prod.images.length > 0 ? prod.images[0].url : null)
+                prod.images?.[0]?.url ||
+                prod.variants?.[0]?.images?.[0]?.url ||
+                null
               const variantsCount =
                 prod._count?.variants ??
                 prod.variants?.length ??
@@ -129,9 +131,8 @@ export function ProductTable({
                 <TableRow
                   key={prod.id}
                   onClick={() => onSelectProduct(prod)}
-                  className={`cursor-pointer transition-colors ${
-                    isSelected ? "bg-indigo-500/10 font-medium" : "hover:bg-muted/40"
-                  }`}
+                  className={`cursor-pointer transition-colors ${isSelected ? "bg-indigo-500/10 font-medium" : "hover:bg-muted/40"
+                    }`}
                 >
                   {/* Product Title & Hero Image */}
                   <TableCell className="pl-4 py-3">
