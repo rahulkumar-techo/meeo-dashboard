@@ -97,7 +97,7 @@ export function NotificationPermissionCard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={disablePushNotifications}
+                onClick={() => disablePushNotifications()}
                 disabled={isProcessing}
                 className="h-8 text-xs font-medium text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5"
               >
@@ -107,7 +107,7 @@ export function NotificationPermissionCard() {
             ) : (
               <Button
                 size="sm"
-                onClick={enablePushNotifications}
+                onClick={() => enablePushNotifications()}
                 disabled={isProcessing || permission === "denied"}
                 className="h-8 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-xs"
               >
