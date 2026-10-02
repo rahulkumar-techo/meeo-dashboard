@@ -120,6 +120,18 @@ export function NotificationPermissionCard() {
       </CardHeader>
 
       <CardContent className="pt-4 space-y-4">
+        {permission === "denied" && (
+          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-medium">Notifications are blocked in your browser settings</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Browsers do not allow web pages to re-open the permission prompt once blocked. To allow notifications, click the <strong>tune/lock icon</strong> on the left side of your browser URL address bar, set <strong>Notifications</strong> to <strong>Allow</strong> (or Reset permission), and reload the page.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Permission details & Local token status */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3 rounded-lg bg-muted/40 border border-border/50 text-xs space-y-1">

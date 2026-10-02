@@ -12,6 +12,7 @@ import {
   isPushNotificationSupported,
   getPushPermissionStatus,
   getLocalDeviceToken,
+  clearLocalDeviceToken,
   requestWebPushToken,
   unregisterWebPushToken,
   onForegroundPushMessage,
@@ -40,7 +41,13 @@ export function usePushNotifications() {
     const currentPerm = getPushPermissionStatus()
     setPermission(currentPerm)
     const localToken = getLocalDeviceToken()
-    setCachedToken(localToken)
+
+    if (currentPerm === "denied") {
+      clearLocalDeviceToken()
+      setCachedToken(null)
+    } else {
+      setCachedToken(localToken)
+    }
 
     // Setup foreground message listener
     const unsubscribe = onForegroundPushMessage((payload) => {

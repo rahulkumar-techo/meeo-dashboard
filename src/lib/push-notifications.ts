@@ -134,7 +134,7 @@ export async function requestWebPushToken(forceRefresh = false): Promise<string 
     } catch {}
   }
 
-  // 3. Register service worker for web push
+  // 3. Register service worker for web push and wait until active
   let swRegistration: ServiceWorkerRegistration | undefined
   if ("serviceWorker" in navigator) {
     try {
@@ -145,8 +145,10 @@ export async function requestWebPushToken(forceRefresh = false): Promise<string 
       if (firebaseConfig.appId) swUrl.searchParams.set("appId", firebaseConfig.appId)
 
       swRegistration = await navigator.serviceWorker.register(
-        `${swUrl.pathname}${swUrl.search}`
+        `${swUrl.pathname}${swUrl.search}`,
+        { scope: "/" }
       )
+      await navigator.serviceWorker.ready
     } catch (swErr) {
       console.warn("Service worker registration skipped or failed:", swErr)
     }
