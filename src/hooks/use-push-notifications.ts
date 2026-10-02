@@ -33,12 +33,14 @@ export function usePushNotifications() {
   const unregisterDeviceMutation = useUnregisterDeviceMutation()
   const devicesQuery = useRegisteredDevicesQuery()
 
-  // Initialize permission state and cached token on mount
+  // Initialize permission state, foreground listener, and silently validate token on mount
   React.useEffect(() => {
     if (typeof window === "undefined") return
 
-    setPermission(getPushPermissionStatus())
-    setCachedToken(getLocalDeviceToken())
+    const currentPerm = getPushPermissionStatus()
+    setPermission(currentPerm)
+    const localToken = getLocalDeviceToken()
+    setCachedToken(localToken)
 
     // Setup foreground message listener
     const unsubscribe = onForegroundPushMessage((payload) => {
@@ -57,6 +59,28 @@ export function usePushNotifications() {
       })
     })
 
+    // If permission was granted, validate token with Firebase to self-heal stale cached tokens
+    if (currentPerm === "granted") {
+      requestWebPushToken(false)
+        .then((freshToken) => {
+          if (freshToken) {
+            setCachedToken(freshToken)
+            if (freshToken !== localToken) {
+              registerDeviceMutation.mutate({
+                token: freshToken,
+                platform: "web",
+                userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+              })
+            }
+          } else {
+            setCachedToken(null)
+          }
+        })
+        .catch(() => {
+          setCachedToken(null)
+        })
+    }
+
     return () => {
       unsubscribe()
     }
@@ -65,7 +89,7 @@ export function usePushNotifications() {
   /**
    * Request push permission, get/reuse local token, and sync with backend.
    */
-  const enablePushNotifications = React.useCallback(async () => {
+  const enablePushNotifications = React.useCallback(async (forceRefresh = false) => {
     if (!isPushNotificationSupported()) {
       toast.error("Push notifications are not supported in this browser.")
       return false
@@ -73,7 +97,7 @@ export function usePushNotifications() {
 
     setIsProcessing(true)
     try {
-      const token = await requestWebPushToken()
+      const token = await requestWebPushToken(forceRefresh)
       setPermission(getPushPermissionStatus())
 
       if (!token) {

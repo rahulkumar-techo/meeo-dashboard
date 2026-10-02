@@ -109,34 +109,32 @@ export async function getFirebaseMessaging(): Promise<Messaging | null> {
 }
 
 /**
- * Request Notification Permission and retrieve FCM Device Token.
- * If already cached locally and permission is granted, returns cached token immediately.
+ * Request Notification Permission and retrieve FCM Device Token directly from Firebase.
  */
 export async function requestWebPushToken(forceRefresh = false): Promise<string | null> {
   if (!isPushNotificationSupported()) {
     return null
   }
 
-  // 1. Check existing local cache if forceRefresh is false
-  if (!forceRefresh) {
-    const cachedToken = getLocalDeviceToken()
-    if (cachedToken && Notification.permission === "granted") {
-      return cachedToken
-    }
-  }
-
-  // 2. Request browser permission directly
+  // 1. Request browser permission directly
   const permission = await Notification.requestPermission()
   if (permission !== "granted") {
     clearLocalDeviceToken()
     return null
   }
 
-  // 3. Obtain Firebase Messaging instance
+  // 2. Obtain Firebase Messaging instance
   const messaging = await getFirebaseMessaging()
   if (!messaging) return null
 
-  // 4. Register service worker for web push
+  if (forceRefresh) {
+    clearLocalDeviceToken()
+    try {
+      await deleteToken(messaging)
+    } catch {}
+  }
+
+  // 3. Register service worker for web push
   let swRegistration: ServiceWorkerRegistration | undefined
   if ("serviceWorker" in navigator) {
     try {
@@ -154,7 +152,7 @@ export async function requestWebPushToken(forceRefresh = false): Promise<string 
     }
   }
 
-  // 5. Generate FCM token
+  // 4. Generate FCM token directly from Firebase to ensure token validity
   try {
     const token = await getToken(messaging, {
       vapidKey: FIREBASE_VAPID_KEY || undefined,
@@ -167,6 +165,7 @@ export async function requestWebPushToken(forceRefresh = false): Promise<string 
     }
   } catch (tokenErr) {
     console.error("Failed to generate FCM web token:", tokenErr)
+    clearLocalDeviceToken()
   }
 
   return null
@@ -210,5 +209,29 @@ export function onForegroundPushMessage(callback: (payload: any) => void): () =>
     if (unsubscribe) {
       unsubscribe()
     }
+  }
+}
+
+/**
+ * Fully reset push notification state: remove local storage token, delete token in Firebase, and unregister sw.
+ */
+export async function resetPushNotificationCache(): Promise<void> {
+  clearLocalDeviceToken()
+  try {
+    const messaging = await getFirebaseMessaging()
+    if (messaging) {
+      await deleteToken(messaging)
+    }
+  } catch {}
+
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      for (const reg of registrations) {
+        if (reg.active?.scriptURL?.includes("firebase-messaging-sw")) {
+          await reg.unregister()
+        }
+      }
+    } catch {}
   }
 }
