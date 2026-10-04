@@ -10,6 +10,7 @@ import type {
   ResendOtpPayload,
   ForgotPasswordPayload,
   ResetPasswordPayload,
+  VerifyResetOtpPayload,
 } from "@/types/auth"
 
 export const AUTH_QUERY_KEY = ["auth", "currentUser"]
@@ -67,7 +68,8 @@ export function useLoginMutation() {
 }
 
 /**
- * Mutation for user registration.
+ * Mutation for Route 1: POST /api/v1/auth/register
+ * - Registers new account or refreshes unverified user details & OTP.
  */
 export function useRegisterMutation() {
   return useMutation({
@@ -78,7 +80,8 @@ export function useRegisterMutation() {
 }
 
 /**
- * Mutation for OTP verification.
+ * Mutation for Route 2: POST /api/v1/auth/verify-otp
+ * - Validates account activation code against Keys.USER_OTP(email).
  */
 export function useVerifyOtpMutation() {
   return useMutation({
@@ -89,7 +92,9 @@ export function useVerifyOtpMutation() {
 }
 
 /**
- * Mutation for resending OTP code.
+ * Mutation for Route 3: POST /api/v1/auth/resend-otp
+ * - Resends account activation OTP (Keys.USER_OTP) for /verify-otp screen.
+ * - Rejects with 404 if user not found, 400 if already verified.
  */
 export function useResendOtpMutation() {
   return useMutation({
@@ -100,7 +105,9 @@ export function useResendOtpMutation() {
 }
 
 /**
- * Mutation for requesting password reset OTP.
+ * Mutation for Route 4: POST /api/v1/auth/forgot-password
+ * - Sends or resends password recovery code against Keys.PASSWORD_RESET_OTP(email).
+ * - Used on /forgot-password AND as resend in Step 1 of /reset-password.
  */
 export function useForgotPasswordMutation() {
   return useMutation({
@@ -111,7 +118,20 @@ export function useForgotPasswordMutation() {
 }
 
 /**
- * Mutation for setting a new password with reset OTP.
+ * Mutation for Route 5: POST /api/v1/auth/verify-reset-otp
+ * - Non-destructive validation of Keys.PASSWORD_RESET_OTP(email) in Step 1 of /reset-password.
+ */
+export function useVerifyResetOtpMutation() {
+  return useMutation({
+    mutationFn: async (payload: VerifyResetOtpPayload) => {
+      return await authService.verifyResetOtp(payload)
+    },
+  })
+}
+
+/**
+ * Mutation for Route 6: POST /api/v1/auth/reset-password
+ * - Finalizes password reset with verified OTP and revokes all active sessions.
  */
 export function useResetPasswordMutation() {
   return useMutation({

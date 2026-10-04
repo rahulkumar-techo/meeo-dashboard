@@ -47,6 +47,7 @@ import {
 import type {
   JobItem,
   JobCategory,
+  JobOverviewQueue,
   BulkJobActionType,
 } from "@/types/job"
 
@@ -107,6 +108,7 @@ export default function BackgroundJobsPage() {
     isRefetching: isJobsRefetching,
   } = useJobsQuery({
     filter: activeCategory !== "ALL" ? activeCategory : undefined,
+    queue: activeCategory !== "ALL" ? activeCategory : undefined,
     status: statusFilter !== "ALL" ? statusFilter : undefined,
     search: debouncedSearch || undefined,
     page,
@@ -118,13 +120,82 @@ export default function BackgroundJobsPage() {
   const cancelMutation = useCancelJobMutation()
   const bulkActionMutation = useBulkJobActionMutation()
 
-  const jobs = jobsData?.items ?? []
+  const rawJobs = jobsData?.items ?? []
   const pagination = jobsData?.pagination ?? {
     page: 1,
     limit: pageSize,
     total: 0,
     totalPages: 1,
   }
+
+  // 1. Dynamically aggregate and deduplicate all distinct queues from overview + loaded jobs
+  const availableQueues: JobOverviewQueue[] = React.useMemo(() => {
+    const queueMap = new Map<string, JobOverviewQueue>()
+
+    // Merge from overview telemetry
+    if (overview?.queues && Array.isArray(overview.queues)) {
+      overview.queues.forEach((q) => {
+        queueMap.set(q.name, {
+          name: q.name,
+          category: q.category || q.name,
+          waiting: q.waiting || 0,
+          active: q.active || 0,
+          completed: q.completed || 0,
+          failed: q.failed || 0,
+          delayed: q.delayed || 0,
+          status: q.status || "HEALTHY",
+        })
+      })
+    }
+
+    // Discover any additional dynamic queues from loaded jobs
+    rawJobs.forEach((j) => {
+      if (j.queue && !queueMap.has(j.queue)) {
+        queueMap.set(j.queue, {
+          name: j.queue,
+          category: typeof j.category === "string" ? j.category : j.queue,
+          waiting: (j.status || "").toUpperCase() === "WAITING" ? 1 : 0,
+          active: (j.status || "").toUpperCase() === "ACTIVE" ? 1 : 0,
+          completed: (j.status || "").toUpperCase() === "COMPLETED" ? 1 : 0,
+          failed:
+            (j.status || "").toUpperCase() === "FAILED" ||
+            (j.status || "").toUpperCase() === "DEAD_LETTER"
+              ? 1
+              : 0,
+          delayed: (j.status || "").toUpperCase() === "DELAYED" ? 1 : 0,
+          status:
+            (j.status || "").toUpperCase() === "FAILED" ||
+            (j.status || "").toUpperCase() === "DEAD_LETTER"
+              ? "DEGRADED"
+              : "HEALTHY",
+        })
+      }
+    })
+
+    return Array.from(queueMap.values())
+  }, [overview?.queues, rawJobs])
+
+  // 2. Compute displayedJobs matching activeCategory (queue name, category, or DLQ)
+  const displayedJobs = React.useMemo(() => {
+    if (activeCategory === "ALL") return rawJobs
+    if (activeCategory === "DEAD_LETTER_TRIGGER") {
+      return rawJobs.filter(
+        (j) =>
+          (j.status || "").toUpperCase() === "DEAD_LETTER" ||
+          j.category === "DEAD_LETTER_TRIGGER"
+      )
+    }
+    const catLower = activeCategory.toLowerCase()
+    const catUpper = activeCategory.toUpperCase()
+    const filtered = rawJobs.filter(
+      (j) =>
+        (j.queue && j.queue.toLowerCase() === catLower) ||
+        (j.category &&
+          (j.category.toUpperCase() === catUpper ||
+            j.category.toLowerCase() === catLower))
+    )
+    return filtered.length > 0 ? filtered : rawJobs
+  }, [rawJobs, activeCategory])
 
   const showBanner = (type: "success" | "error", text: string) => {
     setBannerMessage({ type, text })
@@ -340,14 +411,20 @@ export default function BackgroundJobsPage() {
         />
       </div>
 
-      {/* 5. Queue Backlog Cards */}
-      {overview?.queues && overview.queues.length > 0 && (
-        <div>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            Queue Health & Backlogs (Click to Filter)
-          </h4>
+      {/* 5. Dynamic Queue Health Cards */}
+      {availableQueues.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Layers className="size-3.5 text-primary" />
+              <span>Queue Fleet Telemetry & Backlog (Click Card to Filter)</span>
+            </h4>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {availableQueues.length} Active Queue{availableQueues.length === 1 ? "" : "s"} Monitored
+            </span>
+          </div>
           <QueueHealthCards
-            queues={overview.queues}
+            queues={availableQueues}
             selectedCategory={activeCategory}
             onSelectCategory={(cat) => {
               setActiveCategory(cat as string)
@@ -357,55 +434,98 @@ export default function BackgroundJobsPage() {
         </div>
       )}
 
-      {/* 6. Queue Category Filter Tabs */}
+      {/* 6. Dynamic Queue Dropdown & Filter Hub */}
       <div className="space-y-3">
-        <Tabs
-          value={activeCategory}
-          onValueChange={(val) => {
-            setActiveCategory(val)
-            setPage(1)
-          }}
-          className="w-full"
-        >
-          <TabsList className="grid grid-cols-2 sm:grid-cols-5 h-auto p-1 bg-muted/70">
-            <TabsTrigger value="ALL" className="text-xs py-1.5 font-medium">
-              All Queues
-            </TabsTrigger>
-            <TabsTrigger
-              value="CRITICAL_CHECKOUTS"
-              className="text-xs py-1.5 font-medium"
-            >
-              Critical Checkouts
-            </TabsTrigger>
-            <TabsTrigger
-              value="ORDER_FULFILLMENT_SYNC"
-              className="text-xs py-1.5 font-medium"
-            >
-              Fulfillment Sync
-            </TabsTrigger>
-            <TabsTrigger
-              value="MARKETING_EMAIL_BATCH"
-              className="text-xs py-1.5 font-medium"
-            >
-              Marketing Batch
-            </TabsTrigger>
-            <TabsTrigger
-              value="DEAD_LETTER_TRIGGER"
-              className="text-xs py-1.5 font-medium text-rose-600 dark:text-rose-400 data-[state=active]:bg-rose-500/15"
-            >
-              <Flame className="mr-1 size-3.5 inline" />
-              Dead Letter ({dlqDepth})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/80 bg-card p-3 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Layers className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-foreground">
+                  Queue Workload Selector
+                </h4>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60">
+                  {availableQueues.length} Available
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {activeCategory === "ALL"
+                  ? "Showing jobs across all queues in cluster"
+                  : `Filtered by queue: ${activeCategory.replace(/_/g, " ")}`}
+              </p>
+            </div>
+          </div>
 
-        {/* 7. Filter Toolbar */}
+          {/* Dynamic Dropdown List */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <select
+                value={activeCategory}
+                onChange={(e) => {
+                  setActiveCategory(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 min-w-[210px] rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-2xs focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+              >
+                <option value="ALL">
+                  📦 All Queues ({pagination.total || rawJobs.length} Jobs)
+                </option>
+                {availableQueues.map((q) => (
+                  <option key={q.name} value={q.name}>
+                    ⚡ {q.name} {q.category ? `(${q.category.replace(/_/g, " ")})` : ""} {q.failed > 0 ? `• [${q.failed} Failed]` : ""}
+                  </option>
+                ))}
+                <option value="DEAD_LETTER_TRIGGER">
+                  🔥 Dead Letter Queue ({dlqDepth})
+                </option>
+              </select>
+            </div>
+
+            {activeCategory !== "ALL" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setActiveCategory("ALL")
+                  setPage(1)
+                }}
+                className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1 border-border/80"
+              >
+                <X className="size-3.5" />
+                <span>Clear</span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* 7. Filter Toolbar with Search and Status Filter */}
         <DataTableToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Filter jobs by ID, handler name, worker pod..."
           filters={
             <div className="flex flex-wrap items-center gap-2">
+              {/* Secondary Queue Quick-Select for Table */}
+              <select
+                value={activeCategory}
+                onChange={(e) => {
+                  setActiveCategory(e.target.value)
+                  setPage(1)
+                }}
+                className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden"
+              >
+                <option value="ALL">All Queues ({availableQueues.length})</option>
+                {availableQueues.map((q) => (
+                  <option key={q.name} value={q.name}>
+                    {q.name}
+                  </option>
+                ))}
+                <option value="DEAD_LETTER_TRIGGER">Dead Letter ({dlqDepth})</option>
+              </select>
+
+              {/* Status Filter */}
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -433,7 +553,7 @@ export default function BackgroundJobsPage() {
       {/* 8. Interactive Jobs Table */}
       <div className="space-y-3">
         <JobTable
-          jobs={jobs}
+          jobs={displayedJobs}
           isLoading={isJobsLoading}
           onInspect={(job) => {
             setSelectedJob(job)
@@ -451,7 +571,7 @@ export default function BackgroundJobsPage() {
           currentPage={pagination.page || page}
           totalPages={pagination.totalPages || 1}
           pageSize={pagination.limit || pageSize}
-          totalItems={pagination.total || jobs.length}
+          totalItems={pagination.total || rawJobs.length}
           onPageChange={setPage}
           onPageSizeChange={(size) => {
             setPageSize(size)

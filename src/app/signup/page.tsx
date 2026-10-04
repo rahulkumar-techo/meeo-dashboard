@@ -80,7 +80,7 @@ export default function SignupPage() {
       {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success("Account created successfully! Verification code sent.")
+            toast.success(res.message || "Verification code sent! Please check your email.")
             router.push(`/verify-otp?email=${encodeURIComponent(trimmedEmail)}&registered=true`)
           } else {
             const msg = res.message || "Failed to create account. Please try again."
@@ -94,7 +94,11 @@ export default function SignupPage() {
             "An error occurred during registration. Please try again."
           )
           setError(msg)
-          toast.error(msg)
+          if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already exists")) {
+            toast.error("This email is already registered and verified. Please sign in.")
+          } else {
+            toast.error(msg)
+          }
         },
       }
     )
@@ -122,9 +126,22 @@ export default function SignupPage() {
     >
       {error && (
         <div className="mb-4 flex items-start justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 animate-in fade-in-50">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
-            <span className="leading-tight">{error}</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0 text-rose-600" />
+              <span className="leading-tight font-medium">{error}</span>
+            </div>
+            {(error.toLowerCase().includes("already registered") || error.toLowerCase().includes("already exists")) && (
+              <p className="ml-6 text-[11px] text-muted-foreground">
+                Your account is already verified.{" "}
+                <Link
+                  href={`/login?email=${encodeURIComponent(email.trim().toLowerCase())}`}
+                  className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 underline underline-offset-2"
+                >
+                  Sign in to your account &rarr;
+                </Link>
+              </p>
+            )}
           </div>
           <button
             type="button"

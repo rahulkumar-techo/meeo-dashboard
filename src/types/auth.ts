@@ -81,6 +81,11 @@ export interface ResetPasswordPayload {
   password: string
 }
 
+export interface VerifyResetOtpPayload {
+  email: string
+  otp: string
+}
+
 export interface AuthResponseData {
   user: AuthUser
   accessToken: string

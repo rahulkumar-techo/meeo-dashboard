@@ -20,7 +20,7 @@ export default function VerifyOtpPage() {
   const [otp, setOtp] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
   const [successMsg, setSuccessMsg] = React.useState<string | null>(
-    isRegistered ? "Account created! A 4-digit verification code has been sent to your email." : null
+    isRegistered ? "A 4-digit verification code has been sent to your email." : null
   )
   const [countdown, setCountdown] = React.useState(60)
 

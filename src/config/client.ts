@@ -57,8 +57,7 @@ export async function executeSilentRefresh(): Promise<{ success: boolean }> {
     // 🔥 FIXED: Store the new fresh access token directly in the client state memory
     const newAccessToken = response.data.data.accessToken;
     
-    // Yahan aapke store ke structure ke mutabik state update honi chahiye (e.g., setAccessToken method)
-    // Assuming your store has a method to update the token:
+    // Update access token in the client-side user store
     if ((useUserStore.getState() as any).setAccessToken) {
       (useUserStore.getState() as any).setAccessToken(newAccessToken);
     } else {

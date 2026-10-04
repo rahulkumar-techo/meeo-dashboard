@@ -12,6 +12,7 @@ import type {
   ResendOtpPayload,
   ForgotPasswordPayload,
   ResetPasswordPayload,
+  VerifyResetOtpPayload,
   AuthResponseData,
   RefreshResponseData,
   AuthUser,
@@ -30,7 +31,10 @@ export const authService = {
   },
 
   /**
-   * Register a new user account.
+   * Route 1: Register a new user account.
+   * - If brand new email: creates user in Postgres with default CUSTOMER role, generates Keys.USER_OTP, and stages outbox email.
+   * - If existing unverified email: updates user credentials/names with latest submission and dispatches a fresh OTP.
+   * - If already verified email: rejects with 400 Bad Request ("Email already registered").
    */
   async register(payload: RegisterPayload): Promise<ApiResponse<{ user: AuthUser }>> {
     const response = await apiClient.post<ApiResponse<{ user: AuthUser }>>(
@@ -41,7 +45,9 @@ export const authService = {
   },
 
   /**
-   * Verify email registration / activation OTP.
+   * Route 2: Verify account activation OTP (Keys.USER_OTP).
+   * - Validates 4-digit code against Redis.
+   * - On success: sets emailVerified = true and immediately deletes Redis key (replay prevention).
    */
   async verifyOtp(payload: VerifyOtpPayload): Promise<ApiResponse<null>> {
     const response = await apiClient.post<ApiResponse<null>>(
@@ -52,7 +58,11 @@ export const authService = {
   },
 
   /**
-   * Resend verification OTP code to user's email.
+   * Route 3: Resend registration activation OTP (Keys.USER_OTP).
+   * - Used on /verify-otp screen for account activation.
+   * - Throws 404 if email does not exist.
+   * - Throws 400 if email is already verified.
+   * - Re-generates activation OTP with 5-minute TTL.
    */
   async resendOtp(payload: ResendOtpPayload): Promise<ApiResponse<null>> {
     const response = await apiClient.post<ApiResponse<null>>(
@@ -63,7 +73,10 @@ export const authService = {
   },
 
   /**
-   * Request password reset OTP email.
+   * Route 4: Request or re-send password reset OTP (Keys.PASSWORD_RESET_OTP).
+   * - Used on /forgot-password to initiate password recovery, AND on /reset-password to resend reset code.
+   * - Note: This operates on Keys.PASSWORD_RESET_OTP, isolated from Keys.USER_OTP.
+   * - Throws 404 if account with given email does not exist.
    */
   async forgotPassword(payload: ForgotPasswordPayload): Promise<ApiResponse<null>> {
     const response = await apiClient.post<ApiResponse<null>>(
@@ -74,7 +87,23 @@ export const authService = {
   },
 
   /**
-   * Reset password with OTP and new password.
+   * Route 5: Non-destructive verification of password reset OTP (Keys.PASSWORD_RESET_OTP).
+   * - Used in multi-step wizard (Step 1 of /reset-password) before prompting the user for their new password.
+   * - Validates OTP against Redis WITHOUT deleting it, so Route 6 (/reset-password) can finalize the change.
+   */
+  async verifyResetOtp(payload: VerifyResetOtpPayload): Promise<ApiResponse<{ verified: boolean }>> {
+    const response = await apiClient.post<ApiResponse<{ verified: boolean }>>(
+      "/auth/verify-reset-otp",
+      payload
+    )
+    return response.data
+  },
+
+  /**
+   * Route 6: Finalize password reset with OTP and new password (Keys.PASSWORD_RESET_OTP).
+   * - Validates OTP, hashes new password with Argon2id, and updates database.
+   * - Revokes all active user sessions across all devices (userSession.deleteMany).
+   * - Deletes Redis key Keys.PASSWORD_RESET_OTP immediately to prevent replay attacks.
    */
   async resetPassword(payload: ResetPasswordPayload): Promise<ApiResponse<null>> {
     const response = await apiClient.post<ApiResponse<null>>(

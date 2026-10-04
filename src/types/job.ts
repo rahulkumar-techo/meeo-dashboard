@@ -229,6 +229,7 @@ export interface JobsPagination {
  */
 export interface JobsQueryParams {
   filter?: JobCategory | string
+  queue?: string
   status?: JobStatus | string
   search?: string
   page?: number

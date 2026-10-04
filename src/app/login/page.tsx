@@ -137,15 +137,37 @@ export default function LoginPage() {
       )}
 
       {error && (
-        <div className="mb-4 flex items-start justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 animate-in fade-in-50">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
-            <span className="leading-tight">{error}</span>
+        <div className={cn(
+          "mb-4 flex items-start justify-between gap-2 rounded-lg p-3 text-xs animate-in fade-in-50 border",
+          error.toLowerCase().includes("verify your email") || error.toLowerCase().includes("unverified")
+            ? "border-amber-200 bg-amber-50/80 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+            : "border-rose-200 bg-rose-50/80 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+        )}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <AlertCircle className={cn(
+                "size-4 shrink-0",
+                error.toLowerCase().includes("verify your email") || error.toLowerCase().includes("unverified")
+                  ? "text-amber-600"
+                  : "text-rose-600"
+              )} />
+              <span className="leading-tight font-medium">{error}</span>
+            </div>
+            {(error.toLowerCase().includes("verify your email") || error.toLowerCase().includes("unverified")) && (
+              <p className="ml-6 text-[11px]">
+                <Link
+                  href={`/verify-otp?email=${encodeURIComponent(email.trim().toLowerCase())}`}
+                  className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 underline underline-offset-2"
+                >
+                  Enter verification code &rarr;
+                </Link>
+              </p>
+            )}
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 shrink-0"
+            className="text-muted-foreground hover:text-foreground shrink-0"
             aria-label="Dismiss error"
           >
             <X className="size-3.5" />
