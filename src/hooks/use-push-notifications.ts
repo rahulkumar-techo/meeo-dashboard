@@ -16,6 +16,7 @@ import {
   requestWebPushToken,
   unregisterWebPushToken,
   onForegroundPushMessage,
+  prewarmPushServiceWorker,
   PushPermissionStatus,
 } from "@/lib/push-notifications"
 import {
@@ -24,6 +25,18 @@ import {
   useUnregisterDeviceMutation,
 } from "@/hooks/use-notification-query"
 import { notificationAudio } from "@/lib/notification-sound"
+import { getApiErrorMessage } from "@/lib/utils"
+
+interface ForegroundNotificationPayload {
+  notification?: {
+    title?: string
+    body?: string
+  }
+  data?: {
+    title?: string
+    body?: string
+  }
+}
 
 export function usePushNotifications() {
   const [permission, setPermission] = React.useState<PushPermissionStatus>("default")
@@ -34,9 +47,12 @@ export function usePushNotifications() {
   const unregisterDeviceMutation = useUnregisterDeviceMutation()
   const devicesQuery = useRegisteredDevicesQuery()
 
-  // Initialize permission state, foreground listener, and silently validate token on mount
+  // Initialize permission state, pre-warm SW, and setup foreground listener
   React.useEffect(() => {
     if (typeof window === "undefined") return
+
+    // Pre-warm push service worker and messaging in background
+    prewarmPushServiceWorker()
 
     const currentPerm = getPushPermissionStatus()
     setPermission(currentPerm)
@@ -50,7 +66,8 @@ export function usePushNotifications() {
     }
 
     // Setup foreground message listener
-    const unsubscribe = onForegroundPushMessage((payload) => {
+    const unsubscribe = onForegroundPushMessage((rawPayload) => {
+      const payload = rawPayload as ForegroundNotificationPayload
       const title =
         payload?.notification?.title ||
         payload?.data?.title ||
@@ -66,7 +83,7 @@ export function usePushNotifications() {
       })
     })
 
-    // If permission was granted, validate token with Firebase to self-heal stale cached tokens
+    // If permission was granted, validate token silently in background without blocking UI
     if (currentPerm === "granted") {
       requestWebPushToken(false)
         .then((freshToken) => {
@@ -79,12 +96,10 @@ export function usePushNotifications() {
                 userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
               })
             }
-          } else {
-            setCachedToken(null)
           }
         })
         .catch(() => {
-          setCachedToken(null)
+          // Keep existing local token; do not wipe on transient error
         })
     }
 
@@ -127,11 +142,9 @@ export function usePushNotifications() {
 
       toast.success("Web push notifications enabled successfully!")
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to register push notifications."
+        getApiErrorMessage(err, "Failed to register push notifications.")
       )
       return false
     } finally {
@@ -158,11 +171,9 @@ export function usePushNotifications() {
       setCachedToken(null)
       toast.success("Push notifications disabled for this device.")
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to unregister push notifications."
+        getApiErrorMessage(err, "Failed to unregister push notifications.")
       )
       return false
     } finally {

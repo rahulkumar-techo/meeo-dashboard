@@ -97,16 +97,18 @@ export function OtpInput({
           maxLength={1}
           value={digits[idx] || ""}
           disabled={disabled}
+          aria-label={`Digit ${idx + 1} of ${length}`}
+          autoComplete={idx === 0 ? "one-time-code" : "off"}
           onChange={(e) => handleChange(idx, e)}
           onKeyDown={(e) => handleKeyDown(idx, e)}
           onPaste={handlePaste}
           className={cn(
             "flex size-12 sm:size-14 items-center justify-center rounded-lg border text-center font-mono text-xl font-bold tracking-widest text-foreground shadow-2xs transition-all outline-hidden select-none",
-            "bg-background/80 hover:border-indigo-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20",
+            "bg-background/80 not-disabled:hover:border-indigo-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20",
             error
               ? "border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-rose-500/20"
               : "border-border/80",
-            disabled && "opacity-50 cursor-not-allowed bg-muted/40"
+            disabled && "opacity-50 cursor-not-allowed bg-muted/40 pointer-events-none"
           )}
         />
       ))}

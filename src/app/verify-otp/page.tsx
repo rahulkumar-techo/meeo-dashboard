@@ -3,10 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ShieldCheck, Mail, Loader2, AlertCircle, CheckCircle2, RotateCw, ArrowLeft } from "lucide-react"
+import { ShieldCheck, Mail, Loader2, AlertCircle, CheckCircle2, RotateCw, ArrowLeft, X } from "lucide-react"
+import { toast } from "sonner"
 import { AuthCardLayout, OtpInput } from "@/components/auth"
 import { Button } from "@/components/ui/button"
 import { useVerifyOtpMutation, useResendOtpMutation } from "@/hooks/use-auth-query"
+import { cn, getApiErrorMessage } from "@/lib/utils"
 
 export default function VerifyOtpPage() {
   const router = useRouter()
@@ -25,6 +27,8 @@ export default function VerifyOtpPage() {
   const verifyMutation = useVerifyOtpMutation()
   const resendMutation = useResendOtpMutation()
 
+  const isBusy = verifyMutation.isPending || resendMutation.isPending
+
   // Countdown timer for resend button
   React.useEffect(() => {
     if (countdown <= 0) return
@@ -34,9 +38,16 @@ export default function VerifyOtpPage() {
     return () => clearInterval(timer)
   }, [countdown])
 
+  const clearError = () => {
+    if (error) setError(null)
+  }
+
   const handleVerify = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!email.trim()) {
+    if (isBusy) return
+
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) {
       setError("Please provide your email address.")
       return
     }
@@ -50,26 +61,30 @@ export default function VerifyOtpPage() {
 
     verifyMutation.mutate(
       {
-        email: email.trim().toLowerCase(),
+        email: trimmedEmail,
         otp: otp.trim(),
       },
       {
         onSuccess: (res) => {
           if (res.success) {
+            toast.success("Email verified successfully! Redirecting to login...")
             setSuccessMsg("Email successfully verified! Redirecting to login...")
             setTimeout(() => {
-              router.push(`/login?verified=true&email=${encodeURIComponent(email.trim())}`)
-            }, 1200)
+              router.push(`/login?verified=true&email=${encodeURIComponent(trimmedEmail)}`)
+            }, 1000)
           } else {
-            setError(res.message || "Invalid or expired OTP. Please try again.")
+            const msg = res.message || "Invalid or expired OTP. Please try again."
+            setError(msg)
+            toast.error(msg)
           }
         },
-        onError: (err: any) => {
-          const msg =
-            err.response?.data?.message ||
-            err.message ||
+        onError: (err: unknown) => {
+          const msg = getApiErrorMessage(
+            err,
             "Invalid OTP verification code. Please check and try again."
+          )
           setError(msg)
+          toast.error(msg)
         },
       }
     )
@@ -77,31 +92,37 @@ export default function VerifyOtpPage() {
 
   // Auto-submit when all 4 digits are entered
   React.useEffect(() => {
-    if (otp.length === 4 && email.trim() && !verifyMutation.isPending) {
+    if (otp.length === 4 && email.trim() && !isBusy) {
       handleVerify()
     }
   }, [otp])
 
   const handleResendOtp = () => {
-    if (!email.trim() || resendMutation.isPending || countdown > 0) return
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail || isBusy || countdown > 0) return
 
     setError(null)
 
     resendMutation.mutate(
-      { email: email.trim().toLowerCase() },
+      { email: trimmedEmail },
       {
         onSuccess: (res) => {
           if (res.success) {
-            setSuccessMsg("A fresh 4-digit OTP has been sent to your email.")
+            const msg = "A fresh 4-digit OTP has been sent to your email."
+            toast.success(msg)
+            setSuccessMsg(msg)
             setCountdown(60)
             setOtp("")
           } else {
-            setError(res.message || "Failed to resend OTP. Please try again.")
+            const msg = res.message || "Failed to resend OTP. Please try again."
+            setError(msg)
+            toast.error(msg)
           }
         },
-        onError: (err: any) => {
-          const msg = err.response?.data?.message || err.message || "Failed to resend OTP."
+        onError: (err: unknown) => {
+          const msg = getApiErrorMessage(err, "Failed to resend OTP.")
           setError(msg)
+          toast.error(msg)
         },
       }
     )
@@ -122,10 +143,13 @@ export default function VerifyOtpPage() {
       }
       badgeText="Two-Factor Verification"
       footerContent={
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between text-xs">
           <Link
             href="/login"
-            className="inline-flex items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground"
+            className={cn(
+              "inline-flex items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors",
+              isBusy && "pointer-events-none opacity-60"
+            )}
           >
             <ArrowLeft className="size-3.5" />
             <span>Back to sign in</span>
@@ -133,7 +157,10 @@ export default function VerifyOtpPage() {
 
           <Link
             href="/signup"
-            className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className={cn(
+              "font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 transition-colors",
+              isBusy && "pointer-events-none opacity-60"
+            )}
           >
             Change email
           </Link>
@@ -141,16 +168,26 @@ export default function VerifyOtpPage() {
       }
     >
       {successMsg && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300 animate-in fade-in-50">
           <CheckCircle2 className="size-4 shrink-0 text-emerald-600 mt-0.5" />
-          <span>{successMsg}</span>
+          <span className="leading-tight">{successMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
-          <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
-          <span>{error}</span>
+        <div className="mb-4 flex items-start justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 animate-in fade-in-50">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
+            <span className="leading-tight">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 shrink-0"
+            aria-label="Dismiss error"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
       )}
 
@@ -164,10 +201,14 @@ export default function VerifyOtpPage() {
               <input
                 type="email"
                 required
+                disabled={isBusy}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  clearError()
+                }}
                 placeholder="name@company.com"
-                className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted/40 transition-colors"
               />
             </div>
           </div>
@@ -181,9 +222,12 @@ export default function VerifyOtpPage() {
           <OtpInput
             length={4}
             value={otp}
-            onChange={setOtp}
-            disabled={verifyMutation.isPending}
-            error={!!error}
+            onChange={(val) => {
+              setOtp(val)
+              clearError()
+            }}
+            disabled={isBusy}
+            error={Boolean(error)}
             autoFocus
           />
         </div>
@@ -199,11 +243,11 @@ export default function VerifyOtpPage() {
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={resendMutation.isPending || !email}
-              className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 dark:text-indigo-400"
+              disabled={isBusy || !email.trim()}
+              className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-indigo-400 transition-colors"
             >
-              {resendMutation.isPending ? <RotateCw className="size-3 animate-spin" /> : null}
-              <span>Resend OTP</span>
+              {resendMutation.isPending ? <RotateCw className="size-3 animate-spin shrink-0" /> : null}
+              <span>{resendMutation.isPending ? "Resending Code..." : "Resend OTP"}</span>
             </button>
           )}
         </div>
@@ -211,17 +255,17 @@ export default function VerifyOtpPage() {
         {/* Verify Button */}
         <Button
           type="submit"
-          disabled={verifyMutation.isPending || otp.length !== 4}
-          className="h-10 w-full gap-2 bg-indigo-600 text-xs font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+          disabled={isBusy || otp.length !== 4}
+          className="h-10 w-full gap-2 bg-indigo-600 text-xs font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {verifyMutation.isPending ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin shrink-0" />
               <span>Verifying Code...</span>
             </>
           ) : (
             <>
-              <ShieldCheck className="size-4" />
+              <ShieldCheck className="size-4 shrink-0" />
               <span>Verify & Activate Account</span>
             </>
           )}

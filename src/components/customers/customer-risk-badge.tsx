@@ -29,10 +29,10 @@ export function CustomerRiskBadge({
     return (
       <Badge
         variant="outline"
-        className={`bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-300 gap-1 font-mono text-[10.5px] font-bold ${className}`}
+        className={`bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30 gap-1 font-mono text-[10.5px] font-bold ${className}`}
         title="High Fraud / Cancellation Risk. Manual action recommended."
       >
-        <ShieldAlert className="size-3 text-rose-600" />
+        <ShieldAlert className="size-3 text-rose-600 dark:text-rose-400" />
         <span>{score}/100 (HIGH)</span>
       </Badge>
     )
@@ -42,10 +42,10 @@ export function CustomerRiskBadge({
     return (
       <Badge
         variant="outline"
-        className={`bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 gap-1 font-mono text-[10.5px] font-semibold ${className}`}
+        className={`bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1 font-mono text-[10.5px] font-semibold ${className}`}
         title="Medium Risk. Monitor checkout payment velocities."
       >
-        <AlertTriangle className="size-3 text-amber-600" />
+        <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" />
         <span>{score}/100 (MED)</span>
       </Badge>
     )
@@ -54,10 +54,10 @@ export function CustomerRiskBadge({
   return (
     <Badge
       variant="outline"
-      className={`bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 gap-1 font-mono text-[10.5px] font-medium ${className}`}
+      className={`bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1 font-mono text-[10.5px] font-medium ${className}`}
       title="Low Risk account in good standing."
     >
-      <ShieldCheck className="size-3 text-emerald-600" />
+      <ShieldCheck className="size-3 text-emerald-600 dark:text-emerald-400" />
       <span>{score}/100 (LOW)</span>
     </Badge>
   )

@@ -3,10 +3,23 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, ArrowLeft, KeyRound } from "lucide-react"
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  KeyRound,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
 import { AuthCardLayout, OtpInput } from "@/components/auth"
 import { Button } from "@/components/ui/button"
 import { useResetPasswordMutation } from "@/hooks/use-auth-query"
+import { cn, getApiErrorMessage } from "@/lib/utils"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -18,15 +31,22 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = React.useState("")
   const [confirmPassword, setConfirmPassword] = React.useState("")
   const [showPassword, setShowPassword] = React.useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const resetMutation = useResetPasswordMutation()
+  const isPending = resetMutation.isPending
+
+  const clearError = () => {
+    if (error) setError(null)
+  }
 
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
+    if (isPending) return
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) {
       setError("Please provide your email address.")
       return
     }
@@ -36,36 +56,43 @@ export default function ResetPasswordPage() {
       return
     }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match. Please verify and try again.")
-      return
-    }
-
     if (password.length < 5 || password.length > 12) {
       setError("Password length must be between 5 and 12 characters.")
       return
     }
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please verify and try again.")
+      return
+    }
+
+    setError(null)
+
     resetMutation.mutate(
       {
-        email: email.trim().toLowerCase(),
+        email: trimmedEmail,
         otp: otp.trim(),
         password,
       },
       {
         onSuccess: (res) => {
           if (res.success) {
+            toast.success("Password reset successful! Please log in with your new password.")
             router.push("/login?reset=true")
           } else {
-            setError(res.message || "Failed to reset password. Please check your OTP and try again.")
+            const msg =
+              res.message || "Failed to reset password. Please check your OTP and try again."
+            setError(msg)
+            toast.error(msg)
           }
         },
-        onError: (err: any) => {
-          const msg =
-            err.response?.data?.message ||
-            err.message ||
+        onError: (err: unknown) => {
+          const msg = getApiErrorMessage(
+            err,
             "Invalid OTP or password reset expired. Please try again."
+          )
           setError(msg)
+          toast.error(msg)
         },
       }
     )
@@ -78,7 +105,8 @@ export default function ResetPasswordPage() {
         email ? (
           <span>
             Enter the 4-digit OTP code sent to{" "}
-            <strong className="text-foreground font-semibold">{email}</strong> and choose a new password.
+            <strong className="text-foreground font-semibold">{email}</strong> and choose a new
+            password.
           </span>
         ) : (
           "Enter your email, 4-digit reset OTP, and new password."
@@ -86,10 +114,13 @@ export default function ResetPasswordPage() {
       }
       badgeText="Password Reset"
       footerContent={
-        <div className="text-center">
+        <div className="text-center text-xs">
           <Link
             href="/login"
-            className="inline-flex items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground"
+            className={cn(
+              "inline-flex items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors",
+              isPending && "pointer-events-none opacity-60"
+            )}
           >
             <ArrowLeft className="size-3.5" />
             <span>Return to sign in</span>
@@ -98,9 +129,19 @@ export default function ResetPasswordPage() {
       }
     >
       {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
-          <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
-          <span>{error}</span>
+        <div className="mb-4 flex items-start justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 animate-in fade-in-50">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 text-rose-600 mt-0.5" />
+            <span className="leading-tight">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 shrink-0"
+            aria-label="Dismiss error"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
       )}
 
@@ -114,10 +155,14 @@ export default function ResetPasswordPage() {
               <input
                 type="email"
                 required
+                disabled={isPending}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  clearError()
+                }}
                 placeholder="name@company.com"
-                className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted/40 transition-colors"
               />
             </div>
           </div>
@@ -131,9 +176,13 @@ export default function ResetPasswordPage() {
           <OtpInput
             length={4}
             value={otp}
-            onChange={setOtp}
-            disabled={resetMutation.isPending}
-            error={!!error}
+            onChange={(val) => {
+              setOtp(val)
+              clearError()
+            }}
+            disabled={isPending}
+            error={Boolean(error)}
+            autoFocus
           />
         </div>
 
@@ -145,17 +194,24 @@ export default function ResetPasswordPage() {
             <input
               type={showPassword ? "text" : "password"}
               required
+              disabled={isPending}
               minLength={5}
               maxLength={12}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                clearError()
+              }}
               placeholder="••••••••"
-              className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-10 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+              className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-10 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted/40 transition-colors"
             />
             <button
               type="button"
+              tabIndex={-1}
+              disabled={isPending}
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -168,34 +224,48 @@ export default function ResetPasswordPage() {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              type={showPassword ? "text" : "password"}
+              type={showConfirmPassword ? "text" : "password"}
               required
+              disabled={isPending}
               minLength={5}
               maxLength={12}
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                clearError()
+              }}
               placeholder="••••••••"
-              className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+              className="h-10 w-full rounded-lg border border-border/80 bg-background/80 pl-9 pr-10 text-xs text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted/40 transition-colors"
             />
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={isPending}
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
         </div>
 
         {/* Submit */}
         <Button
           type="submit"
-          disabled={resetMutation.isPending || otp.length !== 4}
-          className="h-10 w-full gap-2 bg-indigo-600 text-xs font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+          disabled={isPending || otp.length !== 4}
+          className="h-10 w-full gap-2 bg-indigo-600 text-xs font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {resetMutation.isPending ? (
+          {isPending ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin shrink-0" />
               <span>Resetting Password...</span>
             </>
           ) : (
             <>
-              <KeyRound className="size-4" />
+              <KeyRound className="size-4 shrink-0" />
               <span>Set New Password & Sign In</span>
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-4 shrink-0" />
             </>
           )}
         </Button>

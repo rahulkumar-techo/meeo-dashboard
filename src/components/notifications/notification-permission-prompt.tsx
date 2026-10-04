@@ -7,7 +7,7 @@
 "use client"
 
 import * as React from "react"
-import { BellRing, X, CheckCircle2, Sparkles } from "lucide-react"
+import { BellRing, X, CheckCircle2, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePushNotifications } from "@/hooks/use-push-notifications"
 import { useUserStore } from "@/store/user.store"
@@ -104,9 +104,16 @@ export function NotificationPermissionPrompt() {
                 size="sm"
                 onClick={handleEnable}
                 disabled={isProcessing}
-                className="h-7.5 px-3 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                className="h-7.5 px-3 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
               >
-                {isProcessing ? "Enabling..." : "Enable Notifications"}
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    <span>Enabling...</span>
+                  </>
+                ) : (
+                  <span>Enable Notifications</span>
+                )}
               </Button>
 
               <Button

@@ -6,6 +6,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   Eye,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
   SlidersHorizontal,
   Copy,
   Check,
+  ExternalLink,
 } from "lucide-react"
 import {
   Table,
@@ -172,9 +174,13 @@ export function OrderTable({
                     {/* Order Number */}
                     <TableCell className="pl-4 py-3 font-mono">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-primary font-mono">
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="font-bold text-primary font-mono hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {order.orderNumber}
-                        </span>
+                        </Link>
                         <button
                           type="button"
                           onClick={(e) => handleCopy(order.orderNumber, e)}
@@ -314,10 +320,19 @@ export function OrderTable({
                           size="icon-xs"
                           onClick={() => onInspect(order)}
                           className="hover:bg-muted text-muted-foreground hover:text-foreground"
-                          title="Inspect full details"
+                          title="Inspect quick details"
                         >
                           <Eye className="size-3.5" />
                         </Button>
+
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="inline-flex size-6 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="Open dedicated Order Page"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="size-3.5" />
+                        </Link>
                       </div>
                     </TableCell>
                   </TableRow>

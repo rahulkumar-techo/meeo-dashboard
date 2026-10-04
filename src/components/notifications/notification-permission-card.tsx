@@ -19,6 +19,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Globe,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -65,7 +66,12 @@ export function NotificationPermissionCard() {
             <div>
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <span>Web Push Notification & Device Authorization</span>
-                {isCurrentDeviceRegistered ? (
+                {isProcessing ? (
+                  <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/30 text-[10px] font-medium gap-1 animate-pulse">
+                    <Loader2 className="size-2.5 animate-spin shrink-0" />
+                    Configuring Device...
+                  </Badge>
+                ) : isCurrentDeviceRegistered ? (
                   <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-medium gap-1">
                     <CheckCircle2 className="size-2.5" />
                     Active on this device
@@ -99,20 +105,38 @@ export function NotificationPermissionCard() {
                 size="sm"
                 onClick={() => disablePushNotifications()}
                 disabled={isProcessing}
-                className="h-8 text-xs font-medium text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5"
+                className="h-8 text-xs font-medium text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <BellOff className="size-3.5" />
-                <span>Disable Push</span>
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    <span>Disabling...</span>
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="size-3.5" />
+                    <span>Disable Push</span>
+                  </>
+                )}
               </Button>
             ) : (
               <Button
                 size="sm"
                 onClick={() => enablePushNotifications()}
                 disabled={isProcessing || permission === "denied"}
-                className="h-8 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-xs"
+                className="h-8 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed transition-all"
               >
-                <Bell className="size-3.5" />
-                <span>{isProcessing ? "Connecting..." : "Enable Push Notifications"}</span>
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    <span>Configuring Push...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="size-3.5" />
+                    <span>Enable Push Notifications</span>
+                  </>
+                )}
               </Button>
             )}
           </div>
