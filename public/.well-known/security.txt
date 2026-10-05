@@ -1,0 +1,8 @@
+# Security vulnerability disclosure policy (RFC 9116)
+Contact: mailto:security-placeholder@example.com
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://meeo-dashboard.vercel.app/.well-known/security.txt
+
+# ATTENTION: Please update the Contact address and Canonical URL above
+# with your organization's designated security contact email and production domain.

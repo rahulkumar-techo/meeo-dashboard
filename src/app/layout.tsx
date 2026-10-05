@@ -30,6 +30,16 @@ export const metadata: Metadata = {
       { url: "/branding/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 

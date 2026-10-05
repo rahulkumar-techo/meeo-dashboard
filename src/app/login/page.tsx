@@ -20,13 +20,13 @@ import { AuthCardLayout } from "@/components/auth"
 import { Button } from "@/components/ui/button"
 import { useLoginMutation, useSignInWithGoogle } from "@/hooks/use-auth-query"
 import { useUserStore } from "@/store/user.store"
-import { cn, getApiErrorMessage } from "@/lib/utils"
+import { cn, getApiErrorMessage, getSafeRedirectUrl } from "@/lib/utils"
 import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectUrl = searchParams.get("redirect") || "/"
+  const redirectUrl = getSafeRedirectUrl(searchParams.get("redirect"))
   const isVerified = searchParams.get("verified") === "true"
   const isReset = searchParams.get("reset") === "true"
   const emailParam = searchParams.get("email") || ""
@@ -288,7 +288,7 @@ export default function LoginPage() {
                     deviceId: "web-dashboard",
                   },
                   {
-                    onSuccess: (res: any) => {
+                    onSuccess: (res: { success?: boolean; message?: string }) => {
                       if (res?.success !== false) {
                         toast.success("Welcome back! Redirecting to dashboard...")
                         router.push(redirectUrl)

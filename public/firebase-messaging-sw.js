@@ -58,10 +58,20 @@ if (apiKey && projectId) {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl =
+  const rawTargetUrl =
     event.notification.data?.url ||
     event.notification.data?.click_action ||
     "/operations/notifications";
+
+  // Validate internal target URL to prevent open redirect or scheme injection
+  const targetUrl =
+    typeof rawTargetUrl === "string" &&
+    rawTargetUrl.startsWith("/") &&
+    !rawTargetUrl.startsWith("//") &&
+    !rawTargetUrl.startsWith("/\\") &&
+    !rawTargetUrl.includes("://")
+      ? rawTargetUrl
+      : "/operations/notifications";
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {

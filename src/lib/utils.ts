@@ -72,3 +72,19 @@ export function getApiErrorMessage(
 
   return fallback
 }
+
+// Validates and returns a safe internal redirect path, mitigating open redirect attacks.
+export function getSafeRedirectUrl(target: string | null | undefined, fallback = "/"): string {
+  if (!target || typeof target !== "string") return fallback
+  const trimmed = target.trim()
+  // Must start with single slash, reject protocol-relative (//), backslash (\), or absolute schemes
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/\\") ||
+    trimmed.includes("://")
+  ) {
+    return fallback
+  }
+  return trimmed
+}
