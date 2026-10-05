@@ -18,7 +18,7 @@ export function proxy(request: NextRequest) {
     // Fonts: allow self, Google fonts static assets, data URIs
     "font-src 'self' https://fonts.gstatic.com data:",
     // REST API, Socket.IO WebSockets, Google OAuth endpoints, FCM push, ImageKit direct upload
-    "connect-src 'self' https://meeo-server.onrender.com wss://meeo-server.onrender.com http://127.0.0.1:5000 ws://127.0.0.1:5000 https://accounts.google.com https://oauth2.googleapis.com https://fcm.googleapis.com https://firebaseinstallations.googleapis.com https://upload.imagekit.io",
+    `connect-src 'self' https://meeo-server.onrender.com wss://meeo-server.onrender.com https://accounts.google.com https://oauth2.googleapis.com https://fcm.googleapis.com https://firebaseinstallations.googleapis.com https://upload.imagekit.io${isProduction ? "" : " http://127.0.0.1:5000 ws://127.0.0.1:5000"}`,
     // Google Identity Services (GSI) iframe rendering for One-Tap and Sign-In buttons
     "frame-src 'self' https://accounts.google.com",
     // Disallow framing by any third-party (Clickjacking protection)
