@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AppLayoutWrapper } from "@/components/layout/app-layout-wrapper";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import { SocketProvider } from "@/context/socket-provider";
 import { Toaster } from "sonner";
@@ -65,9 +66,11 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider defaultTheme="system">
             <SocketProvider>
-              <AppLayoutWrapper>{children}</AppLayoutWrapper>
-              <NotificationPermissionPrompt />
-              <Toaster richColors position="top-right" />
+              <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+                <AppLayoutWrapper>{children}</AppLayoutWrapper>
+                <NotificationPermissionPrompt />
+                <Toaster richColors position="top-right" />
+              </GoogleOAuthProvider>
             </SocketProvider>
           </ThemeProvider>
         </QueryProvider>

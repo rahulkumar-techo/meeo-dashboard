@@ -96,3 +96,9 @@ export interface RefreshResponseData {
   accessToken: string
   refreshToken: string
 }
+
+export interface GoogleSignInPayload {
+  idToken: string, 
+  deviceName: string,
+   deviceId: string
+}

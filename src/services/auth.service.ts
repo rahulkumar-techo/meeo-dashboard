@@ -16,6 +16,7 @@ import type {
   AuthResponseData,
   RefreshResponseData,
   AuthUser,
+  GoogleSignInPayload,
 } from "@/types/auth"
 
 export const authService = {
@@ -25,6 +26,16 @@ export const authService = {
   async login(payload: LoginPayload): Promise<ApiResponse<AuthResponseData>> {
     const response = await apiClient.post<ApiResponse<AuthResponseData>>(
       "/auth/login",
+      payload
+    )
+    return response.data
+  },
+  /**
+   * Log in user with email and password.
+   */
+  async SignInWithGoogle(payload: GoogleSignInPayload): Promise<ApiResponse<AuthResponseData>> {
+    const response = await apiClient.post<ApiResponse<AuthResponseData>>(
+      "/auth/google",
       payload
     )
     return response.data

@@ -18,9 +18,10 @@ import {
 import { toast } from "sonner"
 import { AuthCardLayout } from "@/components/auth"
 import { Button } from "@/components/ui/button"
-import { useLoginMutation } from "@/hooks/use-auth-query"
+import { useLoginMutation, useSignInWithGoogle } from "@/hooks/use-auth-query"
 import { useUserStore } from "@/store/user.store"
 import { cn, getApiErrorMessage } from "@/lib/utils"
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,7 +39,8 @@ export default function LoginPage() {
 
   const { isAuthenticated } = useUserStore()
   const loginMutation = useLoginMutation()
-  const isPending = loginMutation.isPending
+  const signInWithGoogle = useSignInWithGoogle()
+  const isPending = loginMutation.isPending || signInWithGoogle.isPending
 
   // Clear active error on input edit
   const clearError = () => {
@@ -100,7 +102,7 @@ export default function LoginPage() {
     setPassword("testing@01")
     setError(null)
     toast.info("Demo credentials loaded.")
-  }
+  } 
 
   return (
     <AuthCardLayout
@@ -275,6 +277,42 @@ export default function LoginPage() {
 
       {/* Quick Demo Fill Button */}
       <div className="mt-4 pt-3 border-t border-dashed border-border/60">
+        <div className="flex justify-center mb-3">
+          <GoogleLogin
+            onSuccess={(credentialResponse) => {
+              if (credentialResponse.credential) {
+                signInWithGoogle.mutate(
+                  {
+                    idToken: credentialResponse.credential,
+                    deviceName: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 80) : "Web Dashboard",
+                    deviceId: "web-dashboard",
+                  },
+                  {
+                    onSuccess: (res: any) => {
+                      if (res?.success !== false) {
+                        toast.success("Welcome back! Redirecting to dashboard...")
+                        router.push(redirectUrl)
+                      } else {
+                        const msg = res?.message || "Failed to sign in with Google."
+                        setError(msg)
+                        toast.error(msg)
+                      }
+                    },
+                    onError: (err: unknown) => {
+                      const msg = getApiErrorMessage(err, "Google sign-in failed. Please try again.")
+                      setError(msg)
+                      toast.error(msg)
+                    },
+                  }
+                )
+              }
+            }}
+            onError={() => {
+              setError("Google sign-in was unsuccessful. Please try again.")
+              toast.error("Google sign-in failed")
+            }}
+          />
+        </div>
         <Button
           type="button"
           variant="outline"

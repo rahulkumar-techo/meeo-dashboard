@@ -11,6 +11,7 @@ import type {
   ForgotPasswordPayload,
   ResetPasswordPayload,
   VerifyResetOtpPayload,
+  GoogleSignInPayload,
 } from "@/types/auth"
 
 export const AUTH_QUERY_KEY = ["auth", "currentUser"]
@@ -53,6 +54,29 @@ export function useLoginMutation() {
   return useMutation({
     mutationFn: async (payload: LoginPayload) => {
       return await authService.login(payload)
+    },
+    onSuccess: (response: any) => {
+      const data = response?.data || response
+      const user = data?.user || (data?.email ? data : null)
+      const accessToken = data?.accessToken
+
+      if (user) {
+        setAuth(user, accessToken)
+        queryClient.setQueryData(AUTH_QUERY_KEY, user)
+      }
+    },
+  })
+}
+/**
+ * Mutation for user login with google.
+ */
+export function useSignInWithGoogle() {
+  const queryClient = useQueryClient()
+  const { setAuth } = useUserStore()
+
+  return useMutation({
+    mutationFn: async (payload: GoogleSignInPayload) => {
+      return await authService.SignInWithGoogle(payload)
     },
     onSuccess: (response: any) => {
       const data = response?.data || response
