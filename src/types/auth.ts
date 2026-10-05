@@ -98,7 +98,48 @@ export interface RefreshResponseData {
 }
 
 export interface GoogleSignInPayload {
-  idToken: string, 
-  deviceName: string,
-   deviceId: string
+  idToken: string
+  deviceName: string
+  deviceId: string
+}
+
+export interface SetPasswordPayload {
+  password: string
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface LinkGooglePayload {
+  idToken: string
+}
+
+export type AuthProviderType = "PASSWORD" | "GOOGLE"
+
+export interface AuthAccount {
+  provider: AuthProviderType
+  createdAt: string
+  lastUsedAt?: string | null
+}
+
+export interface AuthAccountsResponse {
+  accounts: AuthAccount[]
+}
+
+export interface UserSessionDevice {
+  id: string
+  deviceName?: string | null
+  deviceId?: string | null
+  ipAddress?: string | null
+  userAgent?: string | null
+  lastUsedAt?: string | null
+  createdAt?: string
+  isCurrent?: boolean
+  expiresAt?: string
+}
+
+export interface UserSessionsListResponse {
+  sessions: UserSessionDevice[]
 }

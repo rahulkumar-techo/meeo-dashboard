@@ -12,6 +12,12 @@ import type {
   ResetPasswordPayload,
   VerifyResetOtpPayload,
   GoogleSignInPayload,
+  SetPasswordPayload,
+  ChangePasswordPayload,
+  LinkGooglePayload,
+  AuthProviderType,
+  AuthAccount,
+  UserSessionDevice,
 } from "@/types/auth"
 
 export const AUTH_QUERY_KEY = ["auth", "currentUser"]
@@ -202,4 +208,148 @@ export function useLogoutAllMutation() {
     },
   })
 }
+
+export const AUTH_ACCOUNTS_QUERY_KEY = ["auth", "accounts"]
+export const AUTH_SESSIONS_QUERY_KEY = ["auth", "sessions"]
+
+/**
+ * Hook to retrieve linked authentication accounts (PASSWORD, GOOGLE, etc.).
+ */
+export function useAuthAccountsQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
+  return useQuery({
+    queryKey: AUTH_ACCOUNTS_QUERY_KEY,
+    queryFn: async (): Promise<AuthAccount[]> => {
+      const res = await authService.getAuthAccounts()
+      return res.data?.accounts || []
+    },
+    enabled: enabled && Boolean(isAuthenticated),
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Mutation to add/set a password for accounts registered via Google OAuth.
+ */
+export function useSetPasswordMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: SetPasswordPayload) => {
+      return await authService.setPassword(payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Mutation to change current password (revokes all other concurrent sessions).
+ */
+export function useChangePasswordMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: ChangePasswordPayload) => {
+      return await authService.changePassword(payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSIONS_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Mutation to link a Google account to the active profile.
+ */
+export function useLinkGoogleMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: LinkGooglePayload) => {
+      return await authService.linkGoogle(payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Mutation to unlink an authentication provider (PASSWORD or GOOGLE).
+ * Fails with 400 if user only has 1 method remaining.
+ */
+export function useUnlinkProviderMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (provider: AuthProviderType) => {
+      return await authService.unlinkProvider(provider)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Hook to retrieve active login sessions for the currently logged-in user.
+ */
+export function useCurrentUserSessionsQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
+  return useQuery({
+    queryKey: AUTH_SESSIONS_QUERY_KEY,
+    queryFn: async (): Promise<UserSessionDevice[]> => {
+      const res = await authService.getSessions()
+      const data = res.data
+      if (Array.isArray(data)) return data
+      return data?.sessions || []
+    },
+    enabled: enabled && Boolean(isAuthenticated),
+    staleTime: 30 * 1000,
+  })
+}
+
+/**
+ * Mutation to revoke a single specific active session.
+ */
+export function useRevokeCurrentUserSessionMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      return await authService.revokeSession(sessionId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSIONS_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Mutation to revoke all active sessions across all devices.
+ */
+export function useRevokeAllCurrentUserSessionsMutation() {
+  const queryClient = useQueryClient()
+  const { logout } = useUserStore()
+
+  return useMutation({
+    mutationFn: async () => {
+      return await authService.revokeAllSessions()
+    },
+    onSettled: () => {
+      logout()
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY })
+      queryClient.clear()
+    },
+  })
+}
+
 

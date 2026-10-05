@@ -17,6 +17,13 @@ import type {
   RefreshResponseData,
   AuthUser,
   GoogleSignInPayload,
+  SetPasswordPayload,
+  ChangePasswordPayload,
+  LinkGooglePayload,
+  AuthProviderType,
+  AuthAccountsResponse,
+  UserSessionDevice,
+  UserSessionsListResponse,
 } from "@/types/auth"
 
 export const authService = {
@@ -174,6 +181,74 @@ export const authService = {
       } catch {
         return { success: true, message: "Logged out from all devices" }
       }
+    }
+  },
+
+  /**
+   * List all linked authentication providers for the current user.
+   */
+  async getAuthAccounts(): Promise<ApiResponse<AuthAccountsResponse>> {
+    const response = await apiClient.get<ApiResponse<AuthAccountsResponse>>("/auth/accounts")
+    return response.data
+  },
+
+  /**
+   * Set password for users who originally registered via Google OAuth.
+   */
+  async setPassword(payload: SetPasswordPayload): Promise<ApiResponse<null>> {
+    const response = await apiClient.post<ApiResponse<null>>("/auth/password/set", payload)
+    return response.data
+  },
+
+  /**
+   * Change current password (revokes all other concurrent sessions).
+   */
+  async changePassword(payload: ChangePasswordPayload): Promise<ApiResponse<null>> {
+    const response = await apiClient.post<ApiResponse<null>>("/auth/password/change", payload)
+    return response.data
+  },
+
+  /**
+   * Link Google account to the logged-in profile.
+   */
+  async linkGoogle(payload: LinkGooglePayload): Promise<ApiResponse<null>> {
+    const response = await apiClient.post<ApiResponse<null>>("/auth/accounts/google/link", payload)
+    return response.data
+  },
+
+  /**
+   * Unlink an authentication provider (PASSWORD or GOOGLE).
+   */
+  async unlinkProvider(provider: AuthProviderType): Promise<ApiResponse<null>> {
+    const response = await apiClient.delete<ApiResponse<null>>(`/auth/accounts/${provider}`)
+    return response.data
+  },
+
+  /**
+   * List active sessions for the current logged-in user.
+   */
+  async getSessions(): Promise<ApiResponse<UserSessionsListResponse | UserSessionDevice[]>> {
+    const response = await apiClient.get<ApiResponse<UserSessionsListResponse | UserSessionDevice[]>>("/auth/sessions")
+    return response.data
+  },
+
+  /**
+   * Revoke a specific active session.
+   */
+  async revokeSession(sessionId: string): Promise<ApiResponse<null>> {
+    const response = await apiClient.delete<ApiResponse<null>>(`/auth/sessions/${sessionId}`)
+    return response.data
+  },
+
+  /**
+   * Revoke all active sessions across all devices.
+   */
+  async revokeAllSessions(): Promise<ApiResponse<null>> {
+    try {
+      const response = await apiClient.post<ApiResponse<null>>("/auth/sessions/revoke-all")
+      return response.data
+    } catch {
+      return await this.logoutAll()
     }
   },
 }

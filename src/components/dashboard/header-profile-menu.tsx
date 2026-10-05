@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { User, Settings, ShieldCheck, LogOut, LogIn, Smartphone } from "lucide-react"
+import { User, Settings, ShieldCheck, LogOut, LogIn, Smartphone, Key } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
 import { useUserStore } from "@/store/user.store"
 import { useLogoutMutation, useLogoutAllMutation } from "@/hooks/use-auth-query"
 import { CURRENT_ADMIN } from "@/components/app-sidebar/nav-config"
+import { AccountSecurityDialog } from "@/components/auth"
 import { toast } from "sonner"
 
 export function HeaderProfileMenu() {
@@ -21,6 +22,8 @@ export function HeaderProfileMenu() {
   const { user, isAuthenticated } = useUserStore()
   const logoutMutation = useLogoutMutation()
   const logoutAllMutation = useLogoutAllMutation()
+  const [isSecurityOpen, setIsSecurityOpen] = React.useState(false)
+
 
   const displayName = user
     ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email
