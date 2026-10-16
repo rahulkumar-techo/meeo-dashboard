@@ -34,6 +34,8 @@ export interface CreateProductFormProps {
     seoDescription: string
     imageUrl: string
     specifications?: ProductSpecifications | null
+    taxRate?: number
+    hsnCode?: string
   }) => void
 }
 
@@ -52,6 +54,8 @@ export function CreateProductForm({
   const [description, setDescription] = React.useState("")
   const [categoryId, setCategoryId] = React.useState("")
   const [brandId, setBrandId] = React.useState("")
+  const [taxRate, setTaxRate] = React.useState<number>(18)
+  const [hsnCode, setHsnCode] = React.useState<string>("")
   const [status, setStatus] = React.useState<ProductStatus>("DRAFT")
   const [isFeatured, setIsFeatured] = React.useState(false)
   const [imageUrl, setImageUrl] = React.useState("")
@@ -79,8 +83,10 @@ export function CreateProductForm({
       seoDescription,
       imageUrl,
       specifications,
+      taxRate,
+      hsnCode,
     })
-  }, [name, slug, description, categoryId, brandId, status, isFeatured, seoTitle, seoDescription, imageUrl, specifications, onFormChange])
+  }, [name, slug, description, categoryId, brandId, status, isFeatured, seoTitle, seoDescription, imageUrl, specifications, taxRate, hsnCode, onFormChange])
 
   const handleNameChange = (val: string) => {
     setName(val)
@@ -103,6 +109,8 @@ export function CreateProductForm({
       description: description.trim() || null,
       categoryId: categoryId.trim() ? categoryId : null,
       brandId: brandId.trim() ? brandId : null,
+      taxRate: Number(taxRate),
+      hsnCode: hsnCode.trim() || null,
       status,
       isFeatured,
       seoTitle: seoTitle.trim() || null,
@@ -180,6 +188,36 @@ export function CreateProductForm({
                 <option value="">None (Generic / Unbranded)</option>
                 {brands.map((b) => (<option key={b.id} value={b.id}>{b.name} (/brands/{b.slug})</option>))}
               </select>
+            </div>
+          </div>
+
+          {/* Statutory Tax & HSN Codes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">GST Tax Slab (Rate %)</label>
+              <select
+                name="taxRate"
+                value={taxRate}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                className="w-full h-8.5 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+              >
+                <option value={0}>0% (Tax Exempt / Books / Fresh Food)</option>
+                <option value={5}>5% (Apparel under ₹1000 / Grocery)</option>
+                <option value={12}>12% (Apparel above ₹1000 / Footwear)</option>
+                <option value={18}>18% (Standard / Electronics / Bags)</option>
+                <option value={28}>28% (Luxury items)</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">HSN Code</label>
+              <Input
+                name="hsnCode"
+                value={hsnCode}
+                onChange={(e) => setHsnCode(e.target.value)}
+                placeholder="e.g. 6109 (HSN for T-Shirts)"
+                maxLength={20}
+                className="h-8.5 text-xs font-mono"
+              />
             </div>
           </div>
 

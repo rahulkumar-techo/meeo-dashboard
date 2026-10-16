@@ -34,6 +34,8 @@ export interface StepDraftDetailsProps {
     seoDescription: string
     bannerImageUrl: string
     specifications?: ProductSpecifications | null
+    taxRate?: number
+    hsnCode?: string
   }) => void
 }
 
@@ -53,6 +55,8 @@ export function StepDraftDetails({
   const [description, setDescription] = React.useState(initialProduct?.description || "")
   const [categoryId, setCategoryId] = React.useState(initialProduct?.categoryId || "")
   const [brandId, setBrandId] = React.useState(initialProduct?.brandId || "")
+  const [taxRate, setTaxRate] = React.useState<number>(initialProduct?.taxRate ?? 18)
+  const [hsnCode, setHsnCode] = React.useState<string>(initialProduct?.hsnCode || "")
   const [isFeatured, setIsFeatured] = React.useState(Boolean(initialProduct?.isFeatured))
   const [bannerImageUrl, setBannerImageUrl] = React.useState(initialProduct?.bannerImage?.url || "")
   const [bannerAltText, setBannerAltText] = React.useState(initialProduct?.bannerImage?.altText || "")
@@ -73,13 +77,15 @@ export function StepDraftDetails({
       description,
       categoryId,
       brandId,
+      taxRate,
+      hsnCode,
       isFeatured,
       seoTitle,
       seoDescription,
       bannerImageUrl,
       specifications,
     })
-  }, [name, slug, description, categoryId, brandId, isFeatured, seoTitle, seoDescription, bannerImageUrl, specifications, onFormChange])
+  }, [name, slug, description, categoryId, brandId, taxRate, hsnCode, isFeatured, seoTitle, seoDescription, bannerImageUrl, specifications, onFormChange])
 
   const handleNameChange = (val: string) => {
     setName(val)
@@ -103,6 +109,8 @@ export function StepDraftDetails({
       description: description.trim() || null,
       categoryId: categoryId.trim() ? categoryId : null,
       brandId: brandId.trim() ? brandId : null,
+      taxRate: Number(taxRate),
+      hsnCode: hsnCode.trim() || null,
       status: "DRAFT",
       isFeatured,
       seoTitle: seoTitle.trim() || null,
@@ -174,6 +182,36 @@ export function StepDraftDetails({
                 <option value="">None (Generic / Unbranded)</option>
                 {brands.map((b) => (<option key={b.id} value={b.id}>{b.name} (/brands/{b.slug})</option>))}
               </select>
+            </div>
+          </div>
+
+          {/* Statutory Tax & HSN Codes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">GST Tax Slab (Rate %)</label>
+              <select
+                name="taxRate"
+                value={taxRate}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                className="w-full h-8.5 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
+              >
+                <option value={0}>0% (Tax Exempt / Books / Fresh Food)</option>
+                <option value={5}>5% (Apparel under ₹1000 / Grocery)</option>
+                <option value={12}>12% (Apparel above ₹1000 / Footwear)</option>
+                <option value={18}>18% (Standard / Electronics / Bags)</option>
+                <option value={28}>28% (Luxury items)</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">HSN Code</label>
+              <Input
+                name="hsnCode"
+                value={hsnCode}
+                onChange={(e) => setHsnCode(e.target.value)}
+                placeholder="e.g. 6109 (HSN for T-Shirts)"
+                maxLength={20}
+                className="h-8.5 text-xs font-mono"
+              />
             </div>
           </div>
 

@@ -11,6 +11,8 @@ import { authService } from "@/services/auth.service"
 import { usePermissions } from "@/hooks/use-permissions"
 import { NoAccessView } from "@/components/auth/no-access-view"
 import { AccessDeniedView } from "@/components/auth/access-denied-view"
+import { SettingsSidebar } from "@/components/settings/settings-sidebar"
+import { SettingsProvider } from "@/context/settings-context"
 import { Loader2 } from "lucide-react"
 
 const AUTH_ROUTES = [
@@ -117,11 +119,12 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   // Check if current route is allowed for this user
   const isRouteAllowed = canAccessRoute(pathname || "/")
   const requiredPerm = getRouteRequiredPermission(pathname || "/")
+  const isSettingsRoute = pathname?.startsWith("/admin/settings")
 
   // Authenticated Dashboard layout
-  return (
+  const layoutContent = (
     <SidebarProvider>
-      <AppSidebar />
+      {isSettingsRoute ? <SettingsSidebar /> : <AppSidebar />}
       <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
         <DashboardHeader />
         <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
@@ -137,4 +140,10 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
       </SidebarInset>
     </SidebarProvider>
   )
+
+  if (isSettingsRoute) {
+    return <SettingsProvider>{layoutContent}</SettingsProvider>
+  }
+
+  return layoutContent
 }

@@ -32,7 +32,7 @@ export function Tier1BrandSettingsCard({
         </div>
 
         <div className="space-y-3.5 text-xs">
-          <div className="space-y-1">
+          <div id="brand-name" className="space-y-1 p-2 rounded-lg transition-all">
             <label className="font-semibold text-foreground">
               Platform Brand Name
             </label>
@@ -49,7 +49,7 @@ export function Tier1BrandSettingsCard({
             </p>
           </div>
 
-          <div className="space-y-1">
+          <div id="brand-domain" className="space-y-1 p-2 rounded-lg transition-all">
             <label className="font-semibold text-foreground">
               Public Domain URL
             </label>
@@ -66,7 +66,7 @@ export function Tier1BrandSettingsCard({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div id="brand-locale" className="grid grid-cols-2 gap-3 pt-1 p-2 rounded-lg transition-all">
             <div className="space-y-1">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
                 <IndianRupee className="size-3 text-emerald-500" /> Default Currency
@@ -102,7 +102,7 @@ export function Tier1BrandSettingsCard({
       </div>
 
       {/* Communication & Multi-Factor Security */}
-      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+      <div id="brand-emails" className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
         <div className="flex items-center gap-2 border-b border-border/60 pb-3">
           <Mail className="size-4 text-cyan-500" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">

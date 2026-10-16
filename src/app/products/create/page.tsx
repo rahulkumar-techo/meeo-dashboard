@@ -45,12 +45,16 @@ export default function CreateProductPage() {
     seoTitle: string
     seoDescription: string
     bannerImageUrl: string
+    taxRate?: number
+    hsnCode?: string
   }>({
     name: "",
     slug: "",
     description: "",
     categoryId: "",
     brandId: "",
+    taxRate: 18,
+    hsnCode: "",
     isFeatured: false,
     seoTitle: "",
     seoDescription: "",
@@ -140,6 +144,8 @@ export default function CreateProductPage() {
             description={createdProduct?.description || previewData.description}
             categoryId={createdProduct?.categoryId || previewData.categoryId}
             brandId={createdProduct?.brandId || previewData.brandId}
+            taxRate={createdProduct?.taxRate ?? previewData.taxRate}
+            hsnCode={createdProduct?.hsnCode ?? previewData.hsnCode}
             status={currentStep === 3 ? "ACTIVE" : "DRAFT"}
             isFeatured={createdProduct?.isFeatured ?? previewData.isFeatured}
             seoTitle={createdProduct?.seoTitle || previewData.seoTitle}

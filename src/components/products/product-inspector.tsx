@@ -221,10 +221,18 @@ export function ProductInspector({
           </div>
           <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-              Media Assets
+              GST Slab
+            </span>
+            <span className="text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 block mt-0.5">
+              {selectedProduct.taxRate !== undefined && selectedProduct.taxRate !== null ? `${selectedProduct.taxRate}%` : "18% (Default)"}
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+              HSN Code
             </span>
             <span className="text-xs font-mono font-semibold text-foreground block mt-0.5">
-              {images.length} Images
+              {selectedProduct.hsnCode || "Not Set"}
             </span>
           </div>
         </div>

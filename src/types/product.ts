@@ -77,6 +77,8 @@ export interface Product {
   }
   seoTitle?: string | null
   seoDescription?: string | null
+  taxRate?: number | null
+  hsnCode?: string | null
   createdById?: string | null
   createdAt: string
   updatedAt: string
@@ -137,6 +139,8 @@ export interface CreateProductPayload {
   isFeatured?: boolean
   seoTitle?: string | null
   seoDescription?: string | null
+  taxRate?: number
+  hsnCode?: string | null
   bannerImage?: ProductBannerImage | null
   images?: CreateProductImageInput[]
   specifications?: ProductSpecifications | null
@@ -152,6 +156,8 @@ export interface UpdateProductPayload {
   isFeatured?: boolean
   seoTitle?: string | null
   seoDescription?: string | null
+  taxRate?: number | null
+  hsnCode?: string | null
   bannerImage?: ProductBannerImage | null
   specifications?: ProductSpecifications | null
 }

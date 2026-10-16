@@ -71,6 +71,8 @@ export function EditProductDialog({
     description: "",
     categoryId: null,
     brandId: null,
+    taxRate: 18,
+    hsnCode: "",
     status: "DRAFT",
     isFeatured: false,
     seoTitle: "",
@@ -97,6 +99,8 @@ export function EditProductDialog({
         description: currentProduct.description || "",
         categoryId: currentProduct.categoryId || null,
         brandId: currentProduct.brandId || null,
+        taxRate: currentProduct.taxRate ?? 18,
+        hsnCode: currentProduct.hsnCode || "",
         status: (currentProduct.status as ProductStatus) || "DRAFT",
         isFeatured: Boolean(currentProduct.isFeatured),
         seoTitle: currentProduct.seoTitle || "",
@@ -140,6 +144,8 @@ export function EditProductDialog({
           description: formData.description?.trim() || null,
           categoryId: formData.categoryId || null,
           brandId: formData.brandId || null,
+          taxRate: formData.taxRate !== undefined && formData.taxRate !== null ? Number(formData.taxRate) : undefined,
+          hsnCode: formData.hsnCode?.trim() || null,
           status: formData.status,
           isFeatured: formData.isFeatured,
           seoTitle: formData.seoTitle?.trim() || null,
@@ -372,6 +378,41 @@ export function EditProductDialog({
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Statutory Tax & HSN Codes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">GST Tax Slab (Rate %)</label>
+                  <select
+                    name="taxRate"
+                    value={formData.taxRate ?? 18}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, taxRate: Number(e.target.value) }))
+                    }
+                    className="w-full h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                  >
+                    <option value={0}>0% (Tax Exempt / Books / Fresh Food)</option>
+                    <option value={5}>5% (Apparel under ₹1000 / Grocery)</option>
+                    <option value={12}>12% (Apparel above ₹1000 / Footwear)</option>
+                    <option value={18}>18% (Standard / Electronics / Bags)</option>
+                    <option value={28}>28% (Luxury items)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">HSN Code</label>
+                  <Input
+                    name="hsnCode"
+                    value={formData.hsnCode || ""}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, hsnCode: e.target.value }))
+                    }
+                    placeholder="e.g. 6109 (HSN for T-Shirts)"
+                    maxLength={20}
+                    className="h-8.5 text-xs font-mono"
+                  />
                 </div>
               </div>
 

@@ -142,6 +142,18 @@ export function StepPublishReview({
                 {images.length} Image(s) Attached
               </span>
             </div>
+            <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground block">GST Tax Slab</span>
+              <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 block mt-0.5">
+                {activeProduct.taxRate !== undefined && activeProduct.taxRate !== null ? `${activeProduct.taxRate}%` : "18% (Default)"}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground block">HSN Code</span>
+              <span className="text-xs font-mono font-medium text-foreground block mt-0.5">
+                {activeProduct.hsnCode || "None Specified"}
+              </span>
+            </div>
             {activeProduct.specifications && Object.keys(activeProduct.specifications).length > 0 && (
               <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">Specifications</span>

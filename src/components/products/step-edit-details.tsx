@@ -32,6 +32,8 @@ export interface StepEditDetailsProps {
     seoTitle: string
     seoDescription: string
     specifications?: ProductSpecifications | null
+    taxRate?: number
+    hsnCode?: string
   }) => void
 }
 
@@ -51,6 +53,8 @@ export function StepEditDetails({
   const [description, setDescription] = React.useState(product.description || "")
   const [categoryId, setCategoryId] = React.useState(product.categoryId || "")
   const [brandId, setBrandId] = React.useState(product.brandId || "")
+  const [taxRate, setTaxRate] = React.useState<number>(product.taxRate ?? 18)
+  const [hsnCode, setHsnCode] = React.useState<string>(product.hsnCode || "")
   const [isFeatured, setIsFeatured] = React.useState(Boolean(product.isFeatured))
   const [seoTitle, setSeoTitle] = React.useState(product.seoTitle || "")
   const [seoDescription, setSeoDescription] = React.useState(product.seoDescription || "")
@@ -66,6 +70,8 @@ export function StepEditDetails({
       setDescription(product.description || "")
       setCategoryId(product.categoryId || "")
       setBrandId(product.brandId || "")
+      setTaxRate(product.taxRate ?? 18)
+      setHsnCode(product.hsnCode || "")
       setIsFeatured(Boolean(product.isFeatured))
       setSeoTitle(product.seoTitle || "")
       setSeoDescription(product.seoDescription || "")
@@ -80,12 +86,14 @@ export function StepEditDetails({
       description,
       categoryId,
       brandId,
+      taxRate,
+      hsnCode,
       isFeatured,
       seoTitle,
       seoDescription,
       specifications,
     })
-  }, [name, slug, description, categoryId, brandId, isFeatured, seoTitle, seoDescription, specifications, onFormChange])
+  }, [name, slug, description, categoryId, brandId, taxRate, hsnCode, isFeatured, seoTitle, seoDescription, specifications, onFormChange])
 
   const handleAutoSlug = () => {
     if (!name) return
@@ -106,6 +114,8 @@ export function StepEditDetails({
       description: description.trim() || null,
       categoryId: categoryId.trim() ? categoryId : null,
       brandId: brandId.trim() ? brandId : null,
+      taxRate: Number(taxRate),
+      hsnCode: hsnCode.trim() || null,
       isFeatured,
       seoTitle: seoTitle.trim() || null,
       seoDescription: seoDescription.trim() || null,
@@ -174,6 +184,36 @@ export function StepEditDetails({
                 <option value="">None (Generic / Unbranded)</option>
                 {brands.map((b) => (<option key={b.id} value={b.id}>{b.name} (/brands/{b.slug})</option>))}
               </select>
+            </div>
+          </div>
+
+          {/* Statutory Tax & HSN Codes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">GST Tax Slab (Rate %)</label>
+              <select
+                name="taxRate"
+                value={taxRate}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-hidden"
+              >
+                <option value={0}>0% (Tax Exempt / Books / Fresh Food)</option>
+                <option value={5}>5% (Apparel under ₹1000 / Grocery)</option>
+                <option value={12}>12% (Apparel above ₹1000 / Footwear)</option>
+                <option value={18}>18% (Standard / Electronics / Bags)</option>
+                <option value={28}>28% (Luxury items)</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">HSN Code</label>
+              <Input
+                name="hsnCode"
+                value={hsnCode}
+                onChange={(e) => setHsnCode(e.target.value)}
+                placeholder="e.g. 6109 (HSN for T-Shirts)"
+                maxLength={20}
+                className="h-9 text-xs font-mono"
+              />
             </div>
           </div>
 

@@ -61,6 +61,11 @@ export interface SystemSettings {
   refundApprovalThreshold: number
   automatedPayouts: boolean
 
+  // Shipping & Delivery Policies & Global Tax
+  standardShippingFee?: number
+  freeShippingThreshold?: number
+  defaultTaxRate?: number
+
   // Tier 3 — Advanced, Security & Emergency Controls
   allowedMaintenanceIps: string[]
   emergencyControls: EmergencyControls

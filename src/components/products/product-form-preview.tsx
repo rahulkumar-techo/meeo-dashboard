@@ -20,6 +20,8 @@ export interface ProductFormPreviewProps {
   description?: string
   categoryId?: string
   brandId?: string
+  taxRate?: number
+  hsnCode?: string
   status: ProductStatus
   isFeatured: boolean
   seoTitle?: string
@@ -35,6 +37,8 @@ export function ProductFormPreview({
   description,
   categoryId,
   brandId,
+  taxRate,
+  hsnCode,
   status,
   isFeatured,
   seoTitle,
@@ -105,6 +109,14 @@ export function ProductFormPreview({
                 <Badge variant="outline" className="text-[10px] gap-1 py-0.5">
                   <Building2 className="size-2.5 text-emerald-500" />
                   {selectedBrand.name}
+                </Badge>
+              )}
+              <Badge variant="secondary" className="text-[10px] font-mono py-0.5 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
+                GST: {taxRate !== undefined ? `${taxRate}%` : "18%"}
+              </Badge>
+              {hsnCode && (
+                <Badge variant="outline" className="text-[10px] font-mono py-0.5 text-muted-foreground">
+                  HSN: {hsnCode}
                 </Badge>
               )}
             </div>

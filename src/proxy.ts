@@ -6,11 +6,11 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isProduction = process.env.NODE_ENV === "production";
 
-  // Strict CSP: completely eliminates 'unsafe-inline' and 'unsafe-eval' from script-src
+  // Strict CSP: allows 'unsafe-eval' in dev for React Fast Refresh & callstack reconstruction, removed in production
   const cspDirectives = [
     "default-src 'self'",
     // Nonce-based script execution with 'strict-dynamic' for modern browsers + explicit Google/Firebase origins
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com https://apis.google.com https://www.gstatic.com${isProduction ? "" : " 'unsafe-eval'"}`,
     // Styles: allow self, Google Fonts, and inline styles for Tailwind CSS variables
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     // Images: allow self, data/blob previews, ImageKit CDN, and Google profile avatars

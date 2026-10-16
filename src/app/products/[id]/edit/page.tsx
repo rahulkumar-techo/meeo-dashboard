@@ -61,6 +61,8 @@ export default function EditProductPage() {
     isFeatured: boolean
     seoTitle: string
     seoDescription: string
+    taxRate?: number
+    hsnCode?: string
   }>({
     name: "",
     slug: "",
@@ -193,6 +195,8 @@ export default function EditProductPage() {
             description={previewData.description || activeProduct.description || undefined}
             categoryId={previewData.categoryId || activeProduct.categoryId || undefined}
             brandId={previewData.brandId || activeProduct.brandId || undefined}
+            taxRate={previewData.taxRate ?? activeProduct.taxRate ?? undefined}
+            hsnCode={previewData.hsnCode ?? activeProduct.hsnCode ?? undefined}
             status={(activeProduct.status as ProductStatus) || "DRAFT"}
             isFeatured={previewData.isFeatured ?? activeProduct.isFeatured}
             seoTitle={previewData.seoTitle || activeProduct.seoTitle || undefined}
