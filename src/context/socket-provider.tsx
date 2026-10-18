@@ -11,6 +11,7 @@ import { Socket } from "socket.io-client"
 import { getAdminSocket, disconnectAdminSocket } from "@/lib/socket"
 import { useUserStore } from "@/store/user.store"
 import { useAdminSocketEvents } from "@/hooks/use-admin-socket"
+import { executeSilentRefresh } from "@/config/client"
 
 interface SocketContextType {
   socket: Socket | null
@@ -58,9 +59,43 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setIsConnected(false)
     }
 
-    const onConnectError = (error: Error) => {
-      console.warn("[Socket.IO] Connection error:", error.message)
+    const onConnectError = async (error: Error) => {
+      const msg = error?.message || ""
       setIsConnected(false)
+
+      const isAuthError =
+        msg.toLowerCase().includes("token") ||
+        msg.toLowerCase().includes("auth") ||
+        msg.toLowerCase().includes("expired")
+
+      if (isAuthError) {
+        // Disconnect immediately to stop reconnecting with stale/expired credentials
+        s.disconnect()
+
+        try {
+          const refreshResult = await executeSilentRefresh()
+          if (refreshResult?.accessToken) {
+            const cleanToken = refreshResult.accessToken.startsWith("Bearer ")
+              ? refreshResult.accessToken
+              : `Bearer ${refreshResult.accessToken}`
+            const rawToken = refreshResult.accessToken.replace(/^Bearer\s+/i, "")
+
+            s.auth = {
+              token: cleanToken,
+              accessToken: rawToken,
+            }
+            if (s.io.opts.extraHeaders) {
+              s.io.opts.extraHeaders["Authorization"] = cleanToken
+            }
+            s.connect()
+          }
+        } catch {
+          // If silent refresh fails, disconnect cleanly
+          disconnectAdminSocket()
+        }
+      } else {
+        console.warn("[Socket.IO] Connection error:", msg)
+      }
     }
 
     s.on("connect", onConnect)

@@ -32,7 +32,7 @@ export function ServerMetricsHeader({
   return (
     <PageHeader
       title="Observability & System Metrics"
-      badge="PROMETHEUS /METRICS"
+      badge="PROMETHEUS TELEMETRY"
       badgeVariant="brand"
       description="Real-time telemetry monitoring for Node.js V8 runtime, process memory, event loop latency, and active handles."
     >
@@ -48,7 +48,7 @@ export function ServerMetricsHeader({
 
         {/* Node.js Version Pill */}
         <Badge variant="outline" className="font-mono text-xs px-2 py-1 bg-muted/30 text-foreground">
-          Node {runtime?.version || "Active"}
+          {runtime?.version ? `Node ${runtime.version}` : "Node.js"}
         </Badge>
 
         {/* Refresh Interval Selector */}

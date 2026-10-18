@@ -18,6 +18,14 @@ import type {
   OtelTrace,
   MetricsInstantQueryResponse,
   ObservabilityConfigItem,
+  SystemTelemetryData,
+  CpuTelemetryData,
+  MemoryTelemetryData,
+  DiskTelemetryData,
+  NetworkTelemetryData,
+  ProcessTelemetryData,
+  PollingPolicyData,
+  UpdatePollingPolicyPayload,
 } from "@/types/observability"
 
 export interface MetricsRangeQueryOptions {
@@ -350,5 +358,139 @@ export const observabilityService = {
       "/observability/configs/reset"
     )
     return response.data?.data || []
+  },
+
+  /**
+   * 12. Complete host & process telemetry (RAM, CPU, Process, Threads, Disk, Network)
+   * Endpoint: GET /api/v1/observability/systemInfo
+   */
+  async getSystemInfo(): Promise<SystemTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/systemInfo")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 13. Real-time CPU utilization %, clock speed, per-core count, load averages
+   * Endpoint: GET /api/v1/observability/cpu
+   */
+  async getCpuInfo(): Promise<CpuTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/cpu")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 14. System RAM, process RSS, V8 heap usage, and heap size limits
+   * Endpoint: GET /api/v1/observability/memory
+   */
+  async getMemoryInfo(): Promise<MemoryTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/memory")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 15. Root filesystem volume capacity, used/free bytes, and health status
+   * Endpoint: GET /api/v1/observability/disk
+   */
+  async getDiskInfo(): Promise<DiskTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/disk")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 16. Network interfaces, IP addresses, and active TCP socket handles
+   * Endpoint: GET /api/v1/observability/network
+   */
+  async getNetworkInfo(): Promise<NetworkTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/network")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 17. Node.js PID, uptime, active handles, and event-loop lag (p50/p99)
+   * Endpoint: GET /api/v1/observability/processes
+   */
+  async getProcessesInfo(): Promise<ProcessTelemetryData | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/processes")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 18. Prometheus scrapable text format via prom-client
+   * Endpoint: GET /api/v1/observability/metrics/prom
+   */
+  async getPrometheusMetrics(): Promise<string> {
+    try {
+      const response = await apiClient.get<string>("/observability/metrics/prom", {
+        responseType: "text",
+        headers: { Accept: "text/plain" },
+      })
+      return typeof response.data === "string" ? response.data : ""
+    } catch {
+      return ""
+    }
+  },
+
+  /**
+   * 19. In-memory JSON snapshot of HTTP, database, and process counters
+   * Endpoint: GET /api/v1/observability/metrics/json
+   */
+  async getMetricsJson(): Promise<Record<string, unknown> | null> {
+    try {
+      const response = await apiClient.get<any>("/observability/metrics/json")
+      return response.data?.data || response.data || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 20. Server-enforced polling policy & alert cooldown
+   * Endpoint: GET /api/v1/observability/polling-policy
+   */
+  async getPollingPolicy(): Promise<PollingPolicyData | null> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: PollingPolicyData }>(
+        "/observability/polling-policy"
+      )
+      return response.data?.data || (response.data as any) || null
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * 21. Update server-enforced polling policy & alert cooldown
+   * Endpoint: PUT /api/v1/observability/polling-policy
+   */
+  async updatePollingPolicy(payload: UpdatePollingPolicyPayload): Promise<PollingPolicyData | null> {
+    const response = await apiClient.put<{ success: boolean; data: PollingPolicyData }>(
+      "/observability/polling-policy",
+      payload
+    )
+    return response.data?.data || (response.data as any) || null
   },
 }

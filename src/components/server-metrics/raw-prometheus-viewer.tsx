@@ -43,7 +43,7 @@ export function RawPrometheusViewer({ rawText = "", className }: RawPrometheusVi
         <div>
           <CardTitle className="text-sm font-bold flex items-center gap-2">
             <FileCode className="size-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Raw Prometheus /metrics Output</span>
+            <span>Prometheus Scraped Telemetry (/observability/metrics/prom)</span>
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground mt-0.5">
             Standard OpenMetrics exposition format text stream directly from the Fastify server

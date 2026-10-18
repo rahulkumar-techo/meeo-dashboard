@@ -16,6 +16,8 @@ import {
   useBullQueues,
   useOtelTraces,
   useObservabilityConfigs,
+  usePollingPolicy,
+  useUpdatePollingPolicy,
 } from "@/hooks/use-observability"
 import { useServerMetricsQuery } from "@/hooks/use-server-metrics"
 import type { ServerMetricsData } from "@/types/server-metrics"
@@ -27,7 +29,41 @@ import type {
   QueueJob,
   OtelTrace,
   ObservabilityConfigItem,
+  PollingPolicyData,
+  UpdatePollingPolicyPayload,
 } from "@/types/observability"
+
+export function parseIntervalToMs(interval: string): number | false {
+  if (!interval || interval.toLowerCase() === "off" || interval.toLowerCase() === "paused" || interval.toLowerCase() === "pause") {
+    return false
+  }
+  const match = interval.match(/^(\d+)\s*(s|m|h)?$/i)
+  if (!match) return false
+  const val = parseInt(match[1], 10)
+  const unit = (match[2] || "s").toLowerCase()
+  if (unit === "m") return val * 60 * 1000
+  if (unit === "h") return val * 3600 * 1000
+  return val * 1000
+}
+
+export function formatMsToInterval(ms: number | false, allowedIntervals: string[] = ["5s", "15s", "30s", "Off"]): string {
+  if (ms === false || ms <= 0) {
+    const offItem = allowedIntervals.find((i) => i.toLowerCase() === "off" || i.toLowerCase() === "pause")
+    return offItem || "Off"
+  }
+  const sec = Math.round(ms / 1000)
+  const secStr = `${sec}s`
+  if (allowedIntervals.includes(secStr)) {
+    return secStr
+  }
+  if (sec % 60 === 0) {
+    const minStr = `${sec / 60}m`
+    if (allowedIntervals.includes(minStr)) {
+      return minStr
+    }
+  }
+  return allowedIntervals[0] || secStr
+}
 
 export type ObservabilityTabId =
   | "overview"
@@ -49,6 +85,11 @@ export interface ObservabilityContextType {
   setRefreshInterval: (interval: number | false) => void
   isFetching: boolean
   handleGlobalRefresh: () => void
+
+  // Server-Enforced Polling Policy & Alert Suppression Cooldown
+  pollingPolicy?: PollingPolicyData | null
+  isPolicyLoading?: boolean
+  updatePolicy: (payload: UpdatePollingPolicyPayload) => Promise<PollingPolicyData | null>
 
   // Telemetry Cross-Module Correlation
   correlatedLogQuery: string
@@ -101,9 +142,61 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
   const searchParams = useSearchParams()
 
   const [activeTabState, setActiveTabState] = React.useState<ObservabilityTabId>("overview")
-  const [timeRange, setTimeRange] = React.useState<string>("1h")
+  const [timeRange, setTimeRange] = React.useState<string>("15m")
   const [refreshInterval, setRefreshInterval] = React.useState<number | false>(15000)
   const [correlatedLogQuery, setCorrelatedLogQuery] = React.useState<string>('{job="meeo-api"}')
+
+  // Query server-enforced polling policy (<0.1ms cache tier)
+  const { data: pollingPolicy, isLoading: isPolicyLoading } = usePollingPolicy()
+  const updatePollingPolicy = useUpdatePollingPolicy()
+
+  // Initialize and synchronize activeWindow & activeInterval from server policy on load
+  const hasInitializedPolicyRef = React.useRef(false)
+  React.useEffect(() => {
+    if (pollingPolicy && !hasInitializedPolicyRef.current) {
+      hasInitializedPolicyRef.current = true
+      if (pollingPolicy.activeWindow) {
+        setTimeRange(pollingPolicy.activeWindow)
+      }
+      if (pollingPolicy.activeInterval) {
+        const ms = parseIntervalToMs(pollingPolicy.activeInterval)
+        setRefreshInterval(ms)
+      }
+    }
+  }, [pollingPolicy])
+
+  const setTimeRangeWithSync = React.useCallback(
+    (newRange: string) => {
+      setTimeRange(newRange)
+      updatePollingPolicy.mutate({ activeWindow: newRange })
+    },
+    [updatePollingPolicy]
+  )
+
+  const setRefreshIntervalWithSync = React.useCallback(
+    (newInterval: number | false) => {
+      setRefreshInterval(newInterval)
+      const allowed = pollingPolicy?.allowedIntervals || ["5s", "15s", "30s", "Off"]
+      const strVal = formatMsToInterval(newInterval, allowed)
+      updatePollingPolicy.mutate({ activeInterval: strVal })
+    },
+    [pollingPolicy?.allowedIntervals, updatePollingPolicy]
+  )
+
+  const handleUpdatePolicy = React.useCallback(
+    async (payload: UpdatePollingPolicyPayload) => {
+      const result = await updatePollingPolicy.mutateAsync(payload)
+      if (payload.activeWindow) {
+        setTimeRange(payload.activeWindow)
+      }
+      if (payload.activeInterval) {
+        const ms = parseIntervalToMs(payload.activeInterval)
+        setRefreshInterval(ms)
+      }
+      return result
+    },
+    [updatePollingPolicy]
+  )
 
   // Sync tab from URL query parameter on initial load or navigation
   React.useEffect(() => {
@@ -291,8 +384,8 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
     topologyNodes.length > 0
       ? topologyNodes.length
       : hostMetrics?.httpTraffic?.endpoints?.length
-      ? hostMetrics.httpTraffic.endpoints.length + 1
-      : 5
+      ? hostMetrics.httpTraffic.endpoints.length
+      : 0
 
   const activeQueuesCount = queues.length
   const tracesCount = traces.length
@@ -309,11 +402,14 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
     activeTab: activeTabState,
     setActiveTab,
     timeRange,
-    setTimeRange,
+    setTimeRange: setTimeRangeWithSync,
     refreshInterval,
-    setRefreshInterval,
+    setRefreshInterval: setRefreshIntervalWithSync,
     isFetching,
     handleGlobalRefresh,
+    pollingPolicy,
+    isPolicyLoading,
+    updatePolicy: handleUpdatePolicy,
     correlatedLogQuery,
     handleCorrelateLogs,
     handleViewMetrics,

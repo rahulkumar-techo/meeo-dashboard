@@ -24,6 +24,8 @@ import type {
   OtelTrace,
   MetricsInstantQueryResponse,
   ObservabilityConfigItem,
+  PollingPolicyData,
+  UpdatePollingPolicyPayload,
 } from "@/types/observability"
 import type { MetricsInstantQueryOptions } from "@/services/observability.service"
 
@@ -40,6 +42,7 @@ export const OBSERVABILITY_QUERY_KEYS = {
   queues: () => [...OBSERVABILITY_QUERY_KEYS.all, "queues"] as const,
   traces: () => [...OBSERVABILITY_QUERY_KEYS.all, "traces"] as const,
   configs: () => [...OBSERVABILITY_QUERY_KEYS.all, "configs"] as const,
+  pollingPolicy: () => [...OBSERVABILITY_QUERY_KEYS.all, "pollingPolicy"] as const,
 }
 
 // 1. Fetch available metric presets
@@ -192,6 +195,34 @@ export function useResetObservabilityConfigs() {
     mutationFn: () => observabilityService.resetObservabilityConfigs(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: OBSERVABILITY_QUERY_KEYS.configs() })
+    },
+  })
+}
+
+// 10. Fetch server-enforced polling policy and active intervals (<0.1ms cache tier)
+export function usePollingPolicy() {
+  const { isAuthenticated } = useUserStore()
+
+  return useQuery<PollingPolicyData | null>({
+    queryKey: OBSERVABILITY_QUERY_KEYS.pollingPolicy(),
+    queryFn: () => observabilityService.getPollingPolicy(),
+    staleTime: 1000 * 30, // 30 seconds
+    enabled: Boolean(isAuthenticated),
+  })
+}
+
+// 11. Update server-enforced polling policy & alert email suppression cooldown
+export function useUpdatePollingPolicy() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdatePollingPolicyPayload) =>
+      observabilityService.updatePollingPolicy(payload),
+    onSuccess: (updatedData) => {
+      if (updatedData) {
+        queryClient.setQueryData(OBSERVABILITY_QUERY_KEYS.pollingPolicy(), updatedData)
+      }
+      queryClient.invalidateQueries({ queryKey: OBSERVABILITY_QUERY_KEYS.pollingPolicy() })
     },
   })
 }

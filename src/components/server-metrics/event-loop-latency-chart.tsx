@@ -26,12 +26,14 @@ interface EventLoopLatencyChartProps {
 }
 
 export function EventLoopLatencyChart({ eventLoop, className }: EventLoopLatencyChartProps) {
-  const pMin = eventLoop ? eventLoop.lagMinSeconds * 1000 : 0.36
-  const p50 = eventLoop ? eventLoop.lagP50Seconds * 1000 : 16.72
-  const p90 = eventLoop ? eventLoop.lagP90Seconds * 1000 : 25.02
-  const p99 = eventLoop ? eventLoop.lagP99Seconds * 1000 : 35.19
-  const pMean = eventLoop ? eventLoop.lagMeanSeconds * 1000 : 18.54
-  const pMax = eventLoop ? eventLoop.lagMaxSeconds * 1000 : 455.60
+  const pMin = (eventLoop?.lagMinSeconds ?? 0) * 1000
+  const p50 = (eventLoop?.lagP50Seconds ?? 0) * 1000
+  const p90 = (eventLoop?.lagP90Seconds ?? 0) * 1000
+  const p99 = (eventLoop?.lagP99Seconds ?? 0) * 1000
+  const pMean = (eventLoop?.lagMeanSeconds ?? 0) * 1000
+  const pMax = (eventLoop?.lagMaxSeconds ?? 0) * 1000
+
+  const hasData = pMax > 0 || pMean > 0 || (eventLoop?.lagSeconds ?? 0) > 0
 
   const percentileData = [
     { label: "Min", latencyMs: parseFloat(pMin.toFixed(2)), description: "Fastest execution cycle" },
@@ -64,8 +66,12 @@ export function EventLoopLatencyChart({ eventLoop, className }: EventLoopLatency
       </CardHeader>
 
       <CardContent className="p-4 pt-3 space-y-3">
-        {/* Recharts Area Graph */}
-        <div className="h-56 w-full">
+        {!hasData ? (
+          <div className="h-56 flex items-center justify-center text-xs text-muted-foreground">
+            No event loop latency recorded yet.
+          </div>
+        ) : (
+          <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={percentileData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -114,6 +120,7 @@ export function EventLoopLatencyChart({ eventLoop, className }: EventLoopLatency
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        )}
 
         {/* Calculation Description Note */}
         <div className="p-2.5 rounded-lg bg-muted/20 border border-border/50 text-[11px] text-muted-foreground flex items-start gap-2">

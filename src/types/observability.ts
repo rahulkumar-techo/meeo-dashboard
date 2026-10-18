@@ -257,3 +257,100 @@ export interface ObservabilityConfigItem {
   createdAt: string
   updatedAt: string
 }
+
+// ==========================================
+// Host & System Telemetry Endpoint Types
+// ==========================================
+export interface SystemTelemetryData {
+  hostname?: string
+  platform?: string
+  osRelease?: string
+  arch?: string
+  cpuModel?: string
+  cpuCores?: number
+  cpuSpeedMhz?: number
+  totalRamBytes?: number
+  freeRamBytes?: number
+  usedRamBytes?: number
+  ramUsedPercent?: number
+  nodeVersion?: string
+  v8Version?: string
+  pid?: number
+  uptimeSeconds?: number
+  [key: string]: unknown
+}
+
+export interface CpuTelemetryData {
+  cpuUtilizationPercent?: number
+  cpuModel?: string
+  cores?: number
+  speedMhz?: number
+  loadAverages?: number[]
+  [key: string]: unknown
+}
+
+export interface MemoryTelemetryData {
+  totalBytes?: number
+  freeBytes?: number
+  usedBytes?: number
+  usedPercent?: number
+  rssBytes?: number
+  heapTotalBytes?: number
+  heapUsedBytes?: number
+  heapLimitBytes?: number
+  [key: string]: unknown
+}
+
+export interface DiskTelemetryData {
+  totalBytes?: number
+  usedBytes?: number
+  freeBytes?: number
+  usedPercent?: number
+  status?: string
+  mount?: string
+  [key: string]: unknown
+}
+
+export interface NetworkTelemetryData {
+  interfaces?: Array<{
+    name: string
+    address: string
+    family: string
+    internal: boolean
+  }>
+  activeSockets?: number
+  [key: string]: unknown
+}
+
+export interface ProcessTelemetryData {
+  pid?: number
+  uptime?: number
+  activeHandles?: number
+  activeRequests?: number
+  eventLoopLagP50?: number
+  eventLoopLagP99?: number
+  [key: string]: unknown
+}
+
+// ==========================================
+// Polling Policy & Alert Cooldown Types
+// ==========================================
+export interface PollingPolicyData {
+  allowedWindows: string[]
+  activeWindow: string
+  allowedIntervals: string[]
+  activeInterval: string
+  minIntervalSeconds: number
+  allowedAlertCooldownMinutes: number[]
+  alertCooldownMinutes: number
+  cacheTier: string
+  updatedAt: string
+}
+
+export interface UpdatePollingPolicyPayload {
+  activeWindow?: string
+  activeInterval?: string
+  alertCooldownMinutes?: number
+}
+
+

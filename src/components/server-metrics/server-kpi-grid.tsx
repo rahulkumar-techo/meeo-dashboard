@@ -65,18 +65,18 @@ export function ServerKpiGrid({ metrics }: ServerKpiGridProps) {
           </div>
           <div>
             <div className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {memory ? formatBytes(memory.residentBytes) : "179.21 MB"}
+              {memory && memory.residentBytes > 0 ? formatBytes(memory.residentBytes) : "0 MB"}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-              Heap: {memory ? formatBytes(memory.heapUsedBytes) : "74.93 MB"} • Ext: {memory ? formatBytes(memory.externalBytes) : "5.93 MB"}
+              Heap: {memory && memory.heapUsedBytes > 0 ? formatBytes(memory.heapUsedBytes) : "0 MB"} • Ext: {memory && memory.externalBytes > 0 ? formatBytes(memory.externalBytes) : "0 MB"}
             </p>
           </div>
           <div className="space-y-1 pt-1">
             <div className="flex justify-between text-[10.5px] font-mono text-muted-foreground">
               <span>Heap Allocation:</span>
-              <span>{memory?.heapUsedPercent ?? 95}% used</span>
+              <span>{memory?.heapUsedPercent ?? 0}% used</span>
             </div>
-            <Progress value={memory?.heapUsedPercent ?? 95} className="h-1.5" />
+            <Progress value={memory?.heapUsedPercent ?? 0} className="h-1.5" />
           </div>
         </CardContent>
       </Card>
@@ -94,10 +94,10 @@ export function ServerKpiGrid({ metrics }: ServerKpiGridProps) {
           </div>
           <div>
             <div className="text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
-              {eventLoop ? formatTimeDuration(eventLoop.lagMeanSeconds) : "18.54 ms"}
+              {eventLoop && eventLoop.lagMeanSeconds > 0 ? formatTimeDuration(eventLoop.lagMeanSeconds) : "0 ms"}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-              P50: {eventLoop ? formatTimeDuration(eventLoop.lagP50Seconds) : "16.72 ms"} • P99: {eventLoop ? formatTimeDuration(eventLoop.lagP99Seconds) : "35.19 ms"}
+              P50: {eventLoop && eventLoop.lagP50Seconds > 0 ? formatTimeDuration(eventLoop.lagP50Seconds) : "0 ms"} • P99: {eventLoop && eventLoop.lagP99Seconds > 0 ? formatTimeDuration(eventLoop.lagP99Seconds) : "0 ms"}
             </p>
           </div>
           <div className="flex items-center justify-between pt-1">
@@ -105,7 +105,7 @@ export function ServerKpiGrid({ metrics }: ServerKpiGridProps) {
               Status: {eventLoopStatus}
             </Badge>
             <span className="text-[10.5px] font-mono text-muted-foreground">
-              StdDev: {eventLoop ? formatTimeDuration(eventLoop.lagStddevSeconds) : "11.30 ms"}
+              StdDev: {eventLoop && eventLoop.lagStddevSeconds > 0 ? formatTimeDuration(eventLoop.lagStddevSeconds) : "0 ms"}
             </span>
           </div>
         </CardContent>
@@ -124,16 +124,16 @@ export function ServerKpiGrid({ metrics }: ServerKpiGridProps) {
           </div>
           <div>
             <div className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {cpu ? `${cpu.totalSeconds.toFixed(2)}s` : "1.59s"}
+              {cpu && cpu.totalSeconds > 0 ? `${cpu.totalSeconds.toFixed(2)}s` : "0s"}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-              User: {cpu ? `${cpu.userSeconds.toFixed(2)}s` : "1.39s"} • Sys: {cpu ? `${cpu.systemSeconds.toFixed(2)}s` : "0.20s"}
+              User: {cpu && cpu.userSeconds > 0 ? `${cpu.userSeconds.toFixed(2)}s` : "0s"} • Sys: {cpu && cpu.systemSeconds > 0 ? `${cpu.systemSeconds.toFixed(2)}s` : "0s"}
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 text-[11px]">
             <span className="text-muted-foreground">Process Uptime:</span>
             <Badge variant="secondary" className="font-mono text-[10.5px]">
-              {cpu ? formatUptime(cpu.uptimeSeconds) : "1h 24m"}
+              {cpu && cpu.uptimeSeconds > 0 ? formatUptime(cpu.uptimeSeconds) : "0s"}
             </Badge>
           </div>
         </CardContent>
@@ -152,16 +152,16 @@ export function ServerKpiGrid({ metrics }: ServerKpiGridProps) {
           </div>
           <div>
             <div className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {handles ? `${handles.activeHandlesTotal} Handles` : "8 Handles"}
+              {handles && handles.activeHandlesTotal > 0 ? `${handles.activeHandlesTotal} Handles` : "0 Handles"}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-              Resources: {handles?.activeResourcesTotal ?? 9} • GC Cycles: {gc?.totalGcCount ?? 8}
+              Resources: {handles?.activeResourcesTotal ?? 0} • GC Cycles: {gc?.totalGcCount ?? 0}
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 text-[11px]">
             <span className="text-muted-foreground">GC Pause Sum:</span>
             <span className="font-mono font-semibold text-foreground">
-              {gc ? formatTimeDuration(gc.totalGcTimeSeconds) : "141.8 ms"}
+              {gc && gc.totalGcTimeSeconds > 0 ? formatTimeDuration(gc.totalGcTimeSeconds) : "0 ms"}
             </span>
           </div>
         </CardContent>

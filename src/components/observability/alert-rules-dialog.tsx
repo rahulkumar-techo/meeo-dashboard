@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -41,6 +42,7 @@ import {
   useUpdateObservabilityConfig,
   useResetObservabilityConfigs,
 } from "@/hooks/use-observability"
+import { useObservabilityContext } from "@/context/observability-context"
 import type { ObservabilityConfigItem } from "@/types/observability"
 
 interface AlertRulesDialogProps {
@@ -52,11 +54,24 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
   const [activeTab, setActiveTab] = React.useState("server_5xx")
 
   const { data: configs, isLoading } = useObservabilityConfigs()
+  const { pollingPolicy, updatePolicy } = useObservabilityContext()
   const updateRule = useUpdateObservabilityConfig()
   const resetDefaults = useResetObservabilityConfigs()
 
   // Local form state map for editable config values
   const [formState, setFormState] = React.useState<Record<string, ObservabilityConfigItem>>({})
+
+  // Local form state for server-enforced polling policy
+  const [policyForm, setPolicyForm] = React.useState<{
+    activeWindow: string
+    activeInterval: string
+    alertCooldownMinutes: number
+  }>({
+    activeWindow: "15m",
+    activeInterval: "15s",
+    alertCooldownMinutes: 15,
+  })
+  const [isSavingPolicy, setIsSavingPolicy] = React.useState(false)
 
   // Initialize local form state whenever fetched configs change
   React.useEffect(() => {
@@ -68,6 +83,17 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
       setFormState(stateMap)
     }
   }, [configs])
+
+  // Synchronize policy form state from server polling policy
+  React.useEffect(() => {
+    if (pollingPolicy) {
+      setPolicyForm({
+        activeWindow: pollingPolicy.activeWindow || "15m",
+        activeInterval: pollingPolicy.activeInterval || "15s",
+        alertCooldownMinutes: pollingPolicy.alertCooldownMinutes ?? 15,
+      })
+    }
+  }, [pollingPolicy])
 
   const getConfig = (key: string): ObservabilityConfigItem | undefined => {
     return formState[key] || configs?.find((c) => c.key === key)
@@ -111,11 +137,36 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
           value: item.value as Record<string, unknown>,
         },
       })
+
+      // If saving server_5xx, synchronize alert cooldown if changed
+      if (
+        key === "thresholds:server_5xx" &&
+        policyForm.alertCooldownMinutes !== pollingPolicy?.alertCooldownMinutes
+      ) {
+        await updatePolicy({ alertCooldownMinutes: policyForm.alertCooldownMinutes })
+      }
+
       toast.success(`Alert rule for ${item.category} updated successfully`, {
         description: "Cached across L1 memory and synced via Redis Pub/Sub.",
       })
     } catch {
       toast.error(`Failed to update alert rule for ${key}`)
+    }
+  }
+
+  const handleSavePolicy = async () => {
+    setIsSavingPolicy(true)
+    try {
+      await updatePolicy(policyForm)
+      toast.success("Server polling & alert policy updated successfully", {
+        description: `Window: ${policyForm.activeWindow}, Interval: ${policyForm.activeInterval}, Cooldown: ${policyForm.alertCooldownMinutes}m`,
+      })
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err?.message || "Failed to update polling policy"
+      )
+    } finally {
+      setIsSavingPolicy(false)
     }
   }
 
@@ -207,10 +258,10 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
           className="flex-1 flex flex-col overflow-hidden"
         >
           <div className="px-5 pt-3 border-b border-border/50 bg-muted/5">
-            <TabsList className="grid grid-cols-4 w-full bg-muted/40 p-1">
+            <TabsList className="grid grid-cols-5 w-full bg-muted/40 p-1">
               <TabsTrigger
                 value="server_5xx"
-                className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
+                className="gap-1 text-[11px] sm:text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
               >
                 <Server className="size-3.5 text-rose-500" />
                 <span className="hidden sm:inline">Server 5xx</span>
@@ -219,7 +270,7 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
 
               <TabsTrigger
                 value="client_4xx"
-                className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
+                className="gap-1 text-[11px] sm:text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
               >
                 <AlertTriangle className="size-3.5 text-amber-500" />
                 <span className="hidden sm:inline">Client 4xx</span>
@@ -228,7 +279,7 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
 
               <TabsTrigger
                 value="security_events"
-                className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
+                className="gap-1 text-[11px] sm:text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
               >
                 <ShieldAlert className="size-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">Security</span>
@@ -237,11 +288,20 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
 
               <TabsTrigger
                 value="business_operations"
-                className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
+                className="gap-1 text-[11px] sm:text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
               >
                 <CreditCard className="size-3.5 text-emerald-500" />
                 <span className="hidden sm:inline">Business</span>
                 <span className="sm:hidden">Biz</span>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="polling_policy"
+                className="gap-1 text-[11px] sm:text-xs data-[state=active]:bg-background data-[state=active]:text-foreground font-medium"
+              >
+                <Clock className="size-3.5 text-sky-400" />
+                <span className="hidden sm:inline">Policy</span>
+                <span className="sm:hidden">Policy</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -349,6 +409,51 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
                     }
                   />
                   <p className="text-[11px] text-muted-foreground">Prevents low-volume false alarms</p>
+                </div>
+              </div>
+
+              {/* Alert Email Suppression Cooldown (PUT /api/v1/observability/polling-policy) */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Clock className="size-3.5 text-indigo-400" />
+                      5xx Email Alert Suppression Cooldown
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dynamic server-enforced cooldown to suppress repetitive 500 error emails.
+                    </p>
+                  </div>
+                  {pollingPolicy?.cacheTier && (
+                    <Badge variant="outline" className="text-[10px] font-mono text-indigo-400 border-indigo-500/20 bg-indigo-500/10">
+                      {pollingPolicy.cacheTier}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Cooldown Window (Minutes)
+                  </label>
+                  <select
+                    value={policyForm.alertCooldownMinutes}
+                    onChange={(e) =>
+                      setPolicyForm((prev) => ({
+                        ...prev,
+                        alertCooldownMinutes: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-xs focus:outline-hidden cursor-pointer"
+                  >
+                    {(pollingPolicy?.allowedAlertCooldownMinutes || [5, 10, 15, 30, 60]).map((cd) => (
+                      <option key={cd} value={cd}>
+                        {cd} minutes ({cd >= 60 ? `${cd / 60} hour` : `${cd} mins`} suppression)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Prevents alert fatigue while critical outages are being remediated.
+                  </p>
                 </div>
               </div>
 
@@ -652,6 +757,125 @@ export function AlertRulesDialog({ trigger }: AlertRulesDialogProps) {
                 >
                   <Save className="size-4" />
                   <span>Save Business Thresholds</span>
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* TAB 5: Server Polling & Alert Policy */}
+            <TabsContent value="polling_policy" className="mt-0 space-y-4">
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Clock className="size-4 text-sky-400" />
+                      Server Polling & Alert Suppression Policy
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Dynamic server-enforced polling parameters served in &lt;0.1ms from Node.js memory cache.
+                    </p>
+                  </div>
+                  {pollingPolicy?.cacheTier && (
+                    <Badge variant="outline" className="text-[10px] font-mono text-sky-400 border-sky-500/30 bg-sky-500/10">
+                      {pollingPolicy.cacheTier}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. Active Time Window */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Active Telemetry Window
+                  </label>
+                  <select
+                    value={policyForm.activeWindow}
+                    onChange={(e) =>
+                      setPolicyForm((prev) => ({ ...prev, activeWindow: e.target.value }))
+                    }
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-xs focus:outline-hidden cursor-pointer"
+                  >
+                    {(pollingPolicy?.allowedWindows || ["15m", "1h", "6h", "24h"]).map((w) => (
+                      <option key={w} value={w}>
+                        {w} {w === "15m" ? "(Last 15 minutes)" : w === "1h" ? "(Last 1 hour)" : w === "6h" ? "(Last 6 hours)" : "(Last 24 hours)"}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">Server-enforced telemetry window</p>
+                </div>
+
+                {/* 2. Active Refresh Interval */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Active Polling Refresh Rate
+                  </label>
+                  <select
+                    value={policyForm.activeInterval}
+                    onChange={(e) =>
+                      setPolicyForm((prev) => ({ ...prev, activeInterval: e.target.value }))
+                    }
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-xs focus:outline-hidden cursor-pointer"
+                  >
+                    {(pollingPolicy?.allowedIntervals || ["5s", "15s", "30s", "Off"]).map((iv) => (
+                      <option key={iv} value={iv}>
+                        {iv} {iv === "5s" ? "(Realtime - 5s)" : iv === "15s" ? "(Normal - 15s)" : iv === "30s" ? "(Eco - 30s)" : "(Paused - Off)"}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">Minimum interval: {pollingPolicy?.minIntervalSeconds ?? 5}s</p>
+                </div>
+
+                {/* 3. Alert Suppression Cooldown */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-semibold text-foreground">
+                    5xx Email Alert Suppression Cooldown
+                  </label>
+                  <select
+                    value={policyForm.alertCooldownMinutes}
+                    onChange={(e) =>
+                      setPolicyForm((prev) => ({
+                        ...prev,
+                        alertCooldownMinutes: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-xs focus:outline-hidden cursor-pointer"
+                  >
+                    {(pollingPolicy?.allowedAlertCooldownMinutes || [5, 10, 15, 30, 60]).map((cd) => (
+                      <option key={cd} value={cd}>
+                        {cd} minutes ({cd >= 60 ? `${cd / 60} hour` : `${cd} mins`} suppression)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Suppresses repetitive alert emails during high-frequency 500 error spikes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Anti-Abuse notice & Timestamp */}
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+                <div className="flex items-center gap-1.5 font-medium text-foreground">
+                  <ShieldCheck className="size-3.5 text-emerald-500" />
+                  <span>Anti-Abuse Protection Active</span>
+                </div>
+                <p className="text-[11px]">
+                  Rogue or unapproved polling intervals (e.g. 100ms, 1s) are strictly rejected with 400 Bad Request by the Fastify engine.
+                </p>
+                {pollingPolicy?.updatedAt && (
+                  <p className="text-[10px] font-mono text-muted-foreground pt-1">
+                    Last policy update: {new Date(pollingPolicy.updatedAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={handleSavePolicy}
+                  disabled={isSavingPolicy}
+                  className="w-full sm:w-auto gap-2 bg-sky-600 hover:bg-sky-500 text-white cursor-pointer"
+                >
+                  <Save className={cn("size-4", isSavingPolicy && "animate-spin")} />
+                  <span>{isSavingPolicy ? "Updating Policy..." : "Save Polling & Alert Policy"}</span>
                 </Button>
               </div>
             </TabsContent>

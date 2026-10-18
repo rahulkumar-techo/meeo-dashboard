@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { AlertRulesDialog } from "./alert-rules-dialog"
+import { useObservabilityContext, parseIntervalToMs } from "@/context/observability-context"
 
 interface ObservabilityHeaderProps {
   timeRange: string
@@ -32,20 +33,8 @@ interface ObservabilityHeaderProps {
   activeNodesCount?: number
 }
 
-const TIME_RANGES = [
-  { value: "15m", label: "Last 15m" },
-  { value: "1h", label: "Last 1h" },
-  { value: "6h", label: "Last 6h" },
-  { value: "24h", label: "Last 24h" },
-]
-
-const REFRESH_OPTIONS = [
-  { value: 5000, label: "5s (Realtime)" },
-  { value: 15000, label: "15s (Normal)" },
-  { value: 30000, label: "30s (Eco)" },
-  { value: 60000, label: "60s (Slow)" },
-  { value: false, label: "Paused" },
-]
+const DEFAULT_WINDOWS = ["15m", "1h", "6h", "24h"]
+const DEFAULT_INTERVALS = ["5s", "15s", "30s", "Off"]
 
 export function ObservabilityHeader({
   timeRange,
@@ -54,8 +43,51 @@ export function ObservabilityHeader({
   onRefreshIntervalChange,
   isFetching,
   onRefresh,
-  activeNodesCount = 7,
+  activeNodesCount = 0,
 }: ObservabilityHeaderProps) {
+  const { pollingPolicy } = useObservabilityContext()
+
+  // Dynamically derive time ranges from server-enforced allowed windows
+  const allowedWindows = pollingPolicy?.allowedWindows?.length
+    ? pollingPolicy.allowedWindows
+    : DEFAULT_WINDOWS
+
+  const timeRanges = React.useMemo(() => {
+    const labels: Record<string, string> = {
+      "15m": "Last 15m",
+      "1h": "Last 1h",
+      "6h": "Last 6h",
+      "24h": "Last 24h",
+    }
+    return allowedWindows.map((w) => ({
+      value: w,
+      label: labels[w] || `Last ${w}`,
+    }))
+  }, [allowedWindows])
+
+  // Dynamically derive refresh interval options from server-enforced allowed intervals
+  const allowedIntervals = pollingPolicy?.allowedIntervals?.length
+    ? pollingPolicy.allowedIntervals
+    : DEFAULT_INTERVALS
+
+  const refreshOptions = React.useMemo(() => {
+    return allowedIntervals.map((iv) => {
+      const ms = parseIntervalToMs(iv)
+      let label = iv
+      if (iv === "5s") label = "5s (Realtime)"
+      else if (iv === "15s") label = "15s (Normal)"
+      else if (iv === "30s") label = "30s (Eco)"
+      else if (iv.toLowerCase() === "off") label = "Paused (Off)"
+      else if (ms !== false) label = `${iv} (${Math.round(ms / 1000)}s)`
+
+      return {
+        value: ms,
+        raw: iv,
+        label,
+      }
+    })
+  }, [allowedIntervals])
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card/95 to-indigo-950/20 p-5 shadow-sm">
       {/* Subtle background glow */}
@@ -81,6 +113,16 @@ export function ObservabilityHeader({
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Cluster Operational
                 </Badge>
+                {pollingPolicy?.cacheTier && (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 border-indigo-500/30 bg-indigo-500/10 text-indigo-400 font-mono text-[10px] hidden sm:inline-flex"
+                    title={`Server Polling Policy (${pollingPolicy.cacheTier})`}
+                  >
+                    <Radio className="size-2.5 text-indigo-400" />
+                    {pollingPolicy.cacheTier}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
                 <span className="flex items-center gap-1">
@@ -102,7 +144,7 @@ export function ObservabilityHeader({
           {/* Time Range Selector */}
           <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-background/80 p-0.5 text-xs">
             <Clock className="size-3.5 text-muted-foreground ml-2" />
-            {TIME_RANGES.map((r) => (
+            {timeRanges.map((r) => (
               <button
                 key={r.value}
                 type="button"
@@ -135,7 +177,7 @@ export function ObservabilityHeader({
               }}
               className="bg-transparent text-xs text-foreground font-medium outline-none cursor-pointer pr-1"
             >
-              {REFRESH_OPTIONS.map((opt) => (
+              {refreshOptions.map((opt) => (
                 <option key={String(opt.value)} value={String(opt.value)}>
                   {opt.label}
                 </option>

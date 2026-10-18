@@ -95,6 +95,29 @@ export interface SystemHostInfo {
   nodeVersion: string
   v8Version: string
   pid: number
+  loadAverages?: number[]
+  heapLimitBytes?: number
+  disk?: {
+    totalBytes: number
+    usedBytes: number
+    freeBytes: number
+    usedPercent: number
+    status?: string
+    mount?: string
+  }
+  network?: {
+    interfacesCount?: number
+    activeSockets?: number
+    primaryIp?: string
+  }
+  threads?: {
+    count?: number
+    active?: number
+  }
+  processHandles?: {
+    activeHandles?: number
+    activeRequests?: number
+  }
 }
 
 /**
