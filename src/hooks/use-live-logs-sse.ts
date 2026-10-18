@@ -31,7 +31,7 @@ export function useLiveLogsSSE({
   transport: initialTransport = "socket",
 }: UseLiveLogsOptions = {}) {
   const { accessToken, isAuthenticated } = useUserStore()
-  const { socket, isConnected: isSocketConnected } = useSocket()
+  const { socket } = useSocket()
 
   const [transport, setTransport] = useState<LogStreamTransport>(initialTransport)
   const [logs, setLogs] = useState<NormalizedLogEntry[]>([])
@@ -40,8 +40,11 @@ export function useLiveLogsSSE({
   const [error, setError] = useState<string | null>(null)
 
   const eventSourceRef = useRef<EventSource | null>(null)
-  const isPausedRef = useRef(false)
-  isPausedRef.current = isPaused
+  const isPausedRef = useRef(isPaused)
+
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
 
   const appendLog = useCallback((entry: NormalizedLogEntry) => {
     if (isPausedRef.current) return

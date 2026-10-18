@@ -35,13 +35,13 @@ export function QueueHealthCards({
   selectedCategory = "ALL",
   onSelectCategory,
   showAllCard = true,
-  totalJobsCount,
   className,
 }: QueueHealthCardsProps) {
-  if (!queues || queues.length === 0) return null
-
   // Calculate cluster-wide totals for the master card
   const totals = React.useMemo(() => {
+    if (!queues || queues.length === 0) {
+      return { waiting: 0, active: 0, completed: 0, failed: 0 }
+    }
     return queues.reduce(
       (acc, q) => ({
         waiting: acc.waiting + (q.waiting || 0),
@@ -52,6 +52,8 @@ export function QueueHealthCards({
       { waiting: 0, active: 0, completed: 0, failed: 0 }
     )
   }, [queues])
+
+  if (!queues || queues.length === 0) return null
 
   const isAllSelected = selectedCategory === "ALL" || !selectedCategory
 
