@@ -52,7 +52,9 @@ export const useUserStore = create<UserState>()(
       },
 
       setUser: (user) => {
-        set({ user })
+        set((state) => ({
+          user: state.user ? { ...state.user, ...user } : user,
+        }))
       },
 
       setLoading: (isLoading) => {

@@ -181,7 +181,8 @@ export function parsePrometheusText(text: string): ServerMetricsData {
       const status = parseInt(statusStr, 10)
       const type: "2xx" | "3xx" | "4xx" | "5xx" =
         status >= 500 ? "5xx" : status >= 400 ? "4xx" : status >= 300 ? "3xx" : "2xx"
-      if (status >= 400) {
+      // 401 Unauthorized is an auth/security event, not an application error rate
+      if (status >= 400 && status !== 401) {
         routeErrors += count
         totalErrors += count
       }

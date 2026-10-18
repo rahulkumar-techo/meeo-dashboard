@@ -59,7 +59,36 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationFn: async (payload: LoginPayload) => {
-      return await authService.login(payload)
+      const res = await authService.login(payload)
+      const data = res?.data || (res as any)
+      const accessToken = data?.accessToken
+      let user = data?.user || (data?.email ? data : null)
+
+      if (accessToken) {
+        // Pre-set token in store so request interceptor attaches it
+        setAuth(user, accessToken)
+
+        try {
+          const meRes = await authService.getMe()
+          if (meRes.success && meRes.data) {
+            user = {
+              ...user,
+              ...meRes.data,
+            }
+          }
+        } catch {
+          // Graceful fallback
+        }
+      }
+
+      return {
+        ...res,
+        data: {
+          ...data,
+          user,
+          accessToken,
+        },
+      }
     },
     onSuccess: (response: any) => {
       const data = response?.data || response
@@ -69,10 +98,12 @@ export function useLoginMutation() {
       if (user) {
         setAuth(user, accessToken)
         queryClient.setQueryData(AUTH_QUERY_KEY, user)
+        queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
       }
     },
   })
 }
+
 /**
  * Mutation for user login with google.
  */
@@ -82,7 +113,35 @@ export function useSignInWithGoogle() {
 
   return useMutation({
     mutationFn: async (payload: GoogleSignInPayload) => {
-      return await authService.SignInWithGoogle(payload)
+      const res = await authService.SignInWithGoogle(payload)
+      const data = res?.data || (res as any)
+      const accessToken = data?.accessToken
+      let user = data?.user || (data?.email ? data : null)
+
+      if (accessToken) {
+        setAuth(user, accessToken)
+
+        try {
+          const meRes = await authService.getMe()
+          if (meRes.success && meRes.data) {
+            user = {
+              ...user,
+              ...meRes.data,
+            }
+          }
+        } catch {
+          // Graceful fallback
+        }
+      }
+
+      return {
+        ...res,
+        data: {
+          ...data,
+          user,
+          accessToken,
+        },
+      }
     },
     onSuccess: (response: any) => {
       const data = response?.data || response
@@ -92,6 +151,7 @@ export function useSignInWithGoogle() {
       if (user) {
         setAuth(user, accessToken)
         queryClient.setQueryData(AUTH_QUERY_KEY, user)
+        queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
       }
     },
   })

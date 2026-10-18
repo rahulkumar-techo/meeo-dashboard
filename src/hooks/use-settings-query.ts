@@ -20,13 +20,14 @@ export const SETTINGS_QUERY_KEYS = {
 /**
  * Hook to retrieve full platform system settings
  */
-export function useSettingsQuery() {
+export function useSettingsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: SETTINGS_QUERY_KEYS.current(),
     queryFn: async () => {
       const res = await settingsService.getSettings()
       return res.data
     },
+    enabled: options?.enabled ?? true,
     staleTime: 30 * 1000, // 30s cache
   })
 }

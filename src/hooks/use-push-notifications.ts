@@ -24,6 +24,7 @@ import {
   useRegisterDeviceMutation,
   useUnregisterDeviceMutation,
 } from "@/hooks/use-notification-query"
+import { useUserStore } from "@/store/user.store"
 import { notificationAudio } from "@/lib/notification-sound"
 import { getApiErrorMessage } from "@/lib/utils"
 
@@ -39,13 +40,14 @@ interface ForegroundNotificationPayload {
 }
 
 export function usePushNotifications() {
+  const { isAuthenticated } = useUserStore()
   const [permission, setPermission] = React.useState<PushPermissionStatus>("default")
   const [cachedToken, setCachedToken] = React.useState<string | null>(null)
   const [isProcessing, setIsProcessing] = React.useState(false)
 
   const registerDeviceMutation = useRegisterDeviceMutation()
   const unregisterDeviceMutation = useUnregisterDeviceMutation()
-  const devicesQuery = useRegisteredDevicesQuery()
+  const devicesQuery = useRegisteredDevicesQuery(Boolean(isAuthenticated))
 
   // Initialize permission state, pre-warm SW, and setup foreground listener
   React.useEffect(() => {
@@ -83,8 +85,8 @@ export function usePushNotifications() {
       })
     })
 
-    // If permission was granted, validate token silently in background without blocking UI
-    if (currentPerm === "granted") {
+    // If permission was granted and user is authenticated, validate token silently in background without blocking UI
+    if (currentPerm === "granted" && isAuthenticated) {
       requestWebPushToken(false)
         .then((freshToken) => {
           if (freshToken) {
@@ -106,7 +108,7 @@ export function usePushNotifications() {
     return () => {
       unsubscribe()
     }
-  }, [])
+  }, [isAuthenticated])
 
   /**
    * Request push permission, get/reuse local token, and sync with backend.

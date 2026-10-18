@@ -21,66 +21,155 @@ export const apiClient = axios.create({
 
 // Variables for managing in-flight token refresh and request queue
 let isRefreshing = false
+let refreshPromise: Promise<{ success: boolean; accessToken: string }> | null = null
 let failedQueue: Array<{
-  resolve: () => void
+  resolve: (token: string) => void
   reject: (error: unknown) => void
 }> = []
 
-const processQueue = (error: unknown) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
-    } else {
-      prom.resolve()
+    } else if (token) {
+      prom.resolve(token)
     }
   })
   failedQueue = []
 }
 
-/**
- * Executes a token refresh attempt against POST /auth/refresh via HttpOnly cookies.
- */
-export async function executeSilentRefresh(): Promise<{ success: boolean }> {
-  // Directly hit the backend refresh route
-  const response = await axios.post<ApiResponse<{ accessToken: string }>>(
-    `${API_BASE_URL}/auth/refresh`,
-    {},
-    {
-      withCredentials: true,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  )
-
-  if (response.status >= 200 && response.status < 300 && response.data?.data?.accessToken) {
-    // 🔥 FIXED: Store the new fresh access token directly in the client state memory
-    const newAccessToken = response.data.data.accessToken;
-    
-    // Update access token in the client-side user store
-    if ((useUserStore.getState() as any).setAccessToken) {
-      (useUserStore.getState() as any).setAccessToken(newAccessToken);
-    } else {
-      // Fallback: If you only store full user state, patch it accordingly
-      const currentStore = useUserStore.getState() as any;
-      useUserStore.setState({ ...currentStore, accessToken: newAccessToken });
-    }
-
-    return { success: true }
+function setAuthHeader(config: InternalAxiosRequestConfig, token: string) {
+  if (!config.headers) return
+  if (typeof (config.headers as any).set === "function") {
+    config.headers.set("Authorization", `Bearer ${token}`)
+  } else {
+    config.headers["Authorization"] = `Bearer ${token}`
   }
-
-  throw new Error("Invalid response received from refresh endpoint")
 }
 
-// Request Interceptor: Attach Access Token from State & Handle FormData
+/**
+ * Executes a token refresh attempt against POST /auth/refresh via HttpOnly cookies.
+ * Deduplicates concurrent refresh attempts using a shared promise.
+ */
+export async function executeSilentRefresh(): Promise<{ success: boolean; accessToken: string }> {
+  if (refreshPromise) {
+    return refreshPromise
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await axios.post<ApiResponse<any>>(
+        `${API_BASE_URL}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      const token =
+        response.data?.data?.accessToken ||
+        (response.data as any)?.accessToken ||
+        (response.data as any)?.token
+
+      if (response.status >= 200 && response.status < 300 && token) {
+        const refreshedUser = response.data?.data?.user || (response.data as any)?.user
+
+        useUserStore.setState((prev) => ({
+          ...prev,
+          accessToken: token,
+          isAuthenticated: true,
+          ...(refreshedUser ? { user: { ...prev.user, ...refreshedUser } } : {}),
+        }))
+
+        return { success: true, accessToken: token }
+      }
+
+      throw new Error("Invalid response received from refresh endpoint")
+    } finally {
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
+}
+
+function isAuthEndpoint(url?: string): boolean {
+  if (!url) return false
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/verify-otp") ||
+    url.includes("/auth/reset-password")
+  )
+}
+
+function decodeBase64(str: string): string {
+  try {
+    if (typeof atob === "function") {
+      return atob(str)
+    }
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(str, "base64").toString("utf-8")
+    }
+  } catch {
+    return ""
+  }
+  return ""
+}
+
+/**
+ * Extracts expiration timestamp (exp in seconds) from a JWT token.
+ */
+export function parseJwtExp(token: string): number | null {
+  try {
+    if (!token || typeof token !== "string") return null
+    const parts = token.split(".")
+    if (parts.length < 2) return null
+    const base64Url = parts[1]
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+    const raw = decodeBase64(base64)
+    if (!raw) return null
+    const payload = JSON.parse(raw)
+    return typeof payload.exp === "number" ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Checks if a JWT token will expire within the given buffer window (default 60s).
+ */
+export function isTokenExpiringSoon(token: string, bufferSeconds = 60): boolean {
+  const exp = parseJwtExp(token)
+  if (!exp) return false
+  const nowInSeconds = Math.floor(Date.now() / 1000)
+  return exp - nowInSeconds <= bufferSeconds
+}
+
+// Request Interceptor: Pre-check token expiration (< 60s) & attach Access Token
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // 🔥 FIXED: Pull access token from state memory and attach to active headers
-    const state = useUserStore.getState() as any;
-    const token = state?.accessToken;
+  async (config: InternalAxiosRequestConfig) => {
+    const state = useUserStore.getState() as any
+    let token = state?.accessToken
+
+    // Pre-check: If token is expiring within 60s, refresh first before sending request
+    if (token && !isAuthEndpoint(config.url) && isTokenExpiringSoon(token, 60)) {
+      try {
+        const refreshResult = await executeSilentRefresh()
+        if (refreshResult?.accessToken) {
+          token = refreshResult.accessToken
+        }
+      } catch {
+        // If pre-emptive refresh fails, proceed with existing token
+      }
+    }
 
     if (token && config.headers) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+      setAuthHeader(config, token)
     }
 
     // When payload is FormData, delete Content-Type so browser/Axios sets multipart/form-data with boundary
@@ -109,22 +198,18 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    const isAuthEndpoint =
-      originalRequest.url?.includes("/auth/login") ||
-      originalRequest.url?.includes("/auth/register") ||
-      originalRequest.url?.includes("/auth/refresh") ||
-      originalRequest.url?.includes("/auth/verify-otp") ||
-      originalRequest.url?.includes("/auth/reset-password")
+    const isAuth = isAuthEndpoint(originalRequest.url)
 
     // Handle 401 Unauthorized for non-auth requests
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuth) {
       if (isRefreshing) {
         // Queue the request until token refresh completes
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
-          .then(() => {
+          .then((freshToken) => {
             originalRequest._retry = true
+            setAuthHeader(originalRequest, freshToken)
             return apiClient(originalRequest)
           })
           .catch((err) => Promise.reject(err))
@@ -134,18 +219,14 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        await executeSilentRefresh()
-        processQueue(null)
-        
-        // 🔥 FIXED: Refresh call hone ke baad request header par naya fresh token explicitly overwrite karein
-        const updatedState = useUserStore.getState() as any;
-        if (updatedState?.accessToken && originalRequest.headers) {
-          originalRequest.headers["Authorization"] = `Bearer ${updatedState.accessToken}`;
-        }
+        const { accessToken } = await executeSilentRefresh()
+        processQueue(null, accessToken)
+
+        setAuthHeader(originalRequest, accessToken)
 
         return apiClient(originalRequest)
       } catch (refreshError: any) {
-        processQueue(refreshError)
+        processQueue(refreshError, null)
 
         useUserStore.getState().logout()
 
@@ -169,7 +250,7 @@ apiClient.interceptors.response.use(
     }
 
     // If request already retried after refresh and still got 401
-    if (error.response?.status === 401 && !isAuthEndpoint) {
+    if (error.response?.status === 401 && !isAuth && !isRefreshing) {
       useUserStore.getState().logout()
       if (
         typeof window !== "undefined" &&

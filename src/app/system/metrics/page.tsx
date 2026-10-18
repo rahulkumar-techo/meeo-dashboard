@@ -1,134 +1,225 @@
 /**
  * @file page.tsx
- * @description Fastify Server Status, Prometheus Metrics & Network Ingress Console.
- * Modular architecture with interactive Recharts graphs, route traffic matrix, and metric descriptions.
+ * @description Unified Server Status & Observability Command Center.
+ * Integrates directly with the dedicated ObservabilitySidebar via useObservabilityContext.
+ * Features Prometheus telemetry charts, React Flow architecture topology, Bull Board queue monitoring,
+ * OpenTelemetry distributed trace waterfalls, and Loki live log streamer.
  */
 
 "use client"
 
 import * as React from "react"
-import { Gauge, Network, HardDrive, Activity, Sliders, FileCode } from "lucide-react"
-import { useServerMetricsQuery } from "@/hooks/use-server-metrics"
-import { cn } from "@/lib/utils"
 import {
-  ServerMetricsHeader,
-  ServerKpiGrid,
+  ObservabilityHeader,
+  MetricsKpiGrid,
+  MetricChartCard,
+  TopologyFlowGraph,
+  BullBoardQueueMonitor,
+  OpenTelemetryTraceViewer,
+  LiveLogTerminal,
+} from "@/components/observability"
+import {
   SystemInfoCard,
   V8HeapSpacesChart,
   EventLoopLatencyChart,
   HandlesGcMatrix,
   RawPrometheusViewer,
-  MetricsGlossaryCard,
-  EndpointTrafficChart,
-  EndpointLatencyChart,
   EndpointTrafficTable,
-  EndpointMetricsGlossary,
 } from "@/components/server-metrics"
+import { useObservabilityContext } from "@/context/observability-context"
 
 export default function ServerMetricsPage() {
-  const [refreshInterval, setRefreshInterval] = React.useState<number | false>(60000)
-  const [activeTab, setActiveTab] = React.useState<"network" | "matrix" | "heap" | "eventloop" | "handles" | "raw">("network")
-
-  const { data: metrics, isFetching, refetch } = useServerMetricsQuery({
-    refetchInterval: refreshInterval,
-  })
+  const {
+    activeTab,
+    timeRange,
+    setTimeRange,
+    refreshInterval,
+    setRefreshInterval,
+    isFetching,
+    handleGlobalRefresh,
+    correlatedLogQuery,
+    handleCorrelateLogs,
+    handleViewMetrics,
+    httpRateData,
+    errorRateData,
+    latencyData,
+    cpuData,
+    memoryData,
+    eventLoopData,
+    topologyNodes,
+    topologyEdges,
+    queues,
+    recentJobs,
+    traces,
+    hostMetrics,
+    activeNodesCount,
+    configs,
+  } = useObservabilityContext()
 
   return (
-    <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1600px] mx-auto pb-16">
-      {/* 1. Header Bar with Live Beacon, Node Version & Interval Controls */}
-      <ServerMetricsHeader
-        runtime={metrics?.runtime}
+    <div className="flex-1 space-y-5 p-2 sm:p-4 lg:p-6 max-w-[1600px] mx-auto pb-16">
+      {/* 1. Global Header Bar with Live Beacon & Cluster Statistics */}
+      <ObservabilityHeader
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
         refreshInterval={refreshInterval}
         onRefreshIntervalChange={setRefreshInterval}
         isFetching={isFetching}
-        onRefresh={() => refetch()}
+        onRefresh={handleGlobalRefresh}
+        activeNodesCount={activeNodesCount}
       />
 
-      {/* 2. Top-Level Summary Metric KPI Grid */}
-      <ServerKpiGrid metrics={metrics} />
+      {/* 2. Top-Level Summary Metric KPI Grid (100% Real Instant & Range Metrics) */}
+      <MetricsKpiGrid
+        httpRateData={httpRateData}
+        errorRateData={errorRateData}
+        latencyData={latencyData}
+        cpuData={cpuData}
+        memoryData={memoryData}
+        eventLoopData={eventLoopData}
+        hostMetrics={hostMetrics}
+        configs={configs}
+        isLoading={!httpRateData && isFetching}
+      />
 
-      {/* 3. Host System Hardware, Processor & Physical RAM Specifications */}
-      <SystemInfoCard system={metrics?.system} memory={metrics?.memory} cpu={metrics?.cpu} />
+      {/* 3. Active Module Display (Controlled by dedicated ObservabilitySidebar) */}
+      {/* Section A: Metrics & Time-Series Charts */}
+      {activeTab === "overview" && (
+        <div className="space-y-4 animate-in fade-in-50 duration-200">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <MetricChartCard
+              title="HTTP Request Rate"
+              description="Real-time ingress requests per second across all routes"
+              unit="req/s"
+              color="blue"
+              data={httpRateData}
+              isLoading={!httpRateData && isFetching}
+            />
 
-      {/* 4. Tab Navigation Switcher */}
-      <div className="flex items-center justify-between border-b border-border/70 pb-2">
-        <div className="flex rounded-lg border border-border/80 bg-muted/40 p-0.5 text-xs flex-wrap gap-1">
-          {(
-            [
-              { key: "network", label: "Network Endpoints", icon: Network },
-              { key: "matrix", label: "Overview Matrix", icon: Gauge },
-              { key: "heap", label: "V8 Heap Spaces", icon: HardDrive },
-              { key: "eventloop", label: "Event Loop Latency", icon: Activity },
-              { key: "handles", label: "Handles & GC", icon: Sliders },
-              { key: "raw", label: "Raw Prometheus", icon: FileCode },
-            ] as const
-          ).map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
-                  activeTab === tab.key
-                    ? "bg-indigo-600 text-white shadow-xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon className="size-3.5" />
-                <span>{tab.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        <span className="text-[11px] font-mono text-muted-foreground hidden sm:block">
-          Last polled: {new Date().toLocaleTimeString()}
-        </span>
-      </div>
-
-      {/* 5. Tab Content Views */}
-      {activeTab === "network" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-6">
-              <EndpointTrafficChart endpoints={metrics?.httpTraffic?.endpoints || []} />
-            </div>
-            <div className="lg:col-span-6">
-              <EndpointLatencyChart endpoints={metrics?.httpTraffic?.endpoints || []} />
-            </div>
+            <MetricChartCard
+              title="5xx Error Percentage"
+              description="Failed internal server responses relative to total traffic"
+              unit="%"
+              color="rose"
+              data={errorRateData}
+              isLoading={!errorRateData && isFetching}
+            />
           </div>
-          <EndpointTrafficTable endpoints={metrics?.httpTraffic?.endpoints || []} />
-          <EndpointMetricsGlossary />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <MetricChartCard
+              title="P95 Request Latency"
+              description="95th percentile response duration experienced by clients"
+              unit="ms"
+              color="indigo"
+              data={latencyData}
+              isLoading={!latencyData && isFetching}
+            />
+
+            <MetricChartCard
+              title="Node.js Process CPU Usage"
+              description="Kernel and user space processor utilization"
+              unit="%"
+              color="purple"
+              data={cpuData}
+              isLoading={!cpuData && isFetching}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <MetricChartCard
+              title="Resident Memory (RSS)"
+              description="Non-swapped physical memory assigned to the Fastify process"
+              unit="MB"
+              color="emerald"
+              data={memoryData}
+              isLoading={!memoryData && isFetching}
+            />
+
+            <MetricChartCard
+              title="Event Loop Lag"
+              description="P95 delay in asynchronous queue dispatch and tick execution"
+              unit="ms"
+              color="amber"
+              data={eventLoopData}
+              isLoading={!eventLoopData && isFetching}
+            />
+          </div>
+
+          {/* Network Ingress Endpoints Breakdown */}
+          {hostMetrics?.httpTraffic?.endpoints && hostMetrics.httpTraffic.endpoints.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <EndpointTrafficTable endpoints={hostMetrics.httpTraffic.endpoints} />
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab === "matrix" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-6">
-              <EndpointTrafficChart endpoints={metrics?.httpTraffic?.endpoints || []} />
-            </div>
-            <div className="lg:col-span-6">
-              <EventLoopLatencyChart eventLoop={metrics?.eventLoop} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <V8HeapSpacesChart memory={metrics?.memory} className="lg:col-span-6" />
-            <HandlesGcMatrix gc={metrics?.gc} handles={metrics?.handles} className="lg:col-span-6" />
-          </div>
-          <MetricsGlossaryCard />
+      {/* Section B: Service Flow Topology (React Flow Reference) */}
+      {activeTab === "topology" && (
+        <div className="animate-in fade-in-50 duration-200">
+          <TopologyFlowGraph
+            nodes={topologyNodes}
+            edges={topologyEdges}
+            hostMetrics={hostMetrics}
+            isLoading={isFetching}
+            onCorrelateLogs={handleCorrelateLogs}
+            onViewMetrics={handleViewMetrics}
+          />
         </div>
       )}
 
-      {activeTab === "heap" && <V8HeapSpacesChart memory={metrics?.memory} />}
+      {/* Section C: Bull Board Queue Engine (Bull Board Reference) */}
+      {activeTab === "queues" && (
+        <div className="animate-in fade-in-50 duration-200">
+          <BullBoardQueueMonitor
+            queues={queues}
+            recentJobs={recentJobs}
+            isLoading={isFetching}
+          />
+        </div>
+      )}
 
-      {activeTab === "eventloop" && <EventLoopLatencyChart eventLoop={metrics?.eventLoop} />}
+      {/* Section D: OpenTelemetry Traces & Spans (OpenTelemetry Reference) */}
+      {activeTab === "traces" && (
+        <div className="animate-in fade-in-50 duration-200">
+          <OpenTelemetryTraceViewer
+            traces={traces}
+            isLoading={isFetching}
+            onCorrelateLogs={handleCorrelateLogs}
+          />
+        </div>
+      )}
 
-      {activeTab === "handles" && <HandlesGcMatrix gc={metrics?.gc} handles={metrics?.handles} />}
+      {/* Section E: Loki Live Logs (Loki Reference) */}
+      {activeTab === "logs" && (
+        <div className="animate-in fade-in-50 duration-200">
+          <LiveLogTerminal initialQuery={correlatedLogQuery} />
+        </div>
+      )}
 
-      {activeTab === "raw" && <RawPrometheusViewer rawText={metrics?.rawPrometheus} />}
+      {/* Section F: V8 Heap & Hardware Specifications */}
+      {activeTab === "runtime" && (
+        <div className="space-y-4 animate-in fade-in-50 duration-200">
+          <SystemInfoCard
+            system={hostMetrics?.system}
+            memory={hostMetrics?.memory}
+            cpu={hostMetrics?.cpu}
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <V8HeapSpacesChart memory={hostMetrics?.memory} className="lg:col-span-6" />
+            <EventLoopLatencyChart eventLoop={hostMetrics?.eventLoop} className="lg:col-span-6" />
+          </div>
+          <HandlesGcMatrix gc={hostMetrics?.gc} handles={hostMetrics?.handles} />
+        </div>
+      )}
+
+      {/* Section G: Raw Prometheus Metrics */}
+      {activeTab === "raw" && (
+        <div className="animate-in fade-in-50 duration-200">
+          <RawPrometheusViewer rawText={hostMetrics?.rawPrometheus} />
+        </div>
+      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
 import { notificationAudio } from "@/lib/notification-sound"
+import { useUserStore } from "@/store/user.store"
 import type {
   NotificationSendPayload,
   RegisterDevicePayload,
@@ -30,13 +31,16 @@ export const NOTIFICATION_QUERY_KEYS = {
  * Hook to fetch unread notification count for the authenticated user
  * Endpoint: GET /api/v1/notifications/unread-count
  */
-export function useUnreadCountQuery() {
+export function useUnreadCountQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.unreadCount(),
     queryFn: async () => {
       const response = await notificationService.getUnreadCount()
       return response.data?.unreadCount ?? 0
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 30 * 1000,
   })
 }
@@ -45,13 +49,16 @@ export function useUnreadCountQuery() {
  * Hook to fetch user's personal in-app notification feed
  * Endpoint: GET /api/v1/notifications?limit=10
  */
-export function useMyNotificationsQuery(limit = 10) {
+export function useMyNotificationsQuery(limit = 10, enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.myFeed(limit),
     queryFn: async () => {
       const response = await notificationService.getMyNotifications(limit)
       return response.data
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 15 * 1000,
   })
 }
@@ -97,13 +104,16 @@ export function useMarkAllAsReadMutation() {
  * Hook to fetch aggregated admin notification KPIs & channel metrics
  * Endpoint: GET /api/v1/notifications/admin/overview
  */
-export function useAdminNotificationOverviewQuery() {
+export function useAdminNotificationOverviewQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.adminOverview(),
     queryFn: async () => {
       const response = await notificationService.getAdminOverview()
       return response.data
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 30 * 1000,
   })
 }
@@ -112,13 +122,16 @@ export function useAdminNotificationOverviewQuery() {
  * Hook to query all platform notifications with filters
  * Endpoint: GET /api/v1/notifications/admin
  */
-export function useAdminNotificationsQuery(filters?: AdminNotificationFilters) {
+export function useAdminNotificationsQuery(filters?: AdminNotificationFilters, enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.adminList(filters),
     queryFn: async () => {
       const response = await notificationService.listAllNotifications(filters)
       return response.data
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 15 * 1000,
   })
 }
@@ -160,13 +173,16 @@ export function useRetryNotificationMutation() {
  * Hook to fetch active registered devices for the current user
  * Endpoint: GET /api/v1/notifications/devices
  */
-export function useRegisteredDevicesQuery() {
+export function useRegisteredDevicesQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.devices(),
     queryFn: async () => {
       const response = await notificationService.listDevices()
       return response.data?.devices ?? []
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 60 * 1000,
   })
 }
@@ -175,13 +191,16 @@ export function useRegisteredDevicesQuery() {
  * Hook to fetch notification preferences for the current user
  * Endpoint: GET /api/v1/notifications/preferences
  */
-export function useNotificationPreferencesQuery() {
+export function useNotificationPreferencesQuery(enabled = true) {
+  const { isAuthenticated } = useUserStore()
+
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.preferences(),
     queryFn: async () => {
       const response = await notificationService.getPreferences()
       return response.data
     },
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 60 * 1000,
   })
 }

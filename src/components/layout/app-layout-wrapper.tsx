@@ -8,11 +8,16 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useUserStore } from "@/store/user.store"
 import { useCurrentUserQuery } from "@/hooks/use-auth-query"
 import { authService } from "@/services/auth.service"
+import { executeSilentRefresh } from "@/config/client"
 import { usePermissions } from "@/hooks/use-permissions"
 import { NoAccessView } from "@/components/auth/no-access-view"
 import { AccessDeniedView } from "@/components/auth/access-denied-view"
 import { SettingsSidebar } from "@/components/settings/settings-sidebar"
 import { SettingsProvider } from "@/context/settings-context"
+import { TaxSidebar } from "@/components/tax/tax-sidebar"
+import { TaxEngineProvider } from "@/context/tax-context"
+import { ObservabilitySidebar } from "@/components/observability/observability-sidebar"
+import { ObservabilityProvider } from "@/context/observability-context"
 import { Loader2 } from "lucide-react"
 
 const AUTH_ROUTES = [
@@ -32,6 +37,7 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const router = useRouter()
   const { isAuthenticated, hasHydrated } = useUserStore()
   const [mountedHydrated, setMountedHydrated] = React.useState(false)
+  const [isCheckingSession, setIsCheckingSession] = React.useState(true)
 
   // Permission & RBAC state
   const {
@@ -55,12 +61,39 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const isHydrated = hasHydrated || mountedHydrated
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname?.startsWith(route))
 
+  // Attempt initial silent refresh if store is hydrated but user is not marked authenticated
+  // (e.g. fresh browser tab with HttpOnly refresh cookie)
+  React.useEffect(() => {
+    if (!isHydrated) return
+
+    if (isAuthenticated || isAuthRoute) {
+      setIsCheckingSession(false)
+      return
+    }
+
+    let isCancelled = false
+
+    executeSilentRefresh()
+      .catch(() => {
+        // No valid session cookie, user needs to log in
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsCheckingSession(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isHydrated, isAuthenticated, isAuthRoute])
+
   // Fetch / update current user profile via TanStack Query when authenticated
-  useCurrentUserQuery()
+  const { isLoading: isProfileLoading, isFetching: isProfileFetching } = useCurrentUserQuery()
 
   // Route Protection Guard
   React.useEffect(() => {
-    if (!isHydrated) return
+    if (!isHydrated || isCheckingSession) return
 
     if (isAuthRoute) {
       if (isAuthenticated) {
@@ -72,10 +105,10 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
         router.replace(`/login${redirectParam}`)
       }
     }
-  }, [isHydrated, isAuthRoute, isAuthenticated, pathname, router])
+  }, [isHydrated, isCheckingSession, isAuthRoute, isAuthenticated, pathname, router])
 
-  // While store is rehydrating from localStorage, show a clean splash loader
-  if (!isHydrated) {
+  // While store is rehydrating from localStorage or verifying session, show a clean splash loader
+  if (!isHydrated || (!isAuthRoute && isCheckingSession)) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
@@ -111,39 +144,69 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
     )
   }
 
-  // If user is authenticated but possesses ZERO permissions (and is not super admin)
-  if (hasNoPermissions) {
+  // If profile is actively loading from server, show a lightweight splash rather than premature blocking card
+  if (hasNoPermissions && (isProfileLoading || isProfileFetching)) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+          <p className="text-xs font-medium text-muted-foreground animate-pulse">
+            Verifying administrative permissions...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // If user is definitively authenticated but possesses zero permissions and is not super admin
+  if (hasNoPermissions && !isSuperAdmin) {
     return <NoAccessView />
   }
 
   // Check if current route is allowed for this user
-  const isRouteAllowed = canAccessRoute(pathname || "/")
+  const isRouteAllowed = isSuperAdmin || canAccessRoute(pathname || "/")
   const requiredPerm = getRouteRequiredPermission(pathname || "/")
   const isSettingsRoute = pathname?.startsWith("/admin/settings")
+  const isTaxRoute = pathname?.startsWith("/finance/tax") || pathname?.startsWith("/tax")
+  const isObservabilityRoute =
+    pathname?.startsWith("/system/metrics") ||
+    pathname?.startsWith("/admin/observability") ||
+    pathname?.startsWith("/server-status") ||
+    pathname?.startsWith("/metrics")
 
-  // Authenticated Dashboard layout
-  const layoutContent = (
-    <SidebarProvider>
-      {isSettingsRoute ? <SettingsSidebar /> : <AppSidebar />}
-      <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
-        <DashboardHeader />
-        <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
-          {isRouteAllowed ? (
-            children
-          ) : (
-            <AccessDeniedView
-              requiredPermission={requiredPerm}
-              pathname={pathname}
-            />
-          )}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+  // Authenticated Dashboard layout with persistent providers
+  return (
+    <SettingsProvider>
+      <TaxEngineProvider>
+        <ObservabilityProvider>
+          <SidebarProvider>
+            {isSettingsRoute ? (
+              <SettingsSidebar />
+            ) : isTaxRoute ? (
+              <TaxSidebar />
+            ) : isObservabilityRoute ? (
+              <ObservabilitySidebar />
+            ) : (
+              <AppSidebar />
+            )}
+            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
+              <DashboardHeader />
+              <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
+                {isRouteAllowed ? (
+                  children
+                ) : (
+                  <AccessDeniedView
+                    requiredPermission={requiredPerm}
+                    pathname={pathname}
+                  />
+                )}
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        </ObservabilityProvider>
+      </TaxEngineProvider>
+    </SettingsProvider>
   )
-
-  if (isSettingsRoute) {
-    return <SettingsProvider>{layoutContent}</SettingsProvider>
-  }
-
-  return layoutContent
 }

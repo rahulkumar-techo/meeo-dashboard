@@ -7,6 +7,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -138,9 +139,9 @@ export function SettingsSidebar() {
       {/* 1. Header with Back Button & Title */}
       <SidebarHeader className="border-b border-border/60 p-3 space-y-3">
         <Button
+          render={<Link href="/" />}
           variant="outline"
           size="sm"
-          onClick={() => router.push("/")}
           className="w-full justify-start h-8.5 gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground border-border/80 bg-background/80 hover:bg-muted"
         >
           <ArrowLeft className="size-3.5 text-indigo-500" />

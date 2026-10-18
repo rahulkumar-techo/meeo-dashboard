@@ -33,26 +33,34 @@ export function getSocketServerUrl(): string {
  */
 export function getAdminSocket(accessToken: string): Socket {
   const url = getSocketServerUrl()
+  const cleanToken = accessToken.startsWith("Bearer ") ? accessToken : `Bearer ${accessToken}`
+  const rawToken = accessToken.replace(/^Bearer\s+/i, "")
 
   if (!socket) {
     socket = io(url, {
       path: "/socket.io",
-      auth: { token: `Bearer ${accessToken}` },
+      auth: {
+        token: cleanToken,
+        accessToken: rawToken,
+      },
+      extraHeaders: {
+        Authorization: cleanToken,
+      },
+      withCredentials: true,
       transports: ["websocket", "polling"],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: 15,
+      reconnectionDelay: 1000,
     })
   } else {
     // Update credentials if token changed
-    if (socket.auth && typeof socket.auth === "object") {
-      (socket.auth as { token?: string }).token = `Bearer ${accessToken}`
-    } else {
-      socket.auth = { token: `Bearer ${accessToken}` }
+    socket.auth = {
+      token: cleanToken,
+      accessToken: rawToken,
     }
 
-    if (!socket.connected && !socket.active) {
+    if (!socket.connected) {
       socket.connect()
     }
   }

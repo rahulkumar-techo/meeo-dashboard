@@ -31,7 +31,7 @@ export function ServerMetricsHeader({
 }: ServerMetricsHeaderProps) {
   return (
     <PageHeader
-      title="Server Status & System Metrics"
+      title="Observability & System Metrics"
       badge="PROMETHEUS /METRICS"
       badgeVariant="brand"
       description="Real-time telemetry monitoring for Node.js V8 runtime, process memory, event loop latency, and active handles."

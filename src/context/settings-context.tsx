@@ -7,6 +7,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import {
   useSettingsQuery,
   useUpdateSettingsMutation,
@@ -81,8 +82,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }, 4500)
   }, [])
 
+  const pathname = usePathname()
+  const isSettingsRoute = pathname?.startsWith("/admin/settings")
+
   // Backend queries & mutations
-  const { data: serverSettings, isLoading, refetch, isRefetching } = useSettingsQuery()
+  const { data: serverSettings, isLoading, refetch, isRefetching } = useSettingsQuery({
+    enabled: isSettingsRoute,
+  })
   const updateSettingsMutation = useUpdateSettingsMutation()
   const killSwitchMutation = useEmergencyKillSwitchMutation()
 

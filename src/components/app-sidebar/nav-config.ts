@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Settings,
   Activity,
+  Landmark,
   type LucideIcon,
 } from "lucide-react"
 
@@ -183,6 +184,14 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         icon: Receipt,
         permission: SYSTEM_PERMISSIONS.PAYMENT_READ,
       },
+      {
+        title: "GST Tax Engine",
+        url: "/finance/tax",
+        icon: Landmark,
+        permission: SYSTEM_PERMISSIONS.TAX_READ,
+        badge: "CBIC",
+        badgeVariant: "brand",
+      },
     ],
   },
   {
@@ -226,7 +235,7 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
         permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
       },
       {
-        title: "Server Status",
+        title: "Observability",
         url: "/system/metrics",
         icon: Activity,
         permission: SYSTEM_PERMISSIONS.SYSTEM_MANAGE,
