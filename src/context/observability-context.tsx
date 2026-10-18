@@ -141,13 +141,23 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [activeTabState, setActiveTabState] = React.useState<ObservabilityTabId>("overview")
+  const isObservabilityRoute =
+    pathname?.startsWith("/system/metrics") ||
+    pathname?.startsWith("/admin/observability") ||
+    pathname?.startsWith("/server-status") ||
+    pathname?.startsWith("/metrics")
+
+  // Read initial tab from URL param "?tab=..." or default to "overview"
+  const tabParam = searchParams?.get("tab") as ObservabilityTabId | null
+  const [activeTabState, setActiveTabState] = React.useState<ObservabilityTabId>(
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "overview"
+  )
   const [timeRange, setTimeRange] = React.useState<string>("15m")
   const [refreshInterval, setRefreshInterval] = React.useState<number | false>(15000)
   const [correlatedLogQuery, setCorrelatedLogQuery] = React.useState<string>('{job="meeo-api"}')
 
-  // Query server-enforced polling policy (<0.1ms cache tier)
-  const { data: pollingPolicy, isLoading: isPolicyLoading } = usePollingPolicy()
+  // Query server-enforced polling policy (<0.1ms cache tier) only when on observability route
+  const { data: pollingPolicy, isLoading: isPolicyLoading } = usePollingPolicy(Boolean(isObservabilityRoute))
   const updatePollingPolicy = useUpdatePollingPolicy()
 
   // Initialize and synchronize activeWindow & activeInterval from server policy on load
@@ -200,23 +210,33 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
 
   // Sync tab from URL query parameter on initial load or navigation
   React.useEffect(() => {
-    const tabParam = searchParams?.get("tab") as ObservabilityTabId | null
-    if (tabParam && VALID_TABS.includes(tabParam)) {
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTabState) {
       setActiveTabState(tabParam)
     }
-  }, [searchParams])
+  }, [tabParam, activeTabState])
 
-  const setActiveTab = React.useCallback(
-    (tab: ObservabilityTabId) => {
-      setActiveTabState(tab)
-      if (pathname) {
-        const params = new URLSearchParams(searchParams?.toString() || "")
-        params.set("tab", tab)
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  // Support instant browser back/forward navigation without Next.js router full refresh
+  React.useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === "undefined") return
+      const urlTab = new URLSearchParams(window.location.search).get("tab") as ObservabilityTabId | null
+      if (urlTab && VALID_TABS.includes(urlTab)) {
+        setActiveTabState(urlTab)
       }
-    },
-    [pathname, router, searchParams]
-  )
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
+
+  const setActiveTab = React.useCallback((tab: ObservabilityTabId) => {
+    setActiveTabState(tab)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.set("tab", tab)
+      window.history.replaceState(null, "", url.toString())
+    }
+  }, [])
 
   const handleCorrelateLogs = React.useCallback(
     (query: string) => {
@@ -245,88 +265,105 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
     }
   }, [timeRange])
 
+  // Only poll when actively on observability route
+  const effectiveRefresh = isObservabilityRoute ? refreshInterval : false
+  const isEnabled = Boolean(isObservabilityRoute)
+
   // 1. Prometheus Range Queries
   const { data: httpRateData, isLoading: isRateLoading, refetch: refetchRate } = useMetricsRange({
     preset: "http_request_rate",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: errorRateData, isLoading: isErrLoading, refetch: refetchErr } = useMetricsRange({
     preset: "http_error_rate",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: clientErrorRateData, isLoading: isClientErrLoading, refetch: refetchClientErr } = useMetricsRange({
     preset: "http_client_error_rate",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: securityEventsData, isLoading: isSecLoading, refetch: refetchSec } = useMetricsRange({
     preset: "http_security_events",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: businessFailureData, isLoading: isBizLoading, refetch: refetchBiz } = useMetricsRange({
     preset: "business_failure_rate",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
-  const { data: configs, isLoading: isConfigsLoading, refetch: refetchConfigs } = useObservabilityConfigs(refreshInterval)
+  const { data: configs, isLoading: isConfigsLoading, refetch: refetchConfigs } = useObservabilityConfigs(
+    effectiveRefresh,
+    isEnabled
+  )
 
   const { data: latencyData, isLoading: isLatLoading, refetch: refetchLat } = useMetricsRange({
     preset: "http_latency_p95",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: cpuData, isLoading: isCpuLoading, refetch: refetchCpu } = useMetricsRange({
     preset: "process_cpu_usage",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: memoryData, isLoading: isMemLoading, refetch: refetchMem } = useMetricsRange({
     preset: "process_memory_mb",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   const { data: eventLoopData, isLoading: isEvtLoading, refetch: refetchEvt } = useMetricsRange({
     preset: "node_event_loop_lag",
     start,
     end,
-    refreshInterval,
+    refreshInterval: effectiveRefresh,
+    enabled: isEnabled,
   })
 
   // 2. Topology
   const { data: topologyData, isLoading: isTopLoading, refetch: refetchTop } =
-    useServiceTopology(refreshInterval)
+    useServiceTopology(effectiveRefresh, isEnabled)
 
   // 3. Queues
   const { data: queuesData, isLoading: isQueueLoading, refetch: refetchQueues } =
-    useBullQueues(refreshInterval)
+    useBullQueues(effectiveRefresh, isEnabled)
 
   // 4. Traces
   const { data: tracesData, isLoading: isTracesLoading, refetch: refetchTraces } =
-    useOtelTraces(refreshInterval)
+    useOtelTraces(effectiveRefresh, isEnabled)
 
   // 5. Host Metrics
   const { data: hostMetrics, isFetching: isHostFetching, refetch: refetchHost } =
     useServerMetricsQuery({
-      refetchInterval: refreshInterval,
+      refetchInterval: effectiveRefresh,
+      enabled: isEnabled,
     })
 
   const handleGlobalRefresh = React.useCallback(() => {
@@ -398,44 +435,84 @@ export function ObservabilityProvider({ children }: { children: React.ReactNode 
       ? "degraded"
       : "operational"
 
-  const value: ObservabilityContextType = {
-    activeTab: activeTabState,
-    setActiveTab,
-    timeRange,
-    setTimeRange: setTimeRangeWithSync,
-    refreshInterval,
-    setRefreshInterval: setRefreshIntervalWithSync,
-    isFetching,
-    handleGlobalRefresh,
-    pollingPolicy,
-    isPolicyLoading,
-    updatePolicy: handleUpdatePolicy,
-    correlatedLogQuery,
-    handleCorrelateLogs,
-    handleViewMetrics,
-    httpRateData,
-    errorRateData,
-    latencyData,
-    cpuData,
-    memoryData,
-    eventLoopData,
-    clientErrorRateData,
-    securityEventsData,
-    businessFailureData,
-    configs,
-    isConfigsLoading,
-    topologyNodes,
-    topologyEdges,
-    queues,
-    recentJobs,
-    traces,
-    hostMetrics,
-    activeNodesCount,
-    activeQueuesCount,
-    tracesCount,
-    overallErrorRatePercent,
-    clusterStatus,
-  }
+  const value: ObservabilityContextType = React.useMemo(
+    () => ({
+      activeTab: activeTabState,
+      setActiveTab,
+      timeRange,
+      setTimeRange: setTimeRangeWithSync,
+      refreshInterval,
+      setRefreshInterval: setRefreshIntervalWithSync,
+      isFetching,
+      handleGlobalRefresh,
+      pollingPolicy,
+      isPolicyLoading,
+      updatePolicy: handleUpdatePolicy,
+      correlatedLogQuery,
+      handleCorrelateLogs,
+      handleViewMetrics,
+      httpRateData,
+      errorRateData,
+      latencyData,
+      cpuData,
+      memoryData,
+      eventLoopData,
+      clientErrorRateData,
+      securityEventsData,
+      businessFailureData,
+      configs,
+      isConfigsLoading,
+      topologyNodes,
+      topologyEdges,
+      queues,
+      recentJobs,
+      traces,
+      hostMetrics,
+      activeNodesCount,
+      activeQueuesCount,
+      tracesCount,
+      overallErrorRatePercent,
+      clusterStatus,
+    }),
+    [
+      activeTabState,
+      setActiveTab,
+      timeRange,
+      setTimeRangeWithSync,
+      refreshInterval,
+      setRefreshIntervalWithSync,
+      isFetching,
+      handleGlobalRefresh,
+      pollingPolicy,
+      isPolicyLoading,
+      handleUpdatePolicy,
+      correlatedLogQuery,
+      handleCorrelateLogs,
+      handleViewMetrics,
+      httpRateData,
+      errorRateData,
+      latencyData,
+      cpuData,
+      memoryData,
+      eventLoopData,
+      clientErrorRateData,
+      securityEventsData,
+      businessFailureData,
+      configs,
+      isConfigsLoading,
+      topologyNodes,
+      topologyEdges,
+      queues,
+      recentJobs,
+      traces,
+      hostMetrics,
+      activeNodesCount,
+      activeQueuesCount,
+      tracesCount,
+      overallErrorRatePercent,
+      clusterStatus,
+    ]
+  )
 
   return (
     <ObservabilityContext.Provider value={value}>

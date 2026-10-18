@@ -118,53 +118,53 @@ export function useHistoricalLogs(options: HistoricalLogsQueryOptions = {}) {
 }
 
 // 4. Fetch service topology nodes and edges (React Flow visual graph)
-export function useServiceTopology(refreshInterval: number | false = 30000) {
+export function useServiceTopology(refreshInterval: number | false = 30000, enabled = true) {
   const { isAuthenticated } = useUserStore()
 
   return useQuery<{ nodes: ServiceNode[]; edges: ServiceEdge[] }>({
     queryKey: OBSERVABILITY_QUERY_KEYS.topology(),
     queryFn: () => observabilityService.getServiceTopology(),
     refetchInterval: refreshInterval || false,
-    enabled: Boolean(isAuthenticated),
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 1000 * 20,
   })
 }
 
 // 5. Fetch Bull Board queue summaries and jobs
-export function useBullQueues(refreshInterval: number | false = 10000) {
+export function useBullQueues(refreshInterval: number | false = 10000, enabled = true) {
   const { isAuthenticated } = useUserStore()
 
   return useQuery<{ queues: QueueSummary[]; recentJobs: QueueJob[] }>({
     queryKey: OBSERVABILITY_QUERY_KEYS.queues(),
     queryFn: () => observabilityService.getBullQueues(),
     refetchInterval: refreshInterval || false,
-    enabled: Boolean(isAuthenticated),
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 1000 * 10,
   })
 }
 
 // 6. Fetch OpenTelemetry distributed traces
-export function useOtelTraces(refreshInterval: number | false = 20000) {
+export function useOtelTraces(refreshInterval: number | false = 20000, enabled = true) {
   const { isAuthenticated } = useUserStore()
 
   return useQuery<OtelTrace[]>({
     queryKey: OBSERVABILITY_QUERY_KEYS.traces(),
     queryFn: () => observabilityService.getOtelTraces(),
     refetchInterval: refreshInterval || false,
-    enabled: Boolean(isAuthenticated),
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 1000 * 15,
   })
 }
 
 // 7. Fetch dynamic observability configs and thresholds (served from L1/L2 cache)
-export function useObservabilityConfigs(refreshInterval: number | false = 30000) {
+export function useObservabilityConfigs(refreshInterval: number | false = 30000, enabled = true) {
   const { isAuthenticated } = useUserStore()
 
   return useQuery<ObservabilityConfigItem[]>({
     queryKey: OBSERVABILITY_QUERY_KEYS.configs(),
     queryFn: () => observabilityService.getObservabilityConfigs(),
     refetchInterval: refreshInterval || false,
-    enabled: Boolean(isAuthenticated),
+    enabled: enabled && Boolean(isAuthenticated),
     staleTime: 1000 * 20,
   })
 }
@@ -200,14 +200,14 @@ export function useResetObservabilityConfigs() {
 }
 
 // 10. Fetch server-enforced polling policy and active intervals (<0.1ms cache tier)
-export function usePollingPolicy() {
+export function usePollingPolicy(enabled = true) {
   const { isAuthenticated } = useUserStore()
 
   return useQuery<PollingPolicyData | null>({
     queryKey: OBSERVABILITY_QUERY_KEYS.pollingPolicy(),
     queryFn: () => observabilityService.getPollingPolicy(),
     staleTime: 1000 * 30, // 30 seconds
-    enabled: Boolean(isAuthenticated),
+    enabled: enabled && Boolean(isAuthenticated),
   })
 }
 

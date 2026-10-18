@@ -23,7 +23,7 @@ interface NavMainProps {
   groups: NavGroup[]
 }
 
-export function NavMain({ groups }: NavMainProps) {
+export const NavMain = React.memo(function NavMain({ groups }: NavMainProps) {
   const pathname = usePathname()
   const { hasPermission, isSuperAdmin } = usePermissions()
 
@@ -164,7 +164,7 @@ export function NavMain({ groups }: NavMainProps) {
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    render={<Link href={item.url} />}
+                    render={<Link href={item.url} prefetch={false} />}
                     isActive={active}
                     tooltip={{
                       children: item.title,
@@ -202,4 +202,4 @@ export function NavMain({ groups }: NavMainProps) {
       ))}
     </div>
   )
-}
+})

@@ -15,7 +15,7 @@ export function NavHeader() {
       <SidebarMenuItem>
         <SidebarMenuButton
           size="lg"
-          render={<Link href="/" />}
+          render={<Link href="/" prefetch={false} />}
           tooltip={{
             children: "Meeo • Commerce Platform",
           }}

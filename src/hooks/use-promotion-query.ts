@@ -34,6 +34,7 @@ export function usePromotionsQuery(params?: PromotionQueryParams) {
       const res = await promotionService.getPromotions(params)
       return res.data
     },
+    staleTime: 60 * 1000,
   })
 }
 

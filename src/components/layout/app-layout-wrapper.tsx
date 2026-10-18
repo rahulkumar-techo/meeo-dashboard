@@ -176,37 +176,46 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
     pathname?.startsWith("/server-status") ||
     pathname?.startsWith("/metrics")
 
-  // Authenticated Dashboard layout with persistent providers
+  // Authenticated Dashboard layout with route-scoped providers
+  const mainContent = (
+    <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
+      <DashboardHeader />
+      <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
+        {isRouteAllowed ? (
+          children
+        ) : (
+          <AccessDeniedView
+            requiredPermission={requiredPerm}
+            pathname={pathname}
+          />
+        )}
+      </div>
+    </SidebarInset>
+  )
+
   return (
-    <SettingsProvider>
-      <TaxEngineProvider>
+    <SidebarProvider>
+      {isSettingsRoute ? (
+        <SettingsProvider>
+          <SettingsSidebar />
+          {mainContent}
+        </SettingsProvider>
+      ) : isTaxRoute ? (
+        <TaxEngineProvider>
+          <TaxSidebar />
+          {mainContent}
+        </TaxEngineProvider>
+      ) : isObservabilityRoute ? (
         <ObservabilityProvider>
-          <SidebarProvider>
-            {isSettingsRoute ? (
-              <SettingsSidebar />
-            ) : isTaxRoute ? (
-              <TaxSidebar />
-            ) : isObservabilityRoute ? (
-              <ObservabilitySidebar />
-            ) : (
-              <AppSidebar />
-            )}
-            <SidebarInset className="bg-slate-50/40 dark:bg-background min-h-svh min-w-0 max-w-full relative flex flex-col flex-1">
-              <DashboardHeader />
-              <div className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 min-w-0 max-w-full">
-                {isRouteAllowed ? (
-                  children
-                ) : (
-                  <AccessDeniedView
-                    requiredPermission={requiredPerm}
-                    pathname={pathname}
-                  />
-                )}
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
+          <ObservabilitySidebar />
+          {mainContent}
         </ObservabilityProvider>
-      </TaxEngineProvider>
-    </SettingsProvider>
+      ) : (
+        <>
+          <AppSidebar />
+          {mainContent}
+        </>
+      )}
+    </SidebarProvider>
   )
 }
