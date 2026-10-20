@@ -31,8 +31,18 @@ export function useOutboxEventsQuery(params?: OutboxQueryParams) {
   return useQuery({
     queryKey: OUTBOX_QUERY_KEYS.eventList(params),
     queryFn: async () => {
-      const res = await outboxService.getOutboxEvents(params)
-      return res.data
+      const res: any = await outboxService.getOutboxEvents(params)
+      const data = res?.data ?? res
+      if (Array.isArray(data)) {
+        return {
+          items: data,
+          pagination: { page: 1, limit: data.length, total: data.length, totalPages: 1 },
+        }
+      }
+      return {
+        items: Array.isArray(data?.items) ? data.items : (Array.isArray(data?.events) ? data.events : []),
+        pagination: data?.pagination ?? data?.meta ?? { page: 1, limit: 20, total: 0, totalPages: 1 },
+      }
     },
   })
 }
@@ -44,8 +54,8 @@ export function useOutboxMetricsQuery() {
   return useQuery({
     queryKey: OUTBOX_QUERY_KEYS.metrics(),
     queryFn: async () => {
-      const res = await outboxService.getOutboxMetrics()
-      return res.data
+      const res: any = await outboxService.getOutboxMetrics()
+      return res?.data ?? res
     },
     refetchInterval: 10000, // Poll every 10s for live telemetry
   })

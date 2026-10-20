@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts", "@tanstack/react-query"],
+    optimizePackageImports: ["lucide-react", "recharts"],
   },
   async headers() {
     return [

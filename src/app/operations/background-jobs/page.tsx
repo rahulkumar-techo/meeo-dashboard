@@ -134,7 +134,7 @@ export default function BackgroundJobsPage() {
 
     // Merge from overview telemetry
     if (overview?.queues && Array.isArray(overview.queues)) {
-      overview.queues.forEach((q) => {
+      overview.queues.forEach((q: any) => {
         queueMap.set(q.name, {
           name: q.name,
           category: q.category || q.name,
@@ -149,7 +149,7 @@ export default function BackgroundJobsPage() {
     }
 
     // Discover any additional dynamic queues from loaded jobs
-    rawJobs.forEach((j) => {
+    rawJobs.forEach((j: any) => {
       if (j.queue && !queueMap.has(j.queue)) {
         queueMap.set(j.queue, {
           name: j.queue,
@@ -180,7 +180,7 @@ export default function BackgroundJobsPage() {
     if (activeCategory === "ALL") return rawJobs
     if (activeCategory === "DEAD_LETTER_TRIGGER") {
       return rawJobs.filter(
-        (j) =>
+        (j: any) =>
           (j.status || "").toUpperCase() === "DEAD_LETTER" ||
           j.category === "DEAD_LETTER_TRIGGER"
       )
@@ -188,7 +188,7 @@ export default function BackgroundJobsPage() {
     const catLower = activeCategory.toLowerCase()
     const catUpper = activeCategory.toUpperCase()
     const filtered = rawJobs.filter(
-      (j) =>
+      (j: any) =>
         (j.queue && j.queue.toLowerCase() === catLower) ||
         (j.category &&
           (j.category.toUpperCase() === catUpper ||

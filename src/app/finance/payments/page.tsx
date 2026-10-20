@@ -171,6 +171,8 @@ export default function PaymentsPage() {
               className="h-8.5 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
             >
               <option value="all">All Payment Statuses</option>
+              <option value="PENDING">Pending (Doorstep/COD/Initiated)</option>
+              <option value="PAID">Paid</option>
               <option value="SUCCESS">Success / Captured</option>
               <option value="PROCESSING">Processing / In-Flight</option>
               <option value="REQUIRES_ACTION">Requires Action (3DS)</option>
@@ -178,7 +180,6 @@ export default function PaymentsPage() {
               <option value="REFUNDED">Fully Refunded</option>
               <option value="FAILED">Failed / Declined</option>
               <option value="CANCELLED">Cancelled</option>
-              <option value="PENDING">Pending</option>
             </select>
 
             {/* Provider Filter */}

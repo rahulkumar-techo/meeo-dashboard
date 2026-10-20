@@ -26,6 +26,7 @@ export type PaymentStatus =
   | "CANCELLED"
   | "PARTIALLY_REFUNDED"
   | "REFUNDED"
+  | "PAID"
 
 /**
  * Supported payment gateway providers
@@ -173,6 +174,41 @@ export interface ReconcileResponseData {
 export interface PaymentListResponseData {
   items: PaymentListItem[]
   pagination: PaymentPagination
+}
+
+/**
+ * Supported offline / doorstep payment collection methods
+ */
+export type ManualPaymentMethod =
+  | "UPI_DOORSTEP"
+  | "CASH"
+  | "BANK_TRANSFER"
+  | "CARD_OFFLINE"
+  | "OTHER"
+
+/**
+ * Payload for manual payment status update
+ * Endpoint: PATCH /api/v1/payments/:id/status
+ */
+export interface UpdatePaymentStatusPayload {
+  status: "SUCCESS" | "FAILED" | PaymentStatus
+  paidAmount?: number
+  paymentMethod?: string
+  transactionId?: string
+  reason?: string
+}
+
+/**
+ * Response payload from manual payment status update
+ */
+export interface UpdatePaymentStatusResponseData {
+  id: string
+  orderId: string
+  status: PaymentStatus
+  paidAmount?: string | number
+  paymentMethod?: string
+  paidAt?: string
+  reason?: string
 }
 
 /**

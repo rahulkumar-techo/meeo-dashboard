@@ -92,6 +92,13 @@ export function PaymentStatusBadge({
       border: "border-slate-500/30",
       dotBg: "bg-slate-500",
     },
+    PAID: {
+      label: "Paid",
+      bg: "bg-emerald-500/10 dark:bg-emerald-500/20",
+      text: "text-emerald-700 dark:text-emerald-300",
+      border: "border-emerald-500/30",
+      dotBg: "bg-emerald-500",
+    },
   }
 
   const current = config[normalized] || {

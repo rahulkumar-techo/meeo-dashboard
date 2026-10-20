@@ -19,17 +19,33 @@ import type {
   ExpireStaleOrdersResponseData,
 } from "@/types/order"
 
+async function fetchOrderEndpoint(path: string, options?: any) {
+  try {
+    return await apiClient.get<any>(path, options)
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      const altPath = path.startsWith("/orders/admin")
+        ? path.replace("/orders/admin", "/admin/orders")
+        : path.startsWith("/admin/orders")
+        ? path.replace("/admin/orders", "/orders/admin")
+        : path
+      if (altPath !== path) {
+        return await apiClient.get<any>(altPath, options)
+      }
+    }
+    throw err
+  }
+}
+
 export const orderService = {
   /**
    * 1. Admin List All Platform Orders with search, status filtering, and pagination.
-   * Endpoint: GET /api/v1/orders/admin
+   * Endpoint: GET /api/v1/orders/admin or /api/v1/admin/orders
    */
   async getAdminOrders(
     params?: AdminOrderQueryParams
   ): Promise<OrderApiResponse<AdminOrderListResponseData>> {
-    const response = await apiClient.get<
-      OrderApiResponse<AdminOrderListResponseData>
-    >("/orders/admin", {
+    const response = await fetchOrderEndpoint("/orders/admin", {
       params,
     })
     return response.data
@@ -37,15 +53,14 @@ export const orderService = {
 
   /**
    * 2. Admin Order & Fulfillment Analytics Metrics.
-   * Endpoint: GET /api/v1/orders/admin/metrics
+   * Endpoint: GET /api/v1/orders/admin/metrics or /api/v1/admin/orders/metrics
    */
   async getAdminMetrics(
     params?: AdminOrderMetricsQueryParams
   ): Promise<OrderApiResponse<AdminOrderMetrics>> {
-    const response = await apiClient.get<OrderApiResponse<AdminOrderMetrics>>(
-      "/orders/admin/metrics",
-      { params }
-    )
+    const response = await fetchOrderEndpoint("/orders/admin/metrics", {
+      params,
+    })
     return response.data
   },
 

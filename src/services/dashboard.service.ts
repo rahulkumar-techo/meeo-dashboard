@@ -21,18 +21,27 @@ import type {
   PaymentGatewayShareItem,
 } from "@/types/analytics"
 
+async function fetchDashboardEndpoint(path: string, params?: any) {
+  try {
+    return await apiClient.get<any>(`/admin/dashboard${path}`, { params })
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      return await apiClient.get<any>(`/dashboard${path}`, { params })
+    }
+    throw err
+  }
+}
+
 export const dashboardService = {
   /**
    * 1. Executive Overview KPIs
-   * Endpoint: GET /api/v1/admin/dashboard/overview
+   * Endpoint: GET /api/v1/admin/dashboard/overview or /api/v1/dashboard/overview
    */
   async getOverview(
     params?: AnalyticsQueryParams
   ): Promise<AnalyticsApiResponse<ExecutiveOverviewData>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/overview", {
-        params,
-      })
+      const response = await fetchDashboardEndpoint("/overview", params)
       const raw = response.data?.data ?? response.data ?? {}
 
       // Financials / Revenue
@@ -239,12 +248,7 @@ export const dashboardService = {
   async getOverViews(
     payload: PayloadParams = { period: "30d" }
   ): Promise<DashboardOverviewData> {
-    const response = await apiClient.get<DashboardOverviewData>(
-      "/admin/dashboard/overview",
-      {
-        params: payload,
-      }
-    )
+    const response = await fetchDashboardEndpoint("/overview", payload)
     return response.data
   },
 
@@ -256,14 +260,14 @@ export const dashboardService = {
     params?: AnalyticsQueryParams
   ): Promise<AnalyticsApiResponse<SalesChartData>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/sales-chart", {
-        params,
-      })
+      const response = await fetchDashboardEndpoint("/sales-chart", params)
       const raw = response.data?.data ?? response.data
 
       let rawPoints: any[] = []
       if (Array.isArray(raw)) {
         rawPoints = raw
+      } else if (Array.isArray(raw?.dataPoints)) {
+        rawPoints = raw.dataPoints
       } else if (Array.isArray(raw?.points)) {
         rawPoints = raw.points
       } else if (Array.isArray(raw?.items)) {
@@ -333,9 +337,7 @@ export const dashboardService = {
     params?: AnalyticsQueryParams
   ): Promise<AnalyticsApiResponse<TopSellerItem[]>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/top-sellers", {
-        params,
-      })
+      const response = await fetchDashboardEndpoint("/top-sellers", params)
       const raw = response.data?.data ?? response.data
 
       let rawItems: any[] = []
@@ -386,9 +388,7 @@ export const dashboardService = {
     params?: AnalyticsQueryParams
   ): Promise<AnalyticsApiResponse<LowStockAlertItem[]>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/low-stock", {
-        params,
-      })
+      const response = await fetchDashboardEndpoint("/low-stock", params)
       const raw = response.data?.data ?? response.data
 
       let rawItems: any[] = []
@@ -433,9 +433,7 @@ export const dashboardService = {
     params?: AnalyticsQueryParams
   ): Promise<AnalyticsApiResponse<FailedPaymentItem[]>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/failed-payments", {
-        params,
-      })
+      const response = await fetchDashboardEndpoint("/failed-payments", params)
       const raw = response.data?.data ?? response.data
 
       let rawItems: any[] = []
@@ -479,7 +477,7 @@ export const dashboardService = {
    */
   async getHealth(): Promise<AnalyticsApiResponse<OperationalHealthData>> {
     try {
-      const response = await apiClient.get<any>("/admin/dashboard/health")
+      const response = await fetchDashboardEndpoint("/health")
       const raw = response.data?.data ?? response.data ?? {}
       const backlogs = raw.backlogs || {}
 

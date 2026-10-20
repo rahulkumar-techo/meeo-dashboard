@@ -18,39 +18,55 @@ import type {
   BulkJobActionResponseData,
 } from "@/types/job"
 
+async function fetchJobEndpoint(path: string, options?: any) {
+  try {
+    return await apiClient.get<any>(`/jobs${path}`, options)
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      return await apiClient.get<any>(`/admin/jobs${path}`, options)
+    }
+    throw err
+  }
+}
+
+async function postJobEndpoint(path: string, payload?: any) {
+  try {
+    return await apiClient.post<any>(`/jobs${path}`, payload)
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      return await apiClient.post<any>(`/admin/jobs${path}`, payload)
+    }
+    throw err
+  }
+}
+
 export const jobService = {
   /**
    * 1. Background Jobs Overview & Throughput KPIs
-   * Endpoint: GET /api/v1/jobs/overview
+   * Endpoint: GET /api/v1/jobs/overview or /api/v1/admin/jobs/overview
    */
   async getOverview(): Promise<JobApiResponse<JobsOverviewData>> {
-    const response = await apiClient.get<JobApiResponse<JobsOverviewData>>(
-      "/jobs/overview"
-    )
+    const response = await fetchJobEndpoint("/overview")
     return response.data
   },
 
   /**
    * 2. Worker Nodes Health & Utilization Telemetry
-   * Endpoint: GET /api/v1/jobs/workers
+   * Endpoint: GET /api/v1/jobs/workers or /api/v1/admin/jobs/workers
    */
   async getWorkers(): Promise<JobApiResponse<WorkerNodeTelemetry[]>> {
-    const response = await apiClient.get<
-      JobApiResponse<WorkerNodeTelemetry[]>
-    >("/jobs/workers")
+    const response = await fetchJobEndpoint("/workers")
     return response.data
   },
 
   /**
    * 3. List Background Jobs with Queue Filters
-   * Endpoint: GET /api/v1/jobs
+   * Endpoint: GET /api/v1/jobs or /api/v1/admin/jobs
    */
   async getJobs(
     params?: JobsQueryParams
   ): Promise<JobApiResponse<JobsListResponseData>> {
-    const response = await apiClient.get<
-      JobApiResponse<JobsListResponseData>
-    >("/jobs", {
+    const response = await fetchJobEndpoint("", {
       params,
     })
     return response.data
@@ -58,12 +74,10 @@ export const jobService = {
 
   /**
    * 4. Inspect Job Details & Trace Logs
-   * Endpoint: GET /api/v1/jobs/:id
+   * Endpoint: GET /api/v1/jobs/:id or /api/v1/admin/jobs/:id
    */
   async getJobById(id: string): Promise<JobApiResponse<JobDetail>> {
-    const response = await apiClient.get<JobApiResponse<JobDetail>>(
-      `/jobs/${id}`
-    )
+    const response = await fetchJobEndpoint(`/${id}`)
     return response.data
   },
 
@@ -72,9 +86,7 @@ export const jobService = {
    * Endpoint: POST /api/v1/jobs/:id/retry
    */
   async retryJob(id: string): Promise<JobApiResponse<RetryJobResponseData>> {
-    const response = await apiClient.post<
-      JobApiResponse<RetryJobResponseData>
-    >(`/jobs/${id}/retry`)
+    const response = await postJobEndpoint(`/${id}/retry`)
     return response.data
   },
 
@@ -83,9 +95,7 @@ export const jobService = {
    * Endpoint: POST /api/v1/jobs/:id/cancel
    */
   async cancelJob(id: string): Promise<JobApiResponse<CancelJobResponseData>> {
-    const response = await apiClient.post<
-      JobApiResponse<CancelJobResponseData>
-    >(`/jobs/${id}/cancel`)
+    const response = await postJobEndpoint(`/${id}/cancel`)
     return response.data
   },
 
@@ -96,9 +106,7 @@ export const jobService = {
   async executeBulkAction(
     payload: BulkJobActionPayload
   ): Promise<JobApiResponse<BulkJobActionResponseData>> {
-    const response = await apiClient.post<
-      JobApiResponse<BulkJobActionResponseData>
-    >("/jobs/bulk-action", payload)
+    const response = await postJobEndpoint("/bulk-action", payload)
     return response.data
   },
 }

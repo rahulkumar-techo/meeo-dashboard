@@ -18,6 +18,8 @@ import {
   Copy,
   Check,
   ExternalLink,
+  CreditCard,
+  Mail,
 } from "lucide-react"
 import {
   Table,
@@ -28,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { EmptyState, DataTablePagination } from "@/components/common"
 import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
@@ -108,11 +111,11 @@ export function OrderTable({
           <TableHeader className="bg-muted/40 text-xs">
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-4 font-semibold text-foreground">ORDER NUMBER</TableHead>
+              <TableHead className="font-semibold text-foreground">TYPE / EVENT</TableHead>
               <TableHead className="font-semibold text-foreground">CUSTOMER</TableHead>
-              <TableHead className="font-semibold text-center text-foreground">ITEMS</TableHead>
-              <TableHead className="font-semibold text-right text-foreground">TOTAL</TableHead>
-              <TableHead className="font-semibold text-foreground">FULFILLMENT STATUS</TableHead>
-              <TableHead className="font-semibold text-foreground">PLACED AT</TableHead>
+              <TableHead className="font-semibold text-right text-foreground">AMOUNT & PAYMENT</TableHead>
+              <TableHead className="font-semibold text-foreground">STATUS & REASON</TableHead>
+              <TableHead className="font-semibold text-foreground whitespace-nowrap">PLACED AT</TableHead>
               <TableHead className="text-right pr-4 font-semibold text-foreground">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
@@ -122,9 +125,9 @@ export function OrderTable({
               Array.from({ length: 5 }).map((_, idx) => (
                 <TableRow key={idx} className="animate-pulse">
                   <TableCell className="pl-4 py-3.5"><div className="h-4 w-32 bg-muted rounded" /></TableCell>
-                  <TableCell><div className="h-5 w-40 bg-muted rounded" /></TableCell>
-                  <TableCell className="text-center"><div className="h-5 w-8 mx-auto bg-muted rounded" /></TableCell>
-                  <TableCell className="text-right"><div className="h-5 w-16 ml-auto bg-muted rounded" /></TableCell>
+                  <TableCell><div className="h-5 w-28 bg-muted rounded" /></TableCell>
+                  <TableCell><div className="h-5 w-36 bg-muted rounded" /></TableCell>
+                  <TableCell className="text-right"><div className="h-5 w-24 ml-auto bg-muted rounded" /></TableCell>
                   <TableCell><div className="h-5 w-24 bg-muted rounded" /></TableCell>
                   <TableCell><div className="h-4 w-24 bg-muted rounded" /></TableCell>
                   <TableCell className="text-right pr-4"><div className="h-7 w-32 ml-auto bg-muted rounded" /></TableCell>
@@ -152,18 +155,26 @@ export function OrderTable({
                 const customerName =
                   customerObj?.firstName || customerObj?.lastName
                     ? `${customerObj.firstName || ""} ${customerObj.lastName || ""}`.trim()
-                    : shippingAddr?.recipientName || "Guest Customer"
-                const customerEmail = customerObj?.email || "No email on record"
-                const initials = customerName
-                  .split(" ")
-                  .map((n) => n[0])
-                  .filter(Boolean)
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2) || "U"
+                    : order.data?.customerName || shippingAddr?.recipientName || "Guest Customer"
+                const customerEmail =
+                  customerObj?.email || order.data?.recipientEmail || "No email on record"
+                const initials =
+                  customerName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .filter(Boolean)
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2) || "U"
 
-                const itemCount = order.itemCount ?? order.items?.length ?? 1
                 const status = order.status
+                const orderType =
+                  order.type || (order.data?.newStatus ? `ORDER_${order.data.newStatus}` : "ORDER")
+                const paymentMethod = order.paymentMethod || order.data?.paymentMethod || null
+                const paymentStatus = order.paymentStatus || order.data?.paymentStatus || null
+                const reason = order.reason || order.data?.reason || null
+                const channel = order.channel || null
+                const orderTitle = order.title || (order.orderNumber ? `Order #${order.orderNumber}` : null)
 
                 return (
                   <TableRow
@@ -171,7 +182,7 @@ export function OrderTable({
                     onClick={() => onInspect(order)}
                     className="cursor-pointer hover:bg-muted/40 transition-colors"
                   >
-                    {/* Order Number */}
+                    {/* Order Number & ID */}
                     <TableCell className="pl-4 py-3 font-mono">
                       <div className="flex items-center gap-1.5">
                         <Link
@@ -194,50 +205,124 @@ export function OrderTable({
                           )}
                         </button>
                       </div>
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        UUID: {order.id.slice(0, 8)}...
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                        ID: {order.id.slice(0, 8)}...
                       </p>
+                    </TableCell>
+
+                    {/* Order Type / Event */}
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge
+                            variant="outline"
+                            className={
+                              orderType.includes("CONFIRM")
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-mono text-[10px]"
+                                : orderType.includes("CANCEL")
+                                ? "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-mono text-[10px]"
+                                : orderType.includes("SHIP") || orderType.includes("DISPATCH")
+                                ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 font-mono text-[10px]"
+                                : orderType.includes("DELIVER")
+                                ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-mono text-[10px]"
+                                : "border-border bg-muted/50 text-foreground font-mono text-[10px]"
+                            }
+                          >
+                            {orderType}
+                          </Badge>
+                          {channel && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-mono bg-muted/60 px-1.5 py-0.5 rounded">
+                              <Mail className="size-2.5" />
+                              {channel}
+                            </span>
+                          )}
+                        </div>
+                        {orderTitle && (
+                          <p
+                            className="text-[10.5px] text-muted-foreground truncate max-w-[190px]"
+                            title={orderTitle}
+                          >
+                            {orderTitle}
+                          </p>
+                        )}
+                      </div>
                     </TableCell>
 
                     {/* Customer */}
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Avatar className="size-6 border border-border">
+                        <Avatar className="size-6 border border-border shrink-0">
                           <AvatarFallback className="text-[9px] font-bold">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="max-w-[200px]">
+                        <div className="max-w-[170px]">
                           <p className="font-semibold text-foreground truncate">
                             {customerName}
                           </p>
-                          <p className="text-[10.5px] text-muted-foreground truncate">
+                          <p
+                            className="text-[10.5px] text-muted-foreground truncate"
+                            title={customerEmail}
+                          >
                             {customerEmail}
                           </p>
                         </div>
                       </div>
                     </TableCell>
 
-                    {/* Items Count */}
-                    <TableCell className="text-center font-mono text-muted-foreground">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                        {itemCount} {itemCount === 1 ? "item" : "items"}
-                      </span>
+                    {/* Amount & Payment */}
+                    <TableCell className="text-right">
+                      <div className="font-mono font-bold text-foreground text-xs">
+                        {formatCurrency(order.grandTotal, order.currency)}
+                      </div>
+                      {paymentMethod && (
+                        <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground mt-0.5">
+                          <CreditCard className="size-2.5 shrink-0" />
+                          <span className="truncate max-w-[130px]" title={paymentMethod}>
+                            {paymentMethod}
+                          </span>
+                        </div>
+                      )}
+                      {paymentStatus && (
+                        <div
+                          className={`text-[9.5px] mt-0.5 ${
+                            paymentStatus.toUpperCase().includes("PAID") ||
+                            paymentStatus.toUpperCase().includes("SUCCESS")
+                              ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                              : paymentStatus.toUpperCase().includes("FAIL")
+                              ? "text-rose-600 dark:text-rose-400 font-semibold"
+                              : paymentStatus.toUpperCase().includes("REFUND")
+                              ? "text-purple-600 dark:text-purple-400 font-medium"
+                              : paymentStatus.toUpperCase().includes("CANCEL")
+                              ? "text-zinc-500 dark:text-zinc-400 font-medium"
+                              : "text-amber-600 dark:text-amber-400 font-medium"
+                          }`}
+                        >
+                          {paymentStatus}
+                        </div>
+                      )}
                     </TableCell>
 
-                    {/* Grand Total */}
-                    <TableCell className="text-right font-mono font-bold text-foreground">
-                      {formatCurrency(order.grandTotal, order.currency)}
-                    </TableCell>
-
-                    {/* Status Badge */}
+                    {/* Status & Reason */}
                     <TableCell>
-                      <OrderStatusBadge status={status} />
+                      <div className="space-y-1 max-w-[180px]">
+                        <OrderStatusBadge status={status} />
+                        {reason && (
+                          <p className="text-[10px] text-muted-foreground truncate" title={reason}>
+                            {reason}
+                          </p>
+                        )}
+                      </div>
                     </TableCell>
 
                     {/* Timestamp */}
                     <TableCell className="text-muted-foreground whitespace-nowrap text-[11px]">
-                      {formatTimestamp(order.createdAt)}
+                      <div>{formatTimestamp(order.createdAt)}</div>
+                      {order.sentAt && order.sentAt !== order.createdAt && (
+                        <div className="text-[10px] text-muted-foreground/75 mt-0.5">
+                          Sent: {formatTimestamp(order.sentAt)}
+                        </div>
+                      )}
                     </TableCell>
 
                     {/* Quick Fulfillment Actions */}

@@ -12,6 +12,7 @@ import type {
   PaymentQueryParams,
   RefundPayload,
   ReconcilePayload,
+  UpdatePaymentStatusPayload,
 } from "@/types/payment"
 
 export const PAYMENT_QUERY_KEYS = {
@@ -126,6 +127,33 @@ export function useReconcilePaymentMutation() {
     mutationFn: (payload: ReconcilePayload) =>
       paymentService.reconcilePayment(payload),
     onSuccess: (res, variables) => {
+      queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      if (variables.paymentId) {
+        queryClient.invalidateQueries({
+          queryKey: PAYMENT_QUERY_KEYS.detail(variables.paymentId),
+        })
+      }
+    },
+  })
+}
+
+/**
+ * Hook to execute admin manual payment status update (Doorstep UPI, Cash, Wire Transfer, Failed)
+ */
+export function useUpdatePaymentStatusMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      paymentId,
+      payload,
+    }: {
+      paymentId: string
+      payload: UpdatePaymentStatusPayload
+    }) => paymentService.updatePaymentStatus(paymentId, payload),
+    onSuccess: (res, variables) => {
+      // Invalidate both payment and order queries to capture cascade status transitions
       queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all })
       queryClient.invalidateQueries({ queryKey: ["orders"] })
       if (variables.paymentId) {

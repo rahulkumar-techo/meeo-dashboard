@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { orderService } from "@/services/order.service"
 import type {
   AdminOrder,
+  OrderStatus,
   AdminOrderMetrics,
   AdminOrderQueryParams,
   AdminOrderMetricsQueryParams,
@@ -28,6 +29,7 @@ export const ORDER_METRICS_QUERY_KEY = ["orders", "admin", "metrics"]
  */
 export function normalizeAdminOrder(order: any): AdminOrder {
   if (!order) return order
+  const data = order.data || {}
   const financials = order.financials || {}
   const items = Array.isArray(order.items)
     ? order.items.map((item: any) => ({
@@ -38,30 +40,90 @@ export function normalizeAdminOrder(order: any): AdminOrder {
           Number(item.unitPrice || 0) * Number(item.quantity || 1),
         image: item.variantSnapshot?.thumbnail || item.image || null,
       }))
+    : Array.isArray(data.items)
+    ? data.items.map((item: any) => ({
+        ...item,
+        totalPrice:
+          item.total ??
+          item.totalPrice ??
+          Number(item.unitPrice || 0) * Number(item.quantity || 1),
+        image: item.variantSnapshot?.thumbnail || item.image || null,
+      }))
     : []
+
+  const orderId = order.id || data.orderId || ""
+  const orderNumber =
+    order.orderNumber ||
+    data.orderNumber ||
+    (orderId ? `ORD-${orderId.slice(0, 8).toUpperCase()}` : "ORD-UNKNOWN")
+
+  const rawStatus = data.newStatus || order.status || (order.type ? String(order.type).replace(/^ORDER_/, "") : "CONFIRMED")
+  const status = String(rawStatus).toUpperCase() as OrderStatus
+
+  const rawCurrency = order.currency || data.currency || financials.currency || "INR"
+  const currency = rawCurrency === "₹" ? "INR" : rawCurrency
+
+  const grandTotal = Number(
+    order.grandTotal ??
+      data.totalAmount ??
+      data.amount ??
+      financials.grandTotal ??
+      0
+  )
+
+  const customerObj =
+    order.customer ||
+    order.user ||
+    (data.customerName || data.recipientEmail
+      ? {
+          id: order.userId || data.userId || "",
+          firstName: data.customerName ? data.customerName.split(" ")[0] : "",
+          lastName: data.customerName ? data.customerName.split(" ").slice(1).join(" ") : "",
+          email: data.recipientEmail || "",
+        }
+      : null)
+
+  const paymentMethod = order.paymentMethod || data.paymentMethod || null
+  const paymentStatus = order.paymentStatus || data.paymentStatus || null
+  const paymentId = order.paymentId || order.payment?.id || data.paymentId || null
+  const reason = order.reason || data.reason || null
 
   return {
     ...order,
-    currency: financials.currency || order.currency || "INR",
-    subtotal: financials.subtotal ?? order.subtotal ?? 0,
+    id: orderId,
+    orderNumber,
+    userId: order.userId || data.userId || customerObj?.id || "",
+    status,
+    type: order.type || `ORDER_${status}`,
+    title: order.title || (data.orderNumber ? `Order #${data.orderNumber}` : null),
+    body: order.body || null,
+    channel: order.channel || null,
+    paymentId,
+    paymentMethod,
+    paymentStatus,
+    reason,
+    data,
+    currency,
+    subtotal: financials.subtotal ?? order.subtotal ?? grandTotal,
     discountTotal: financials.discountTotal ?? order.discountTotal ?? 0,
     shippingTotal: financials.shippingTotal ?? order.shippingTotal ?? 0,
     taxTotal: financials.taxTotal ?? order.taxTotal ?? 0,
-    grandTotal: financials.grandTotal ?? order.grandTotal ?? 0,
+    grandTotal,
     financials: {
-      currency: financials.currency || order.currency || "INR",
-      subtotal: financials.subtotal ?? order.subtotal ?? 0,
+      currency,
+      subtotal: financials.subtotal ?? order.subtotal ?? grandTotal,
       discountTotal: financials.discountTotal ?? order.discountTotal ?? 0,
       shippingTotal: financials.shippingTotal ?? order.shippingTotal ?? 0,
       taxTotal: financials.taxTotal ?? order.taxTotal ?? 0,
-      grandTotal: financials.grandTotal ?? order.grandTotal ?? 0,
+      grandTotal,
     },
-    user: order.customer || order.user || null,
-    customer: order.customer || order.user || null,
+    user: customerObj,
+    customer: customerObj,
     address: order.shippingAddress || order.address || null,
     shippingAddress: order.shippingAddress || order.address || null,
     itemCount: items.length || order.itemCount || 1,
     items,
+    createdAt: order.createdAt || data.timestamp || order.sentAt || new Date().toISOString(),
   }
 }
 

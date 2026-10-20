@@ -6,7 +6,6 @@
 
 import { apiClient } from "@/config/client"
 import type {
-  PaymentListItem,
   PaymentDetail,
   PaymentQueryParams,
   RefundPayload,
@@ -14,6 +13,8 @@ import type {
   ReconcilePayload,
   ReconcileResponseData,
   PaymentListResponseData,
+  UpdatePaymentStatusPayload,
+  UpdatePaymentStatusResponseData,
   PaymentApiResponse,
 } from "@/types/payment"
 
@@ -70,6 +71,20 @@ export const paymentService = {
     const response = await apiClient.post<
       PaymentApiResponse<ReconcileResponseData>
     >("/payments/reconcile", payload)
+    return response.data
+  },
+
+  /**
+   * 5. Admin Manual Payment Update (Doorstep UPI, Cash Collection, Wire Transfer, Payment Failure).
+   * Endpoint: PATCH /api/v1/payments/:id/status
+   */
+  async updatePaymentStatus(
+    paymentId: string,
+    payload: UpdatePaymentStatusPayload
+  ): Promise<PaymentApiResponse<UpdatePaymentStatusResponseData>> {
+    const response = await apiClient.patch<
+      PaymentApiResponse<UpdatePaymentStatusResponseData>
+    >(`/payments/${paymentId}/status`, payload)
     return response.data
   },
 }

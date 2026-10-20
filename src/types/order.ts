@@ -4,6 +4,8 @@
  * Covers platform orders, fulfillment state machine, shipping logistics, analytics metrics, and audit records.
  */
 
+import type { PaymentStatus } from "./payment"
+
 /**
  * Valid order status states across the platform lifecycle
  */
@@ -17,6 +19,23 @@ export type OrderStatus =
   | "CANCELLED"
   | "EXPIRED"
   | "REFUNDED"
+
+/**
+ * Valid state transitions for the platform order lifecycle state machine.
+ */
+export const VALID_ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ["PAYMENT_PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"],
+  PAYMENT_PENDING: ["CONFIRMED", "CANCELLED", "EXPIRED"],
+  CONFIRMED: ["PROCESSING", "CANCELLED"],
+  PROCESSING: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED", "CANCELLED", "REFUNDED"],
+  DELIVERED: ["REFUNDED"],
+  CANCELLED: ["REFUNDED"],
+  EXPIRED: [],
+  REFUNDED: [],
+} as const
+
+export { type PaymentStatus }
 
 /**
  * Customer profile summary attached to order records
@@ -99,6 +118,30 @@ export interface OrderShipment {
 }
 
 /**
+ * Inner payload data structure for order lifecycle events and transactions
+ */
+export interface OrderPayloadData {
+  amount?: string | number
+  totalAmount?: string | number
+  reason?: string | null
+  userId?: string
+  orderId?: string
+  currency?: string
+  changedBy?: string
+  newStatus?: OrderStatus | string
+  previousStatus?: OrderStatus | string | null
+  timestamp?: string
+  orderNumber?: string
+  customerName?: string
+  paymentMethod?: string | null
+  paymentStatus?: PaymentStatus | string | null
+  paymentId?: string | null
+  recipientEmail?: string | null
+  items?: OrderItem[]
+  [key: string]: any
+}
+
+/**
  * Main Admin Order structure
  */
 export interface AdminOrder {
@@ -106,6 +149,15 @@ export interface AdminOrder {
   orderNumber: string
   userId: string
   status: OrderStatus
+  type?: string
+  title?: string | null
+  body?: string | null
+  channel?: string | null
+  paymentId?: string | null
+  paymentMethod?: string | null
+  paymentStatus?: PaymentStatus | string | null
+  reason?: string | null
+  data?: OrderPayloadData | null
   currency: string
   subtotal: number | string
   discountTotal: number | string
@@ -131,6 +183,7 @@ export interface AdminOrder {
   shipment?: OrderShipment | null
   coupon?: any
   reservations?: any[]
+  sentAt?: string | null
   createdAt: string
   updatedAt?: string
 }

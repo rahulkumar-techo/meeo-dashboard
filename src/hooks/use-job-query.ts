@@ -28,8 +28,9 @@ export function useJobsOverviewQuery() {
   return useQuery({
     queryKey: JOB_QUERY_KEYS.overview(),
     queryFn: async () => {
-      const res = await jobService.getOverview()
-      return res.data
+      const res: any = await jobService.getOverview()
+      const data = res?.data ?? res
+      return data
     },
     refetchInterval: 10000, // Live poll every 10s
   })
@@ -42,8 +43,9 @@ export function useWorkersQuery() {
   return useQuery({
     queryKey: JOB_QUERY_KEYS.workers(),
     queryFn: async () => {
-      const res = await jobService.getWorkers()
-      return res.data
+      const res: any = await jobService.getWorkers()
+      const data = res?.data ?? res
+      return Array.isArray(data) ? data : (data?.workers ?? data?.items ?? [])
     },
     refetchInterval: 10000, // Live poll every 10s
   })
@@ -56,8 +58,18 @@ export function useJobsQuery(params?: JobsQueryParams) {
   return useQuery({
     queryKey: JOB_QUERY_KEYS.list(params),
     queryFn: async () => {
-      const res = await jobService.getJobs(params)
-      return res.data
+      const res: any = await jobService.getJobs(params)
+      const data = res?.data ?? res
+      if (Array.isArray(data)) {
+        return {
+          items: data,
+          pagination: { page: 1, limit: data.length, total: data.length, totalPages: 1 },
+        }
+      }
+      return {
+        items: Array.isArray(data?.items) ? data.items : (Array.isArray(data?.jobs) ? data.jobs : []),
+        pagination: data?.pagination ?? data?.meta ?? { page: 1, limit: 20, total: 0, totalPages: 1 },
+      }
     },
   })
 }
