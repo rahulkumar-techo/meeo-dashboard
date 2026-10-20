@@ -35,7 +35,7 @@ export function NavSystemStatus({
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton
-          render={<Link href={status.href} prefetch={false} />}
+          render={<Link href={status.href} />}
           tooltip={{
             children: `${status.label} (${status.metrics ?? "Health"})`,
           }}

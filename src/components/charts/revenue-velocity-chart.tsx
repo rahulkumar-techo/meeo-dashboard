@@ -44,45 +44,6 @@ interface ChartDataPoint {
   previousRevenue?: number
 }
 
-// Helper to generate simulated fallback data if database has limited history for selected period
-function generateFallbackSeries(period: GranularityType, baseRevenue: number = 25000): ChartDataPoint[] {
-  const days = period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 12
-  const points: ChartDataPoint[] = []
-  const now = new Date()
-
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now)
-    if (period === "1y") {
-      d.setMonth(d.getMonth() - i)
-      const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
-      const rev = Math.max(1000, Math.round(baseRevenue * (0.7 + Math.sin(i * 0.5) * 0.3 + (i % 3) * 0.15)))
-      const ords = Math.max(1, Math.round(rev / (800 + (i % 4) * 200)))
-      points.push({
-        date: d.toISOString(),
-        displayDate: label,
-        revenue: rev,
-        orders: ords,
-        aov: Math.round(rev / ords),
-        previousRevenue: Math.round(rev * 0.88),
-      })
-    } else {
-      d.setDate(d.getDate() - i)
-      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      const rev = Math.max(500, Math.round(baseRevenue * (0.6 + Math.sin(i * 0.8) * 0.35 + ((i * 7) % 5) * 0.1)))
-      const ords = Math.max(1, Math.round(rev / (600 + (i % 3) * 150)))
-      points.push({
-        date: d.toISOString(),
-        displayDate: label,
-        revenue: rev,
-        orders: ords,
-        aov: Math.round(rev / ords),
-        previousRevenue: Math.round(rev * 0.85),
-      })
-    }
-  }
-  return points
-}
-
 export function RevenueVelocityChart({ className, defaultPeriod = "30d" }: RevenueVelocityChartProps) {
   const [activeMetric, setActiveMetric] = React.useState<MetricType>("revenue")
   const [activePeriod, setActivePeriod] = React.useState<GranularityType>("30d")
@@ -91,7 +52,7 @@ export function RevenueVelocityChart({ className, defaultPeriod = "30d" }: Reven
     period: activePeriod as AnalyticsPeriod,
   })
 
-  // Format backend time-series points or use fallback if server has no historical entries yet
+  // Format backend time-series points
   const chartPoints: ChartDataPoint[] = React.useMemo(() => {
     if (salesData?.points && salesData.points.length > 0) {
       return salesData.points.map((p, idx) => {
@@ -112,8 +73,7 @@ export function RevenueVelocityChart({ className, defaultPeriod = "30d" }: Reven
       })
     }
 
-    // Default fallback series for visual continuity
-    return generateFallbackSeries(activePeriod)
+    return []
   }, [salesData, activePeriod])
 
   // Summary statistics computed directly from points
@@ -255,6 +215,12 @@ export function RevenueVelocityChart({ className, defaultPeriod = "30d" }: Reven
           {isLoading ? (
             <div className="size-full flex flex-col justify-end space-y-2 pb-4">
               <Skeleton className="h-44 w-full rounded-lg" />
+            </div>
+          ) : chartPoints.length === 0 ? (
+            <div className="size-full flex flex-col items-center justify-center text-xs text-muted-foreground border border-dashed border-border/60 rounded-lg">
+              <Activity className="size-6 text-muted-foreground/40 mb-1.5" />
+              <p className="font-semibold text-foreground">No sales data for this period</p>
+              <p className="text-[11px] text-muted-foreground">Historical orders will plot dynamically as store sales occur.</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">

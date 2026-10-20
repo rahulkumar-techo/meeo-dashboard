@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactCompiler: true,
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
@@ -51,6 +52,9 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
       },
     ],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "@tanstack/react-query"],
   },
   async headers() {
     return [

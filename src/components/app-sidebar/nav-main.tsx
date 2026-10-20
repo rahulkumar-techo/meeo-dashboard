@@ -18,19 +18,23 @@ import { useOverView } from "@/hooks/dashboard/use-overview.hook"
 import { useAdminOrderMetricsQuery } from "@/hooks/use-order-query"
 import { usePromotionsQuery } from "@/hooks/use-promotion-query"
 import type { NavGroup } from "./nav-config"
+import type { PayloadParams } from "@/types/dashboard-overview"
 
 interface NavMainProps {
   groups: NavGroup[]
 }
+
+const DEFAULT_OVERVIEW_PARAMS: PayloadParams = { period: "30d" }
+const DEFAULT_PROMO_PARAMS = { status: "ACTIVE" as const, limit: 1 }
 
 export const NavMain = React.memo(function NavMain({ groups }: NavMainProps) {
   const pathname = usePathname()
   const { hasPermission, isSuperAdmin } = usePermissions()
 
   // Fetch live overview, order metrics, and promotions for real-time sidebar badges
-  const { data: overviewData } = useOverView({ period: "30d" })
+  const { data: overviewData } = useOverView(DEFAULT_OVERVIEW_PARAMS)
   const { data: orderMetrics } = useAdminOrderMetricsQuery()
-  const { data: promotionsData } = usePromotionsQuery({ status: "ACTIVE", limit: 1 })
+  const { data: promotionsData } = usePromotionsQuery(DEFAULT_PROMO_PARAMS)
 
   const overview = overviewData?.data
   const activePromosCount =
@@ -164,7 +168,7 @@ export const NavMain = React.memo(function NavMain({ groups }: NavMainProps) {
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    render={<Link href={item.url} prefetch={false} />}
+                    render={<Link href={item.url} />}
                     isActive={active}
                     tooltip={{
                       children: item.title,

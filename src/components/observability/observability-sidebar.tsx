@@ -172,7 +172,6 @@ export function ObservabilitySidebar() {
         {/* Back to main dashboard link */}
         <Link
           href="/"
-          prefetch={false}
           className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group"
         >
           <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
