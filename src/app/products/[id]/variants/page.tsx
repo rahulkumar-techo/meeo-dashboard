@@ -25,7 +25,8 @@ import { Input } from "@/components/ui/input"
 import { PageHeader, MetricGrid } from "@/components/common"
 import { formatCurrency } from "@/lib/formatters"
 import { useProductQuery } from "@/hooks/use-product-query"
-import { useProductVariantsQuery } from "@/hooks/use-variant-query"
+import { useProductVariantsQuery, useUpdateVariantMutation } from "@/hooks/use-variant-query"
+import { toast } from "sonner"
 import { VariantTable } from "@/components/variants/variant-table"
 import { CreateVariantDialog } from "@/components/variants/create-variant-dialog"
 import { BatchVariantDialog } from "@/components/variants/batch-variant-dialog"
@@ -53,6 +54,25 @@ export default function ProductVariantsPage() {
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [variantToDelete, setVariantToDelete] = React.useState<ProductVariant | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
+  const [recentlyPublishedId, setRecentlyPublishedId] = React.useState<string | null>(null)
+  const [publishingId, setPublishingId] = React.useState<string | null>(null)
+  const publishTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    }
+  }, [])
+
+  const triggerPublishEffect = React.useCallback((variantId: string) => {
+    if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    setRecentlyPublishedId(variantId)
+    publishTimerRef.current = setTimeout(() => {
+      setRecentlyPublishedId(null)
+    }, 2100)
+  }, [])
+
+  const updateVariantMutation = useUpdateVariantMutation(productId)
 
   // Fetch parent product & live variants
   const { data: product, isLoading: isProductLoading } = useProductQuery(productId)
@@ -131,6 +151,33 @@ export default function ProductVariantsPage() {
     setIsDeleteOpen(true)
   }
 
+  const handleTogglePublish = (variant: ProductVariant) => {
+    const nextStatus: VariantStatus = variant.status === "ACTIVE" ? "DRAFT" : "ACTIVE"
+    setPublishingId(variant.id)
+    updateVariantMutation.mutate(
+      { id: variant.id, payload: { status: nextStatus } },
+      {
+        onSuccess: () => {
+          if (nextStatus === "ACTIVE") {
+            triggerPublishEffect(variant.id)
+            toast.success(`Variant ${variant.sku} published`, {
+              description: "SKU is now ACTIVE and live.",
+            })
+          } else {
+            toast.info(`Variant ${variant.sku} moved to Draft`)
+          }
+          refetch()
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Failed to update variant status.")
+        },
+        onSettled: () => {
+          setPublishingId(null)
+        },
+      }
+    )
+  }
+
   if (isProductLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
@@ -143,7 +190,7 @@ export default function ProductVariantsPage() {
   return (
     <div className="flex-1 space-y-5 p-4 lg:p-6 max-w-[1500px] mx-auto">
       {/* 1. Back Navigation & Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href={`/products/${productId}/edit`}>
           <Button
             variant="ghost"
@@ -282,10 +329,13 @@ export default function ProductVariantsPage() {
         pageSize={limit}
         isLoading={isLoading}
         hasActiveFilters={Boolean(debouncedSearch || statusFilter !== "ALL")}
+        recentlyPublishedId={recentlyPublishedId}
+        publishingId={publishingId}
         onCreateClick={() => setIsCreateOpen(true)}
         onBatchClick={() => setIsBatchOpen(true)}
         onEditVariant={handleEditClick}
         onDeleteVariant={handleDeleteClick}
+        onTogglePublish={handleTogglePublish}
         onPageChange={setPage}
         onPageSizeChange={(newSize) => { setLimit(newSize); setPage(1) }}
       />
@@ -315,7 +365,13 @@ export default function ProductVariantsPage() {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         onSuccess={(updated) => {
-          if (updated) setVariantToEdit(updated)
+          if (updated) {
+            setVariantToEdit(updated)
+            if (updated.status === "ACTIVE") {
+              triggerPublishEffect(updated.id)
+              toast.success(`Variant ${updated.sku} saved & active`)
+            }
+          }
           refetch()
         }}
       />

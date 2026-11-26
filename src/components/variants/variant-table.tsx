@@ -17,6 +17,9 @@ import {
   Grid,
   AlertTriangle,
   Image as ImageIcon,
+  Play,
+  Pause,
+  Loader2,
 } from "lucide-react"
 import {
   Table,
@@ -28,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { EmptyState, DataTablePagination } from "@/components/common"
+import { EmptyState, DataTablePagination, StatusBadge } from "@/components/common"
 import { formatCurrency as globalFormatCurrency } from "@/lib/formatters"
 import type { ProductVariant } from "@/types/variant"
 
@@ -40,10 +43,13 @@ export interface VariantTableProps {
   pageSize: number
   isLoading: boolean
   hasActiveFilters?: boolean
+  recentlyPublishedId?: string | null
+  publishingId?: string | null
   onCreateClick: () => void
   onBatchClick: () => void
   onEditVariant: (variant: ProductVariant) => void
   onDeleteVariant: (variant: ProductVariant) => void
+  onTogglePublish?: (variant: ProductVariant) => void
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
 }
@@ -56,10 +62,13 @@ export function VariantTable({
   pageSize,
   isLoading,
   hasActiveFilters,
+  recentlyPublishedId,
+  publishingId,
   onCreateClick,
   onBatchClick,
   onEditVariant,
   onDeleteVariant,
+  onTogglePublish,
   onPageChange,
   onPageSizeChange,
 }: VariantTableProps) {
@@ -157,8 +166,16 @@ export function VariantTable({
               const numCost = variant.costPrice ? Number(variant.costPrice) : null
               const margin = numCost && !isNaN(numCost) && numPrice > 0 ? Math.round(((numPrice - numCost) / numPrice) * 100) : null
 
+              const isRecentlyPublished = recentlyPublishedId === variant.id
+              const isPublishingThis = publishingId === variant.id
+
               return (
-                <TableRow key={variant.id} className="hover:bg-muted/30 transition-colors">
+                <TableRow
+                  key={variant.id}
+                  className={`hover:bg-muted/30 transition-colors ${
+                    isRecentlyPublished ? "animate-publish-row" : ""
+                  }`}
+                >
                   {/* SKU & Barcode & Media */}
                   <TableCell className="pl-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -274,17 +291,44 @@ export function VariantTable({
 
                   {/* Status Badge */}
                   <TableCell>
-                    <Badge
-                      variant={variant.status === "ACTIVE" ? "default" : variant.status === "DRAFT" ? "outline" : "secondary"}
-                      className="text-[10px] uppercase font-mono px-2 py-0"
-                    >
-                      {variant.status}
-                    </Badge>
+                    <StatusBadge status={variant.status} showDot />
                   </TableCell>
 
                   {/* Action Buttons */}
                   <TableCell className="text-right pr-4">
                     <div className="flex items-center justify-end gap-1">
+                      {onTogglePublish && variant.status !== "ACTIVE" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isPublishingThis}
+                          onClick={() => onTogglePublish(variant)}
+                          className="size-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 rounded-md"
+                          title="Publish Variant (Set Active)"
+                        >
+                          {isPublishingThis ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Play className="size-3.5" />
+                          )}
+                        </Button>
+                      )}
+                      {onTogglePublish && variant.status === "ACTIVE" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isPublishingThis}
+                          onClick={() => onTogglePublish(variant)}
+                          className="size-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 rounded-md"
+                          title="Set Variant to Draft"
+                        >
+                          {isPublishingThis ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Pause className="size-3.5" />
+                          )}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

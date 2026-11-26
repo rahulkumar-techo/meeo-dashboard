@@ -6,7 +6,7 @@
 
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { Socket } from "socket.io-client"
 import { getAdminSocket, disconnectAdminSocket } from "@/lib/socket"
 import { useUserStore } from "@/store/user.store"
@@ -32,7 +32,8 @@ function AdminSocketEventSubscriber() {
 }
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken, isAuthenticated } = useUserStore()
+  const accessToken = useUserStore((s) => s.accessToken)
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated)
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
@@ -115,8 +116,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, accessToken])
 
+  const contextValue = useMemo(() => ({ socket, isConnected }), [socket, isConnected])
+
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={contextValue}>
       {isAuthenticated && isConnected && <AdminSocketEventSubscriber />}
       {children}
     </SocketContext.Provider>

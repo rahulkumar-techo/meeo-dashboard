@@ -20,6 +20,7 @@ import {
   ExternalLink,
   CreditCard,
   Mail,
+  Loader2,
 } from "lucide-react"
 import {
   Table,
@@ -45,6 +46,8 @@ export interface OrderTableProps {
   pageSize: number
   isLoading: boolean
   hasActiveFilters?: boolean
+  actionLoadingId?: string | null
+  recentlyUpdatedId?: string | null
   onInspect: (order: AdminOrder) => void
   onConfirm: (order: AdminOrder) => void
   onProcess: (order: AdminOrder) => void
@@ -65,6 +68,8 @@ export function OrderTable({
   pageSize,
   isLoading,
   hasActiveFilters,
+  actionLoadingId,
+  recentlyUpdatedId,
   onInspect,
   onConfirm,
   onProcess,
@@ -175,12 +180,16 @@ export function OrderTable({
                 const reason = order.reason || order.data?.reason || null
                 const channel = order.channel || null
                 const orderTitle = order.title || (order.orderNumber ? `Order #${order.orderNumber}` : null)
+                const isActionLoading = actionLoadingId === order.id
+                const isRecentlyUpdated = recentlyUpdatedId === order.id
 
                 return (
                   <TableRow
                     key={order.id}
                     onClick={() => onInspect(order)}
-                    className="cursor-pointer hover:bg-muted/40 transition-colors"
+                    className={`cursor-pointer hover:bg-muted/40 transition-colors ${
+                      isRecentlyUpdated ? "animate-publish-row" : ""
+                    }`}
                   >
                     {/* Order Number & ID */}
                     <TableCell className="pl-4 py-3 font-mono">
@@ -332,11 +341,16 @@ export function OrderTable({
                         {(status === "PENDING" || status === "PAYMENT_PENDING") && (
                           <Button
                             size="sm"
+                            disabled={isActionLoading}
                             onClick={() => onConfirm(order)}
                             className="h-7 px-2 text-[11px] gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                             title="Confirm order & commit inventory"
                           >
-                            <CheckCircle2 className="size-3" />
+                            {isActionLoading ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="size-3" />
+                            )}
                             <span>Confirm</span>
                           </Button>
                         )}
@@ -344,11 +358,16 @@ export function OrderTable({
                         {status === "CONFIRMED" && (
                           <Button
                             size="sm"
+                            disabled={isActionLoading}
                             onClick={() => onProcess(order)}
                             className="h-7 px-2 text-[11px] gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
                             title="Begin warehouse picking & packing"
                           >
-                            <Package className="size-3" />
+                            {isActionLoading ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              <Package className="size-3" />
+                            )}
                             <span>Process</span>
                           </Button>
                         )}
@@ -356,6 +375,7 @@ export function OrderTable({
                         {status === "PROCESSING" && (
                           <Button
                             size="sm"
+                            disabled={isActionLoading}
                             onClick={() => onShip(order)}
                             className="h-7 px-2 text-[11px] gap-1 bg-cyan-600 hover:bg-cyan-700 text-white font-medium"
                             title="Attach tracking & dispatch"
@@ -368,6 +388,7 @@ export function OrderTable({
                         {status === "SHIPPED" && (
                           <Button
                             size="sm"
+                            disabled={isActionLoading}
                             onClick={() => onDeliver(order)}
                             className="h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
                             title="Mark delivered"
@@ -382,6 +403,7 @@ export function OrderTable({
                           <Button
                             variant="ghost"
                             size="icon-xs"
+                            disabled={isActionLoading}
                             onClick={() => onCancel(order)}
                             className="hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/50"
                             title="Cancel Order & release stock"

@@ -20,6 +20,7 @@ import {
   Archive,
   FileEdit,
   Layers,
+  Loader2,
 } from "lucide-react"
 import {
   Table,
@@ -43,6 +44,8 @@ export interface ProductTableProps {
   isLoading: boolean
   selectedProduct: Product | null
   hasActiveFilters: boolean
+  actionLoadingId?: string | null
+  recentlyPublishedId?: string | null
   onSelectProduct: (product: Product) => void
   onEditProduct: (product: Product, e: React.MouseEvent) => void
   onDeleteProduct: (product: Product, e: React.MouseEvent) => void
@@ -62,6 +65,8 @@ export function ProductTable({
   isLoading,
   selectedProduct,
   hasActiveFilters,
+  actionLoadingId,
+  recentlyPublishedId,
   onSelectProduct,
   onEditProduct,
   onDeleteProduct,
@@ -116,6 +121,8 @@ export function ProductTable({
           ) : (
             items.map((prod) => {
               const isSelected = selectedProduct?.id === prod.id
+              const isActionLoading = actionLoadingId === prod.id
+              const isRecentlyPublished = recentlyPublishedId === prod.id
               const heroImage =
                 prod.bannerImage?.url ||
                 prod.images?.[0]?.url ||
@@ -131,8 +138,9 @@ export function ProductTable({
                 <TableRow
                   key={prod.id}
                   onClick={() => onSelectProduct(prod)}
-                  className={`cursor-pointer transition-colors ${isSelected ? "bg-indigo-500/10 font-medium" : "hover:bg-muted/40"
-                    }`}
+                  className={`cursor-pointer transition-colors ${
+                    isSelected ? "bg-indigo-500/10 font-medium" : "hover:bg-muted/40"
+                  } ${isRecentlyPublished ? "animate-publish-row" : ""}`}
                 >
                   {/* Product Title & Hero Image */}
                   <TableCell className="pl-4 py-3">
@@ -231,22 +239,32 @@ export function ProductTable({
                         <Button
                           variant="ghost"
                           size="sm"
+                          disabled={isActionLoading}
                           onClick={(e) => onPublishProduct(prod, e)}
                           className="size-7 p-0 text-emerald-600 hover:bg-emerald-500/10 rounded-md"
                           title="Publish to Active"
                         >
-                          <Rocket className="size-3.5" />
+                          {isActionLoading ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Rocket className="size-3.5" />
+                          )}
                         </Button>
                       )}
                       {prod.status === "ACTIVE" && onDraftProduct && (
                         <Button
                           variant="ghost"
                           size="sm"
+                          disabled={isActionLoading}
                           onClick={(e) => onDraftProduct(prod, e)}
                           className="size-7 p-0 text-amber-600 hover:bg-amber-500/10 rounded-md"
                           title="Revert to Draft"
                         >
-                          <FileEdit className="size-3.5" />
+                          {isActionLoading ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <FileEdit className="size-3.5" />
+                          )}
                         </Button>
                       )}
 

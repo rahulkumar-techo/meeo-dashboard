@@ -35,7 +35,8 @@ interface AppLayoutWrapperProps {
 export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { isAuthenticated, hasHydrated } = useUserStore()
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated)
+  const hasHydrated = useUserStore((s) => s.hasHydrated)
   const [mountedHydrated, setMountedHydrated] = React.useState(false)
   const [isCheckingSession, setIsCheckingSession] = React.useState(true)
 
@@ -89,7 +90,7 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   }, [isHydrated, isAuthenticated, isAuthRoute])
 
   // Fetch / update current user profile via TanStack Query when authenticated
-  const { isLoading: isProfileLoading, isFetching: isProfileFetching } = useCurrentUserQuery()
+  const { isLoading: isProfileLoading } = useCurrentUserQuery()
 
   // Route Protection Guard
   React.useEffect(() => {
@@ -145,7 +146,7 @@ export function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   }
 
   // If profile is actively loading from server, show a lightweight splash rather than premature blocking card
-  if (hasNoPermissions && (isProfileLoading || isProfileFetching)) {
+  if (hasNoPermissions && isProfileLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">

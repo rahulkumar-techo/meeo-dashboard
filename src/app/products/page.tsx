@@ -25,6 +25,7 @@ import { ProductTable } from "@/components/products/product-table"
 import { ProductInspector } from "@/components/products/product-inspector"
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog"
 import { PermissionGate } from "@/components/auth"
+import { toast } from "sonner"
 import type { Product, ProductStatus, ProductSortBy, SortOrder } from "@/types/product"
 
 export default function ProductsPage() {
@@ -48,6 +49,23 @@ export default function ProductsPage() {
   // Dialog states
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const [recentlyPublishedId, setRecentlyPublishedId] = React.useState<string | null>(null)
+  const publishTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    }
+  }, [])
+
+  const triggerPublishEffect = React.useCallback((productId: string) => {
+    if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    setRecentlyPublishedId(productId)
+    publishTimerRef.current = setTimeout(() => {
+      setRecentlyPublishedId(null)
+    }, 2100)
+  }, [])
 
   // Fetch taxonomy and brand options for filters and modals
   const { data: categoriesData } = useCategoriesQuery({ limit: 100 })
@@ -116,6 +134,39 @@ export default function ProductsPage() {
     e?.stopPropagation()
     setProductToDelete(p)
     setIsDeleteOpen(true)
+  }
+
+  const handlePublishProduct = (p: Product) => {
+    setActionLoadingId(p.id)
+    publishMutation.mutate(p.id, {
+      onSuccess: () => {
+        triggerPublishEffect(p.id)
+        toast.success(`${p.name} published`, {
+          description: "Product is now live in the store.",
+        })
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to publish product.")
+      },
+      onSettled: () => {
+        setActionLoadingId(null)
+      },
+    })
+  }
+
+  const handleDraftProduct = (p: Product) => {
+    setActionLoadingId(p.id)
+    draftMutation.mutate(p.id, {
+      onSuccess: () => {
+        toast.info(`${p.name} moved to Draft`)
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to move product to draft.")
+      },
+      onSettled: () => {
+        setActionLoadingId(null)
+      },
+    })
   }
 
   return (
@@ -280,14 +331,16 @@ export default function ProductsPage() {
             isLoading={isLoading}
             selectedProduct={selectedProduct}
             hasActiveFilters={Boolean(debouncedSearch || statusFilter !== "ALL" || categoryFilter !== "ALL" || brandFilter !== "ALL")}
+            actionLoadingId={actionLoadingId}
+            recentlyPublishedId={recentlyPublishedId}
             onSelectProduct={(prod) => {
               setSelectedProduct(prod)
               setIsInspectorOpen(true)
             }}
             onEditProduct={handleOpenEdit}
             onDeleteProduct={handleOpenDelete}
-            onPublishProduct={(p) => publishMutation.mutate(p.id)}
-            onDraftProduct={(p) => draftMutation.mutate(p.id)}
+            onPublishProduct={(p) => handlePublishProduct(p)}
+            onDraftProduct={(p) => handleDraftProduct(p)}
             onArchiveProduct={(p) => archiveMutation.mutate(p.id)}
             onPageChange={setPage}
             onPageSizeChange={(newSize) => { setLimit(newSize); setPage(1) }}
@@ -301,8 +354,8 @@ export default function ProductsPage() {
               onClose={() => setIsInspectorOpen(false)}
               onEdit={(p) => handleOpenEdit(p)}
               onDelete={(p) => handleOpenDelete(p)}
-              onPublish={(p) => publishMutation.mutate(p.id)}
-              onDraft={(p) => draftMutation.mutate(p.id)}
+              onPublish={(p) => handlePublishProduct(p)}
+              onDraft={(p) => handleDraftProduct(p)}
               onArchive={(p) => archiveMutation.mutate(p.id)}
             />
           </div>

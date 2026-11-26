@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Tag,
   Zap,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +35,8 @@ import type { PromotionListItem } from "@/types/promotion"
 interface PromotionTableProps {
   promotions: PromotionListItem[]
   isLoading?: boolean
+  actionLoadingId?: string | null
+  recentlyPublishedId?: string | null
   onInspect: (promotion: PromotionListItem) => void
   onEdit: (promotion: PromotionListItem) => void
   onPublish: (promotion: PromotionListItem) => void
@@ -44,6 +47,8 @@ interface PromotionTableProps {
 export function PromotionTable({
   promotions,
   isLoading,
+  actionLoadingId,
+  recentlyPublishedId,
   onInspect,
   onEdit,
   onPublish,
@@ -87,11 +92,15 @@ export function PromotionTable({
             const usageCount = promo.currentUsageCount ?? promo._count?.usages ?? 0
             const totalLimit = promo.totalUsageLimit
             const isLimitReached = totalLimit ? usageCount >= totalLimit : false
+            const isActionLoading = actionLoadingId === promo.id
+            const isRecentlyPublished = recentlyPublishedId === promo.id
 
             return (
               <TableRow
                 key={promo.id}
-                className="hover:bg-muted/40 transition-colors group"
+                className={`hover:bg-muted/40 transition-colors group ${
+                  isRecentlyPublished ? "animate-publish-row" : ""
+                }`}
               >
                 {/* 1. Campaign Name & Slug */}
                 <TableCell>
@@ -230,11 +239,16 @@ export function PromotionTable({
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={isActionLoading}
                         className="size-7 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         onClick={() => onPublish(promo)}
                         title="Publish / Activate Campaign"
                       >
-                        <Play className="size-3.5" />
+                        {isActionLoading ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Play className="size-3.5" />
+                        )}
                       </Button>
                     )}
 
@@ -243,11 +257,16 @@ export function PromotionTable({
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={isActionLoading}
                         className="size-7 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400"
                         onClick={() => onPause(promo)}
                         title="Pause Campaign"
                       >
-                        <Pause className="size-3.5" />
+                        {isActionLoading ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Pause className="size-3.5" />
+                        )}
                       </Button>
                     )}
 

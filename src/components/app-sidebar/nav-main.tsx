@@ -168,7 +168,7 @@ export const NavMain = React.memo(function NavMain({ groups }: NavMainProps) {
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    render={<Link href={item.url} prefetch={true} />}
+                    render={<Link href={item.url} prefetch={false} />}
                     isActive={active}
                     tooltip={{
                       children: item.title,

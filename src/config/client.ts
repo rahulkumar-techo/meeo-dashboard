@@ -63,6 +63,7 @@ export async function executeSilentRefresh(): Promise<{ success: boolean; access
         {},
         {
           withCredentials: true,
+          timeout: 10000,
           headers: {
             "Content-Type": "application/json",
           },

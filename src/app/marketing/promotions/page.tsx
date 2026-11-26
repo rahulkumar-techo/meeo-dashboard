@@ -18,6 +18,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Download, Plus, RefreshCw, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -58,6 +59,23 @@ export default function PromotionsPage() {
   const [detailSheetOpen, setDetailSheetOpen] = React.useState(false)
   const [archiveDialogOpen, setArchiveDialogOpen] = React.useState(false)
   const [promoToArchive, setPromoToArchive] = React.useState<PromotionListItem | null>(null)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const [recentlyPublishedId, setRecentlyPublishedId] = React.useState<string | null>(null)
+  const publishTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    }
+  }, [])
+
+  const triggerPublishEffect = React.useCallback((promoId: string) => {
+    if (publishTimerRef.current) clearTimeout(publishTimerRef.current)
+    setRecentlyPublishedId(promoId)
+    publishTimerRef.current = setTimeout(() => {
+      setRecentlyPublishedId(null)
+    }, 2100)
+  }, [])
 
   // Queries & Mutations
   const { data: promotionsData, isLoading, isFetching, refetch } = usePromotionsQuery({
@@ -90,6 +108,33 @@ export default function PromotionsPage() {
     await archiveMutation.mutateAsync(promoToArchive.id)
     setArchiveDialogOpen(false)
     setPromoToArchive(null)
+  }
+
+  const handlePublishPromo = async (p: PromotionListItem) => {
+    setActionLoadingId(p.id)
+    try {
+      await publishMutation.mutateAsync(p.id)
+      triggerPublishEffect(p.id)
+      toast.success(`${p.name} published`, {
+        description: "Campaign is now active.",
+      })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to publish campaign.")
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handlePausePromo = async (p: PromotionListItem) => {
+    setActionLoadingId(p.id)
+    try {
+      await pauseMutation.mutateAsync(p.id)
+      toast.info(`${p.name} paused`)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to pause campaign.")
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
   const handleExportCSV = () => {
@@ -206,10 +251,12 @@ export default function PromotionsPage() {
           <PromotionTable
             promotions={promotions}
             isLoading={isLoading}
+            actionLoadingId={actionLoadingId}
+            recentlyPublishedId={recentlyPublishedId}
             onInspect={handleInspect}
             onEdit={handleEdit}
-            onPublish={(p) => publishMutation.mutateAsync(p.id)}
-            onPause={(p) => pauseMutation.mutateAsync(p.id)}
+            onPublish={handlePublishPromo}
+            onPause={handlePausePromo}
             onArchive={(p) => { setPromoToArchive(p); setArchiveDialogOpen(true) }}
           />
         )}

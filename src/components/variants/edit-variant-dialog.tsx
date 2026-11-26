@@ -170,19 +170,19 @@ export function EditVariantDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)] max-w-[1440px] sm:max-w-[1440px] h-[94dvh] sm:h-auto sm:max-h-[92vh] flex flex-col p-0 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-          <div className="p-5 pb-3 border-b border-border/70 bg-muted/10">
+          <div className="p-4 sm:p-5 pb-3 border-b border-border/70 bg-muted/10 shrink-0">
             <DialogHeader>
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+              <div className="flex items-center gap-2.5 pr-8">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                   <Edit2 className="size-4" />
                 </div>
-                <div>
-                  <DialogTitle className="text-base font-bold">
+                <div className="min-w-0">
+                  <DialogTitle className="text-sm sm:text-base font-bold truncate">
                     Edit Variant: <span className="font-mono text-indigo-600 dark:text-indigo-400">{variant.sku}</span>
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                     Update variant pricing, barcode, attributes, and ImageKit gallery.
                   </DialogDescription>
                 </div>
@@ -190,7 +190,7 @@ export function EditVariantDialog({
             </DialogHeader>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
             {error && (
               <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-2.5 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-2">
                 <AlertCircle className="size-3.5 shrink-0" />
@@ -200,7 +200,7 @@ export function EditVariantDialog({
 
             <div className="flex flex-wrap items-center justify-between p-3 rounded-xl border border-border/70 bg-muted/20 gap-2">
               <div className="flex items-center gap-2">
-                <Package className="size-4 text-muted-foreground" />
+                <Package className="size-4 text-muted-foreground shrink-0" />
                 <div>
                   <span className="font-semibold text-foreground text-xs block">
                     Current Inventory: <strong className="font-mono">{stock} units</strong>
@@ -215,109 +215,116 @@ export function EditVariantDialog({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">SKU Code <span className="text-rose-500">*</span></label>
-                <Input value={sku} onChange={(e) => setSku(e.target.value.toUpperCase())} className="h-8.5 text-xs font-mono uppercase" required />
-              </div>
-              <div className="space-y-1.5">
-                <label className="font-semibold text-foreground">Barcode / UPC / EAN</label>
-                <Input value={barcode} maxLength={64} onChange={(e) => setBarcode(e.target.value)} className="h-8.5 text-xs font-mono" />
-              </div>
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+              {/* Left Column: SKU, Attributes, Pricing, Status */}
+              <div className="lg:col-span-7 space-y-4 min-w-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-foreground">SKU Code <span className="text-rose-500">*</span></label>
+                    <Input value={sku} onChange={(e) => setSku(e.target.value.toUpperCase())} className="h-8.5 text-xs font-mono uppercase" required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-foreground">Barcode / UPC / EAN</label>
+                    <Input value={barcode} maxLength={64} onChange={(e) => setBarcode(e.target.value)} className="h-8.5 text-xs font-mono" />
+                  </div>
+                </div>
 
-            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
-              <InlineAttributeManager mode="single" selectedSingleValueIds={selectedAttributeValueIds} onSingleSelectionChange={setSelectedAttributeValueIds} />
-            </div>
+                <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
+                  <InlineAttributeManager mode="single" selectedSingleValueIds={selectedAttributeValueIds} onSingleSelectionChange={setSelectedAttributeValueIds} />
+                </div>
 
-            {/* Variant Specific Images Manager with Drag and Drop */}
-            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
-              <VariantImageManager
-                productId={productId}
-                variantId={variant.id}
-                images={variant.images || []}
-                sku={variant.sku}
-              />
-            </div>
+                <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground text-xs uppercase tracking-wider">Pricing</span>
+                    {profitMargin !== null && (
+                      <span
+                        className={`text-xs font-mono font-semibold ${
+                          profitMargin < 0
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        Est. Margin: {profitMargin}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="font-medium text-foreground text-xs">Selling Price (₹) <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={price}
+                          onChange={(e) => handleDecimalChange(setPrice, e.target.value)}
+                          className="h-8.5 pl-6 text-xs font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="font-medium text-muted-foreground text-xs">Compare At MRP (₹)</label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={compareAtPrice}
+                          onChange={(e) => handleDecimalChange(setCompareAtPrice, e.target.value)}
+                          className="h-8.5 pl-6 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="font-medium text-muted-foreground text-xs">Cost Per Item (₹)</label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={costPrice}
+                          onChange={(e) => handleDecimalChange(setCostPrice, e.target.value)}
+                          className="h-8.5 pl-6 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground text-xs uppercase tracking-wider">Pricing</span>
-                {profitMargin !== null && (
-                  <span
-                    className={`text-xs font-mono font-semibold ${
-                      profitMargin < 0
-                        ? "text-rose-600 dark:text-rose-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                    }`}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Publishing Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as VariantStatus)}
+                    className="w-full h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
                   >
-                    Est. Margin: {profitMargin}%
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-medium text-foreground text-xs">Selling Price (₹) <span className="text-rose-500">*</span></label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={price}
-                      onChange={(e) => handleDecimalChange(setPrice, e.target.value)}
-                      className="h-8.5 pl-6 text-xs font-mono"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-medium text-muted-foreground text-xs">Compare At MRP (₹)</label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={compareAtPrice}
-                      onChange={(e) => handleDecimalChange(setCompareAtPrice, e.target.value)}
-                      className="h-8.5 pl-6 text-xs font-mono"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-medium text-muted-foreground text-xs">Cost Per Item (₹)</label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-medium pointer-events-none select-none">₹</span>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={costPrice}
-                      onChange={(e) => handleDecimalChange(setCostPrice, e.target.value)}
-                      className="h-8.5 pl-6 text-xs font-mono"
-                    />
-                  </div>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                  </select>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground">Publishing Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as VariantStatus)}
-                className="w-full h-8.5 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground focus:outline-hidden"
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="DRAFT">DRAFT</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
+              {/* Right Column: Variant Specific Images Manager */}
+              <div className="lg:col-span-5 min-w-0">
+                <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20">
+                  <VariantImageManager
+                    productId={productId}
+                    variantId={variant.id}
+                    images={variant.images || []}
+                    sku={variant.sku}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row p-4 border-t border-border/70">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={updateMutation.isPending} className="text-xs h-8.5">
+          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row p-4 border-t border-border/70 shrink-0">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={updateMutation.isPending} className="w-full sm:w-auto text-xs h-8.5">
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={updateMutation.isPending} className="text-xs h-8.5 gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+            <Button type="submit" size="sm" disabled={updateMutation.isPending} className="w-full sm:w-auto text-xs h-8.5 gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
               {updateMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
               <span>Save Changes</span>
             </Button>

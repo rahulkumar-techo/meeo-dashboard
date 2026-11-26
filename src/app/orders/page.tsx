@@ -39,6 +39,7 @@ import {
   ExpireStaleDialog,
   OrderGuideCard,
 } from "@/components/orders"
+import { toast } from "sonner"
 import type { AdminOrder, OrderStatus } from "@/types/order"
 
 export default function OrdersPage() {
@@ -59,6 +60,23 @@ export default function OrdersPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false)
   const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = React.useState(false)
   const [expireStaleDialogOpen, setExpireStaleDialogOpen] = React.useState(false)
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null)
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = React.useState<string | null>(null)
+  const updateTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (updateTimerRef.current) clearTimeout(updateTimerRef.current)
+    }
+  }, [])
+
+  const triggerRowEffect = React.useCallback((orderId: string) => {
+    if (updateTimerRef.current) clearTimeout(updateTimerRef.current)
+    setRecentlyUpdatedId(orderId)
+    updateTimerRef.current = setTimeout(() => {
+      setRecentlyUpdatedId(null)
+    }, 2100)
+  }, [])
 
   // Map active tab to effective status filter if specific tab selected
   const effectiveStatus = React.useMemo(() => {
@@ -111,7 +129,8 @@ export default function OrdersPage() {
   }, [items, activeTab])
 
   // Refetch all queries after any action
-  const handleDataRefresh = () => {
+  const handleDataRefresh = (updatedOrderId?: string) => {
+    if (updatedOrderId) triggerRowEffect(updatedOrderId)
     refetchOrders()
     refetchMetrics()
   }
@@ -123,20 +142,28 @@ export default function OrdersPage() {
   }
 
   const handleConfirmOrder = async (order: AdminOrder) => {
+    setActionLoadingId(order.id)
     try {
       await confirmMutation.mutateAsync(order.id)
-      handleDataRefresh()
-    } catch (err) {
-      console.error("Failed to confirm order", err)
+      toast.success(`Order #${order.orderNumber} confirmed`)
+      handleDataRefresh(order.id)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to confirm order.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   const handleProcessOrder = async (order: AdminOrder) => {
+    setActionLoadingId(order.id)
     try {
       await processMutation.mutateAsync(order.id)
-      handleDataRefresh()
-    } catch (err) {
-      console.error("Failed to process order", err)
+      toast.success(`Order #${order.orderNumber} moved to Processing`)
+      handleDataRefresh(order.id)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to process order.")
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -324,6 +351,8 @@ export default function OrdersPage() {
             pageSize={pageSize}
             isLoading={isOrdersLoading}
             hasActiveFilters={Boolean(searchQuery || statusFilter !== "all")}
+            actionLoadingId={actionLoadingId}
+            recentlyUpdatedId={recentlyUpdatedId}
             onInspect={handleInspect}
             onConfirm={handleConfirmOrder}
             onProcess={handleProcessOrder}
@@ -378,34 +407,34 @@ export default function OrdersPage() {
         order={selectedOrder}
         open={shipDialogOpen}
         onOpenChange={setShipDialogOpen}
-        onSuccess={handleDataRefresh}
+        onSuccess={() => handleDataRefresh(selectedOrder?.id)}
       />
 
       <DeliverOrderDialog
         order={selectedOrder}
         open={deliverDialogOpen}
         onOpenChange={setDeliverDialogOpen}
-        onSuccess={handleDataRefresh}
+        onSuccess={() => handleDataRefresh(selectedOrder?.id)}
       />
 
       <CancelOrderDialog
         order={selectedOrder}
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}
-        onSuccess={handleDataRefresh}
+        onSuccess={() => handleDataRefresh(selectedOrder?.id)}
       />
 
       <UpdateStatusDialog
         order={selectedOrder}
         open={updateStatusDialogOpen}
         onOpenChange={setUpdateStatusDialogOpen}
-        onSuccess={handleDataRefresh}
+        onSuccess={() => handleDataRefresh(selectedOrder?.id)}
       />
 
       <ExpireStaleDialog
         open={expireStaleDialogOpen}
         onOpenChange={setExpireStaleDialogOpen}
-        onSuccess={handleDataRefresh}
+        onSuccess={() => handleDataRefresh()}
       />
     </div>
   )
